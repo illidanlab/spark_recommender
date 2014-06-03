@@ -22,6 +22,7 @@ follow these steps:
   <a href='http://marketplace.eclipse.org/marketplace-client-intro?mpc_install=252' title='Drag and drop into a running Eclipse Indigo workspace to install Maven Integration for Eclipse'> 
 	<img src='http://marketplace.eclipse.org/misc/installbutton.png'/>
     </a>in the Eclipse workspace, and the installation dialogue will pop up.  
+  * Install [m2eclipse-scala](https://github.com/sonatype/m2eclipse-scala). This allows you to work with Maven in Scala project. The installation can be done by cloning `https://github.com/sonatype/m2eclipse-scala.git` to your Eclipse `dropins` folder.
 5. If you are creating a Spark project from scratch in GitHub and want to use Eclipse, the correct way to do this is as follows:
   1.  Create a GitHub repository in GitHub
   2.  Clone the repository using git client on local machine
