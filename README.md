@@ -38,6 +38,7 @@ If you are creating a Spark project from scratch in GitHub and want to use Eclip
   4.  Add Scala nature by `Configure` > `Add Scala Nature` to enable Scala. To this end, you should be able to compile Scala files.  
   5.  To use Spark 1.0.0, add dependency `groupId = org.apache.spark`, `artifactId = spark-core_2.10`, `version = 1.0.0`. Since the `spark-core_2.10` dependency already includes Scala, we may remove the Scala Library added by Eclipse in Step (4) from `Java Build Path` in the project `Properties`. 
   6.  More often than not the default Maven JVM setting `J2SE-1.5` may not have the same compatible level as the system, and there may be a disturbing warning. Follow [this page](http://stackoverflow.com/questions/14804945/maven-build-path-specifies-execution-environment-j2se-1-5-even-though-i-chang) to adjust the `compiler compliance level` in `Java Compiler` in the project `Properties`. 
+  7.  The the `pom.xml` file must be set-up according to project requirement. One reference is the one in this project. This might be the most time consuming part, and in case it is not working, copy and paste the one in this project with minor changes (group ID, artifact ID and etc). 
 
 
 
