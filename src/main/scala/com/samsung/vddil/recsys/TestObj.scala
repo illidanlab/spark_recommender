@@ -10,13 +10,18 @@ object TestObj {
     
 		println("Hell, yeah...")
     
+		//println(System.getProperty("user.home"))
+		
+		val inputFileStr = System.getProperty("user.home") + "/workspace/data/wordcount/adv_alad.txt";
+		val outputFileStr= System.getProperty("user.home") + "/workspace/data/wordcount/adv_alad_cnt_eclipse_maven_proj.txt";
+		
 	    val sc = new SparkContext("local[4]", "TestWordCount")    
-	    
-	    val lines = sc.textFile("/Users/jiayu.zhou/workspace/data/wordcount/adv_alad.txt")
+	   
+		val lines = sc.textFile(inputFileStr)
 	    
 	    val counts = lines.flatMap(_.split(" ")).map(e => (e, 1)).reduceByKey(_+_).map{case (e1, e2) => ""+ e1 + "\t" + e2 }
 //	    
-//	    counts.saveAsTextFile("/Users/jiayu.zhou/workspace/data/wordcount/adv_alad_cnt_eclipse_maven_proj.txt")
+	    counts.saveAsTextFile(outputFileStr)
 //    
     
     
