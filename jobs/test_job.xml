@@ -1,6 +1,8 @@
 <jobList xmlns:recsys="Samsung Recsys">
 	<jobEntry>
+		<jobType>recommendation</jobType>
 		<jobName>exp_test_20140312_20140318</jobName>
+		<jobDesc>Test experiment from 20140312 to 20140318</jobDesc>
 		<trainDates>
 			<date>20140312</date>
 			<date>20140313</date></trainDates>
@@ -22,10 +24,14 @@
 			</itemFeature>
 			<factFeature>
 				<feature>
-					<type>factorize</type>
+					<type>pmf</type>
 					<param>
 						<dim>10</dim>
 					</param>
 				</feature>
 			</factFeature>
-		</features></jobEntry></jobList>
+		</features>
+		</jobEntry>
+	<jobEntry>
+		<jobType>helloworld</jobType>
+		<jobName>simple_spark_test</jobName></jobEntry></jobList>
