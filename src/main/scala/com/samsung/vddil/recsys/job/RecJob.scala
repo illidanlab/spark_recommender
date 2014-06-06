@@ -20,10 +20,22 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     
     def populateFeatures():List[RecJobFeature] = {
       
-      jobNode
+      Job.getValue(jobNode.asInstanceOf[Element], "jobType")
+      
+      val featureNodes:NodeList = jobNode.asInstanceOf[Element].getElementsByTagName("features")
       
       null
     }
+    
+    def getValue(elem:Element, tag:String):String = {
+	   val tagElem = elem.getElementsByTagName(tag) 
+	   if (tagElem.getLength() <= 0){
+	      return "n/a"
+ 	   }
+	   val nodes:NodeList = tagElem.item(0).getChildNodes()
+	   val node:Node = nodes.item(0).asInstanceOf[Node]
+	   node.getNodeValue()
+	}
     
     override def toString():String = {
        "Job:Recommendation  [" + this.jobName + "]"

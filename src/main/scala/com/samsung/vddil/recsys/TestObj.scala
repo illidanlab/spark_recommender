@@ -2,8 +2,8 @@ package com.samsung.vddil.recsys
 
 
 import com.samsung.vddil.recsys._
-
 import com.samsung.vddil.recsys.job._
+import org.apache.log4j.PropertyConfigurator
 
 
 /**
@@ -14,7 +14,8 @@ import com.samsung.vddil.recsys.job._
 object TestObj {
 
   def main(args: Array[String]): Unit = {
-    
+		PropertyConfigurator.configure("log4j.properties")
+		
 		val logger = Logger.logger
     
 		var jobFileStr:String = "./jobs/test_job.xml" 

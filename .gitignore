@@ -1,2 +1,6 @@
 /bin
 /target
+
+C:/logs/notify-subscription.log
+
+*.log
