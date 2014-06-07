@@ -20,6 +20,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     val featureList = populateFeatures()
     val trainDates:Array[String] = populateTrainDates()
     
+    Logger.logger.info("Job Parse => " + this.toString)
+    
     /*
      * Populate training dates. 
      */
@@ -77,9 +79,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         } 
         
         featureType match{
-          case JobTag.RECJOB_FEATURE_TYPE_ITEM => featList = featList :+ RecJobItemFeature(paramList)
-          case JobTag.RECJOB_FEATURE_TYPE_USER => featList = featList :+ RecJobUserFeature(paramList)
-          case JobTag.RECJOB_FEATURE_TYPE_FACT => featList = featList :+ RecJobFactFeature(paramList)
+          case JobTag.RECJOB_FEATURE_TYPE_ITEM => featList = featList :+ RecJobItemFeature(featureName, paramList)
+          case JobTag.RECJOB_FEATURE_TYPE_USER => featList = featList :+ RecJobUserFeature(featureName, paramList)
+          case JobTag.RECJOB_FEATURE_TYPE_FACT => featList = featList :+ RecJobFactFeature(featureName, paramList)
           case _ => Logger.logger.warn("Feature type "+ featureType+ " not found and discarded. ")
         }
         
@@ -123,10 +125,17 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	
     }
     
+    /*
+     * featureName: feature name, used to invoke different feature extraction algorithm 
+     * featureParm: feature extraction parameters. 
+     * 
+     * e.g. RecJobUserFeature("Zapping", (freq -> 10)) 
+     * 		RecJobFactFeature("PMF", (k -> 10, pass -> 1))
+     */
     sealed trait RecJobFeature  
-    case class RecJobItemFeature(featureParm:HashMap[String, String]) extends RecJobFeature
-    case class RecJobUserFeature(featureParm:HashMap[String, String]) extends RecJobFeature
-    case class RecJobFactFeature(featureParm:HashMap[String, String]) extends RecJobFeature
+    case class RecJobItemFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature
+    case class RecJobUserFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature
+    case class RecJobFactFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature
 	
 	sealed trait RecJobLearningMethod
 }

@@ -1,5 +1,8 @@
 package com.samsung.vddil.recsys.job
 
+/*
+ * Constants for XML tags. 
+ */
 object JobTag {
   
 	val JOB_LIST = "jobList"
