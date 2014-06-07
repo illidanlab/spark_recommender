@@ -4,7 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 
-import org.w3c.dom.{Document, Element, Node, NodeList}
+import scala.xml._
 
 case class HelloWorldJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     val jobType = JobType.HelloWorld

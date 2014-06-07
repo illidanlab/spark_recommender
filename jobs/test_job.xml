@@ -1,37 +1,62 @@
 <jobList xmlns:recsys="Samsung Recsys">
 	<jobEntry>
 		<jobType>recommendation</jobType>
-		<jobName>exp_test_20140312_20140318</jobName>
-		<jobDesc>Test experiment from 20140312 to 20140318</jobDesc>
+		<jobName>exp_test_20140312_20140314</jobName>
+		<jobDesc>Test experiment from 20140312 to 20140314</jobDesc>
+		<trainDates>
+			<date>20140312</date>
+			<date>20140313</date>
+			<date>20140314</date></trainDates>
+		<features>			
+			<feature>
+				<type>itemFeature</type>
+				<name>syn_topic</name>
+				<param>
+					<topicType>wiki</topicType>
+					<topicDim>200</topicDim>
+				</param>
+			</feature>
+			<feature>
+				<type>itemFeature</type>
+				<name>rand</name>
+				<param>
+					<dim>4</dim>
+				</param>
+			</feature>
+			<feature>
+				<type>factFeature</type>
+				<name>pmf</name>
+				<param>
+					<dim>10</dim>
+				</param>
+			</feature>
+		</features>
+	</jobEntry>
+	<jobEntry>
+		<jobType>recommendation</jobType>
+		<jobName>exp_test_20140312_20140313</jobName>
+		<jobDesc>Test experiment from 20140312 to 20140312</jobDesc>
 		<trainDates>
 			<date>20140312</date>
 			<date>20140313</date></trainDates>
-		<features>
-			<itemFeature>
-				<feature>
-					<type>syn_topic</type>
-					<param>
-						<topicType>wiki</topicType>
-						<topicDim>200</topicDim>
-					</param>
-				</feature>
-				<feature>
-					<type>rand</type>
-					<param>
-						<dim>4</dim>
-					</param>
-				</feature>
-			</itemFeature>
-			<factFeature>
-				<feature>
-					<type>pmf</type>
-					<param>
-						<dim>10</dim>
-					</param>
-				</feature>
-			</factFeature>
+		<features>			
+			<feature>
+				<type>itemFeature</type>
+				<name>syn_topic</name>
+				<param>
+					<topicType>wiki</topicType>
+					<topicDim>100</topicDim>
+				</param>
+			</feature>
+			<feature>
+				<type>factFeature</type>
+				<name>pmf</name>
+				<param>
+					<dim>10</dim>
+				</param>
+			</feature>
 		</features>
-		</jobEntry>
+	</jobEntry>
 	<jobEntry>
 		<jobType>helloworld</jobType>
 		<jobName>simple_spark_test</jobName></jobEntry></jobList>

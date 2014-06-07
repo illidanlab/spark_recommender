@@ -7,38 +7,91 @@
 
 package com.samsung.vddil.recsys.job
 
+import scala.xml._
+import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Logger
-import org.w3c.dom.{Document, Element, Node, NodeList}
-
 
 case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	
 	//initialization 
     val jobType = JobType.Recommendation
+    Logger.logger.info("Parsing job ["+ jobName + "]")
+    Logger.logger.info("        job desc:"+ jobDesc)
     val featureList = populateFeatures()
+    val trainDates:Array[String] = populateTrainDates()
     
-    
-    def populateFeatures():List[RecJobFeature] = {
+    /*
+     * Populate training dates. 
+     */
+    def populateTrainDates():Array[String] = {
       
-      Job.getValue(jobNode.asInstanceOf[Element], "jobType")
+      var dateList:Seq[String] = Seq()
+     
+      var nodeList = jobNode \ JobTag.RECJOB_TRAIN_DATE_LIST
+      if (nodeList.size == 0){
+        Logger.logger.warn("No training dates given!")
+        return dateList.toArray
+      }
       
-      val featureNodes:NodeList = jobNode.asInstanceOf[Element].getElementsByTagName("features")
+      dateList = (nodeList(0) \ JobTag.RECJOB_TRAIN_DATE_UNIT).map(_.text)
       
-      null
+      return dateList.toArray
     }
     
-    def getValue(elem:Element, tag:String):String = {
-	   val tagElem = elem.getElementsByTagName(tag) 
-	   if (tagElem.getLength() <= 0){
-	      return "n/a"
- 	   }
-	   val nodes:NodeList = tagElem.item(0).getChildNodes()
-	   val node:Node = nodes.item(0).asInstanceOf[Node]
-	   node.getNodeValue()
-	}
+    /*
+     * Populate features. 
+     */
+    def populateFeatures():Array[RecJobFeature] = {
+      
+      var featList:Array[RecJobFeature] = Array()  
+      
+      var nodeList = jobNode \ JobTag.RECJOB_FEATURE_LIST 
+      if (nodeList.size == 0){
+        Logger.logger.warn("No features found!")
+        return featList
+      } 
+      
+      nodeList = nodeList(0) \ JobTag.RECJOB_FEATURE_UNIT 
+      
+      for (node <- nodeList){
+        // extract feature type
+        val featureType = (node \ JobTag.RECJOB_FEATURE_UNIT_TYPE).text
+        
+        // extract feature name 
+        val featureName = (node \ JobTag.RECJOB_FEATURE_UNIT_NAME).text
+        
+        // extract features 
+        val featureParam = node \ JobTag.RECJOB_FEATURE_UNIT_PARAM
+        
+        var paramList:HashMap[String, String] = HashMap()
+        
+        for (featureParamNode <- featureParam){
+          //in case multiple parameter fields exist. 
+          
+          // the #PCDATA is currently ignored. 
+          val paraPairList = featureParamNode.child.map(feat => (feat.label, feat.text )).filter(_._1 != "#PCDATA")
+          
+          for (paraPair <- paraPairList){
+            paramList += (paraPair._1 -> paraPair._2)
+          }
+        } 
+        
+        featureType match{
+          case JobTag.RECJOB_FEATURE_TYPE_ITEM => featList = featList :+ RecJobItemFeature(paramList)
+          case JobTag.RECJOB_FEATURE_TYPE_USER => featList = featList :+ RecJobUserFeature(paramList)
+          case JobTag.RECJOB_FEATURE_TYPE_FACT => featList = featList :+ RecJobFactFeature(paramList)
+          case _ => Logger.logger.warn("Feature type "+ featureType+ " not found and discarded. ")
+        }
+        
+        Logger.logger.info("Feature found "+ featureType+ ":"+ featureName + ":" + paramList)
+      }
+      
+      return featList
+    }
+    
     
     override def toString():String = {
-       "Job:Recommendation  [" + this.jobName + "]"
+       "Job [Recommendation][" + this.jobName + "]["+ this.trainDates.length +" dates][" + this.featureList.length + " features]"
     }
     
     def run():Unit= {
@@ -71,9 +124,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     }
     
     sealed trait RecJobFeature  
-    case class RecJobItemFeature(featureParm:Map[String, Any]) extends RecJobFeature
-    case class RecJobUserFeature(featureParm:Map[String, Any]) extends RecJobFeature
-    case class RecJobFactFeature(featureParm:Map[String, Any]) extends RecJobFeature
+    case class RecJobItemFeature(featureParm:HashMap[String, String]) extends RecJobFeature
+    case class RecJobUserFeature(featureParm:HashMap[String, String]) extends RecJobFeature
+    case class RecJobFactFeature(featureParm:HashMap[String, String]) extends RecJobFeature
 	
 	sealed trait RecJobLearningMethod
 }
