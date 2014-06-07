@@ -18,7 +18,7 @@ object JobType extends Enumeration {
      	val HelloWorld = Value(JobTag.JOB_TYPE_HELLOWOLRD)
      	val Unknown = Value
 }
-import JobType._
+import JobType._ 
 
 /** 
  * The trait of Job class.
