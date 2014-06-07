@@ -20,7 +20,7 @@ object JobType extends Enumeration {
 }
 import JobType._
 
-/**
+/** 
  * The trait of Job class.
  * 
  * @author jiayu.zhou
