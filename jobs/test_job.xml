@@ -31,6 +31,22 @@
 				</param>
 			</feature>
 		</features>
+		<models>
+			<model>
+				<type>score_reg</type>
+				<name>ridge_reg</name>
+				<param>
+					<rho>1.5</rho>
+				</param>
+			</model>
+			<model>
+				<type>score_reg</type>
+				<name>ridge_reg</name>
+				<param>
+					<rho>0.1</rho>
+				</param>
+			</model>
+		</models>
 	</jobEntry>
 	<jobEntry>
 		<jobType>recommendation</jobType>
@@ -56,6 +72,15 @@
 				</param>
 			</feature>
 		</features>
+		<models>
+			<model>
+				<type>score_reg</type>
+				<name>ridge_reg</name>
+				<param>
+					<rhoRange>0.001,0.01,0.1,1,10,100,1000</rhoRange>
+				</param>
+			</model>
+		</models>
 	</jobEntry>
 	<jobEntry>
 		<jobType>helloworld</jobType>

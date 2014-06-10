@@ -28,5 +28,11 @@ object JobTag {
 	val RECJOB_FEATURE_UNIT_TYPE = "type"
 	val RECJOB_FEATURE_UNIT_PARAM = "param"
 	
-	
+	val RECJOB_MODEL_LIST = "models"
+	val RECJOB_MODEL_TYPE_SCRREG = "score_reg"
+	val RECJOB_MODEL_TYPE_BINCLS = "binary_cls" 
+	val RECJOB_MODEL_UNIT = "model"
+	val RECJOB_MODEL_UNIT_NAME = "name"
+	val RECJOB_MODEL_UNIT_TYPE = "type"
+	val RECJOB_MODEL_UNIT_PARAM = "param"
 }

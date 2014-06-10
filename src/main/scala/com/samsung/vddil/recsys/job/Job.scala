@@ -1,5 +1,5 @@
 /**
- * This file includes a set of job descriptions. 
+ * This file includes the basic definition of a job. 
  */
 package com.samsung.vddil.recsys.job
 
@@ -10,7 +10,7 @@ import scala.xml._
 import com.samsung.vddil.recsys._
 
 /*
- * Define a set of types 
+ * Define a set of job types 
  */
 object JobType extends Enumeration {
      	type JobType = Value
@@ -18,10 +18,13 @@ object JobType extends Enumeration {
      	val HelloWorld = Value(JobTag.JOB_TYPE_HELLOWOLRD)
      	val Unknown = Value
 }
+
 import JobType._ 
 
 /** 
- * The trait of Job class.
+ * The trait of Job class. The Job serves as a data structure of jobs 
+ * to be executed in the recommendation pipeline and define how the job
+ * should be carried out. 
  * 
  * @author jiayu.zhou
  *
@@ -43,7 +46,7 @@ trait Job {
 	def jobType:JobType
 	
 	/*
-	 * Run job
+	 * This is the main entrance of the run method. 
 	 */
 	def run():Unit
 }
@@ -76,19 +79,15 @@ object Job{
 	        val jobNameStr:String = (node \ JobTag.JOB_NAME).text
 	        val jobDescStr:String = (node \ JobTag.JOB_DESC).text
 	        
-	        var jobEntry:Job = null
-	           if (jobTypeStr.equals(JobType.Recommendation.toString())){
-	             jobEntry = RecJob(jobNameStr, jobDescStr, node)
-	           }else if (jobTypeStr.equals(JobType.HelloWorld.toString())){
-	             jobEntry = HelloWorldJob(jobNameStr, jobDescStr, node)
-	           }else{
-	             jobEntry = UnknownJob(jobNameStr, jobDescStr, node)
-	           }
+	        var jobEntry:Job = jobTypeStr match{
+	          case JobTag.JOB_TYPE_RECOMMENDATION => RecJob(jobNameStr, jobDescStr, node) 
+	          case JobTag.JOB_TYPE_HELLOWOLRD     => HelloWorldJob(jobNameStr, jobDescStr, node)
+	          case _ => UnknownJob(jobNameStr, jobDescStr, node)
+	        } 
 	           
-	           jobList = jobList ::: List(jobEntry)
+	        jobList = jobList ::: List(jobEntry)
 	    }
-	    
-	    
+
 	    logger.info("There are ["+ jobList.length + "] Jobs found. ")
 	  }else{
 	    logger.warn("Job file not found!")
@@ -96,7 +95,6 @@ object Job{
 	  
 	  jobList
 	}
-	
 }
 
 /*
