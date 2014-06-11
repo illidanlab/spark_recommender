@@ -10,6 +10,7 @@ package com.samsung.vddil.recsys.job
 import scala.xml._
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 
 /*
  * The information about a particular recommendation Job. 
@@ -24,9 +25,15 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     val modelList:Array[RecJobModel] = populateMethods()
     val trainDates:Array[String] = populateTrainDates()
     
+    /*
+     * This meta info data structure can be used to share information among different 
+     * components. 
+     * 
+     * TODO: discussion on this part. 
+     */
+    val metaInfo:HashMap[String, Any] = new HashMap()
+    
     Logger.logger.info("Job Parse => " + this.toString)
-    
-    
     
     /*
      * Populate training dates. 
@@ -90,7 +97,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
           case JobTag.RECJOB_FEATURE_TYPE_ITEM => featList = featList :+ RecJobItemFeature(featureName, paramList)
           case JobTag.RECJOB_FEATURE_TYPE_USER => featList = featList :+ RecJobUserFeature(featureName, paramList)
           case JobTag.RECJOB_FEATURE_TYPE_FACT => featList = featList :+ RecJobFactFeature(featureName, paramList)
-          case _ => Logger.logger.warn("Feature type "+ featureType+ " not found and discarded. ")
+          case _ => Logger.logger.warn("Feature type %s not found and discarded.".format(featureType))
         }
         
         Logger.logger.info("Feature found "+ featureType+ ":"+ featureName + ":" + paramList)
@@ -137,7 +144,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
          modelType match{
            case JobTag.RECJOB_MODEL_TYPE_SCRREG => modelList = modelList :+ RecJobScoreRegModel(modelName, paramList)
            case JobTag.RECJOB_MODEL_TYPE_BINCLS => modelList = modelList :+ RecJobBinClassModel(modelName, paramList)
-           case _ => Logger.logger.warn("Model type "+ modelType+ " not found and ignored.")
+           case _ => Logger.logger.warn("Model type $modelType not found and ignored.")
          }
       }
       
@@ -147,7 +154,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     }
     
     override def toString():String = {
-       "Job [Recommendation][" + this.jobName + "]["+ this.trainDates.length +" dates][" + this.featureList.length + " features][" + this.modelList.length + " models]"
+       s"Job [Recommendation][${this.jobName}][${this.trainDates.length} dates][${this.featureList.length} features][${this.modelList.length} models]"
     }
     
     def run():Unit= {
@@ -158,6 +165,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	
     	//preparing processing data. 
     	logger.info("**preparing processing data")
+    	//generate and maintain user list
+    	//generate and maintain item list
     	
     	
     	logger.info("**preparing features")
@@ -165,25 +174,27 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	this.featureList.foreach{
     		featureUnit =>{
     		    logger.info("*preparing features" + featureUnit.toString())
+    		    featureUnit.run(this)
     		}
     	}
     	    	
-    	//assemble training/validation/testing cases for training data. 
-    	
-    	
     	//learning models
-    	
-    	logger.info("**learning models")
-    	this.modelList.foreach{
-    	   modelUnit => {
-    	     logger.info("*buildling model" + modelUnit.toString())
-    	   }
+    	if (this.modelList.length > 0){
+    		//assemble training/validation/testing cases for training data.    	  
+    	  
+    		logger.info("**learning models")
+	    	this.modelList.foreach{
+	    	     modelUnit => {
+	    	         logger.info("*buildling model" + modelUnit.toString())
+	    	         modelUnit.run(this)
+	    	     }
+	    	}
+    		
+    		//testing recommendation performance. 
+    		logger.info("**testing models")
+    		//TODO: testing models. 
+    		
     	}
-    	
-    	//testing recommendation performance. 
-    	logger.info("**testing models")
-    	
-    	
     }
     
     /*
@@ -193,14 +204,38 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      * e.g. RecJobUserFeature("Zapping", (freq -> 10)) 
      * 		RecJobFactFeature("PMF", (k -> 10, pass -> 1))
      */
-    sealed trait RecJobFeature  
-    case class RecJobItemFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature
-    case class RecJobUserFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature
-    case class RecJobFactFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature
+    sealed trait RecJobFeature{
+    	def run(jobInfo: RecJob):Unit
+    }
+    case class RecJobItemFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature{
+    	def run(jobInfo: RecJob) = {
+    	   ItemFeatureHandler.processFeature(featureName, featureParam, jobInfo)
+    	}
+    }
+    case class RecJobUserFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature{
+    	def run(jobInfo: RecJob) = {}
+    }
+    case class RecJobFactFeature(featureName:String, featureParam:HashMap[String, String]) extends RecJobFeature{
+    	def run(jobInfo: RecJob) = {}
+    }
 	
-	sealed trait RecJobModel
-    case class RecJobScoreRegModel(modelName:String, modelParam:HashMap[String, String]) extends RecJobModel
-    case class RecJobBinClassModel(modelName:String, modelParam:HashMap[String, String]) extends RecJobModel
+	sealed trait RecJobModel{
+		def run(jobInfo: RecJob):Unit
+    }
+    case class RecJobScoreRegModel(modelName:String, modelParam:HashMap[String, String]) extends RecJobModel{
+    	def run(jobInfo: RecJob):Unit = {}
+    }
+    case class RecJobBinClassModel(modelName:String, modelParam:HashMap[String, String]) extends RecJobModel{
+    	def run(jobInfo: RecJob):Unit = {}
+    }
 }
 
-
+case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
+    def allCompleted():Boolean = {
+       false
+    }
+    
+    def showStatus():Unit = {
+    	
+    }
+} 
