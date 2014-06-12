@@ -14,8 +14,8 @@ import com.samsung.vddil.recsys._
  */
 object JobType extends Enumeration {
      	type JobType = Value
-     	val Recommendation = Value(JobTag.JOB_TYPE_RECOMMENDATION) 
-     	val HelloWorld = Value(JobTag.JOB_TYPE_HELLOWOLRD)
+     	val Recommendation = Value(JobTag.JobType_Recommendation) 
+     	val HelloWorld = Value(JobTag.JobType_HelloWorld)
      	val Unknown = Value
 }
 
@@ -49,6 +49,11 @@ trait Job {
 	 * This is the main entrance of the run method. 
 	 */
 	def run():Unit
+	
+	/*
+	 * Get the current job status. 
+	 */
+	def getStatus():JobStatus
 }
 
 
@@ -74,14 +79,14 @@ object Job{
 	    
 	    val xml = XML.loadFile(jobfile)
 	    // look for all job entries in the job list. 
-	    for (node <- xml \ "jobEntry"){
-	        val jobTypeStr:String = (node \ JobTag.JOB_TYPE).text
-	        val jobNameStr:String = (node \ JobTag.JOB_NAME).text
-	        val jobDescStr:String = (node \ JobTag.JOB_DESC).text
+	    for (node <- xml \ JobTag.JobEntry){
+	        val jobTypeStr:String = (node \ JobTag.JobType).text 
+	        val jobNameStr:String = (node \ JobTag.JobName).text
+	        val jobDescStr:String = (node \ JobTag.JobDesc).text
 	        
 	        var jobEntry:Job = jobTypeStr match{
-	          case JobTag.JOB_TYPE_RECOMMENDATION => RecJob(jobNameStr, jobDescStr, node) 
-	          case JobTag.JOB_TYPE_HELLOWOLRD     => HelloWorldJob(jobNameStr, jobDescStr, node)
+	          case JobTag.JobType_Recommendation => RecJob(jobNameStr, jobDescStr, node) 
+	          case JobTag.JobType_HelloWorld     => HelloWorldJob(jobNameStr, jobDescStr, node)
 	          case _ => UnknownJob(jobNameStr, jobDescStr, node)
 	        } 
 	           
@@ -98,10 +103,11 @@ object Job{
 }
 
 /*
- * Unknown Job
+ * Unknown Job. This is a dummy implementation show how things could work. 
  */
 case class UnknownJob (jobName:String, jobDesc:String, jobNode:Node) extends Job{
     val jobType = JobType.Unknown
+    val jobStatus = new UnknownJobStatus(this)
     
     override def toString():String = {
        "Job:Unknown [" + this.jobName + "]"
@@ -109,6 +115,20 @@ case class UnknownJob (jobName:String, jobDesc:String, jobNode:Node) extends Job
     
     def run():Unit = {
        //do nothing.
+    }
+    
+    def getStatus():JobStatus = {
+       return this.jobStatus
+    }
+}
+
+case class UnknownJobStatus(jobInfo:UnknownJob) extends JobStatus{
+	def allCompleted():Boolean = {
+       true
+    }
+    
+    def showStatus():Unit = {
+    	Logger.logger.info("Unknown job [%s] has completed.".format(jobInfo.jobName))
     }
 }
 

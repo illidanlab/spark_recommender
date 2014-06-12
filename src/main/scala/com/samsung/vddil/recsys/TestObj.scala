@@ -31,6 +31,7 @@ object TestObj {
 		for (job:Job <- jobList){
 		   logger.info("=== Running job: " + job + " ===")
 		   job.run()
+		   job.getStatus().showStatus()
 		   logger.info("=== Job Done: " + job + " ===")
 		}
 		

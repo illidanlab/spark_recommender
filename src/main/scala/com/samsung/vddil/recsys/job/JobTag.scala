@@ -5,34 +5,34 @@ package com.samsung.vddil.recsys.job
  */
 object JobTag {
   
-	val JOB_LIST = "jobList"
-	val JOB_ENTRY = "jobEntry"
+	val JobList = "jobList"
+	val JobEntry = "jobEntry"
 	  
-	val JOB_TYPE = "jobType"
-	val JOB_NAME = "jobName"
-	val JOB_DESC = "jobDesc"
+	val JobType = "jobType"
+	val JobName = "jobName"
+	val JobDesc = "jobDesc"
   
-	val JOB_TYPE_RECOMMENDATION = "recommendation"
-	val JOB_TYPE_HELLOWOLRD = "helloworld"
+	val JobType_Recommendation = "recommendation"
+	val JobType_HelloWorld = "helloworld"
 	  
+    val RecJobTrainDateList = "trainDates"
+	val RecJobTrainDateUnit = "date"
 	  
-	val RECJOB_TRAIN_DATE_LIST = "trainDates"
-	val RECJOB_TRAIN_DATE_UNIT = "date"
+	val RecJobFeatureList = "features"
+	val RecJobFeatureType_Item = "itemFeature"
+	val RecJobFeatureType_User = "userFeature"
+	val RecJobFeatureType_Fact = "factFeature"
 	  
-	val RECJOB_FEATURE_LIST = "features"
-	val RECJOB_FEATURE_TYPE_ITEM = "itemFeature"
-	val RECJOB_FEATURE_TYPE_USER = "userFeature"
-	val RECJOB_FEATURE_TYPE_FACT = "factFeature"
-	val RECJOB_FEATURE_UNIT = "feature"
-	val RECJOB_FEATURE_UNIT_NAME = "name"
-	val RECJOB_FEATURE_UNIT_TYPE = "type"
-	val RECJOB_FEATURE_UNIT_PARAM = "param"
+	val RecJobFeatureUnit = "feature"
+	val RecJobFeatureUnitName = "name"
+	val RecJobFeatureUnitType = "type"
+	val RecJobFeatureUnitParam = "param"
 	
-	val RECJOB_MODEL_LIST = "models"
-	val RECJOB_MODEL_TYPE_SCRREG = "score_reg"
-	val RECJOB_MODEL_TYPE_BINCLS = "binary_cls" 
-	val RECJOB_MODEL_UNIT = "model"
-	val RECJOB_MODEL_UNIT_NAME = "name"
-	val RECJOB_MODEL_UNIT_TYPE = "type"
-	val RECJOB_MODEL_UNIT_PARAM = "param"
+	val RecJobModelList = "models"
+	val RecJobModelType_Regress = "score_reg"
+	val RecJobModelType_Classify = "binary_cls" 
+	val RecJobModelUnit = "model"
+	val RecJobModelUnitName = "name"
+	val RecJobModelUnitType = "type"
+	val RecJobModelUnitParam = "param"
 }

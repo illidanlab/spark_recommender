@@ -5,23 +5,31 @@ import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.item.ItemFeatureSynopsisTFIDF
 import com.samsung.vddil.recsys.feature.item.ItemFeatureSynopsisTopic
+import com.samsung.vddil.recsys.feature.item.ItemFeatureGenre
 
 /*
- * This is the main entrance of the item (program) feature processing.  
+ * This is the main entrance of the item (program) feature processing.
+ * 
+ * TODO: change this component to dynamic class loading.
  */
 object ItemFeatureHandler {
 	//predefined values for feature name 
-	val ITEM_FEATURE_SYNOPSIS_TOPIC = "syn_topic"
-	val ITEM_FEATURE_SYNOPSIS_TFIDR = "syn_tfidf"
+	val IFSynopsisTopic:String = "syn_topic"
+	val IFSynopsisTFIDF:String = "syn_tfidf"
+	val IFGenre:String = "genre"
   
 	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob) = {
 		Logger.logger.info("Processing item feature ["+ featureName + ":" + featureParams + "]")
 		Logger.logger.info("Processing item feature [%s : %s]".format(featureName, featureParams))
 		 
+		//Process the features accordingly 
 		featureName match{
-		  case ITEM_FEATURE_SYNOPSIS_TOPIC => ItemFeatureSynopsisTopic.processFeature(featureName, featureParams, jobInfo)
-		  case ITEM_FEATURE_SYNOPSIS_TFIDR => ItemFeatureSynopsisTFIDF.processFeature(featureName, featureParams, jobInfo)
-		  case _ => Logger.logger.info("Unknown item feature type [%s]".format(featureName))
+		  case IFSynopsisTopic => ItemFeatureSynopsisTopic.processFeature(featureParams, jobInfo)
+		  case IFSynopsisTFIDF => ItemFeatureSynopsisTFIDF.processFeature(featureParams, jobInfo)
+		  case IFGenre =>         ItemFeatureGenre.processFeature(featureParams, jobInfo)
+		  case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 		}
+		
+		//TODO: After features is done, add appropriate information in the jobInfo.status
 	}
 }

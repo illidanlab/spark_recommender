@@ -6,9 +6,9 @@ import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 
 /*
- * User Feature: Zapping features
+ * User Feature: Watch time features. 
  */
-object UserFeatureBehaviorZapping extends FeatureProcessingUnit {
+object UserFeatureBehaviorWatchtime extends FeatureProcessingUnit {
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob) = {
 		Logger.logger.error("%s has not been implmented.".format(getClass.getName()))
 	}

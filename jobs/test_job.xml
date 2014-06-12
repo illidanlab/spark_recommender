@@ -24,6 +24,20 @@
 				</param>
 			</feature>
 			<feature>
+				<type>userFeature</type>
+				<name>zap</name>
+				<param>
+					<interval>2</interval>
+				</param>
+			</feature>
+			<feature>
+				<type>userFeature</type>
+				<name>watchtime</name>
+				<param>
+					<minThr>10</minThr>
+				</param>
+			</feature>
+			<feature>
 				<type>factFeature</type>
 				<name>pmf</name>
 				<param>
