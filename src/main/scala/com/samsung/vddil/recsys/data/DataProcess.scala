@@ -9,13 +9,13 @@ object DataProcess {
 	    val jobStatus:RecJobStatus = jobInfo.jobStatus
 	    
 	    
-	    //1. aggregate the dates and generate sparse matrix in JobStatus 
+	    //1. aggregate the dates and generate sparse matrix in JobStatus resource 
 	    
 	    
-    	//2. generate and maintain user list in JobStatus
+    	//2. generate and maintain user list in JobStatus resource
 	    
 	    
-    	//3. generate and maintain item list in JobStatus
+    	//3. generate and maintain item list in JobStatus resource
 	    
 	    
 	    

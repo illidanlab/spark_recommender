@@ -15,17 +15,26 @@ object UserFeatureHandler {
 	val UFBehaviorWatchtime = "watchtime"
 	val UFBehaviorZapping   = "zap"
 	
-	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob)={
-	    Logger.logger.info("Processing user feature ["+ featureName + ":" + featureParams + "]")
-		Logger.logger.info("Processing user feature [%s : %s]".format(featureName, featureParams))
+	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean={
+		Logger.logger.info("Processing user feature [%s:%s]".format(featureName, featureParams))
 	
 		//Process the features accordingly.
+		var resource:FeatureResource = new FeatureResource(false)
+	    
 		featureName match{
-	      case UFBehaviorWatchtime => UserFeatureBehaviorWatchtime.processFeature(featureParams, jobInfo)
-	      case UFBehaviorZapping   => UserFeatureBehaviorZapping.processFeature(featureParams, jobInfo)
+	      case UFBehaviorWatchtime => resource = UserFeatureBehaviorWatchtime.processFeature(featureParams, jobInfo)
+	      case UFBehaviorZapping   => resource = UserFeatureBehaviorZapping.processFeature(featureParams, jobInfo)
 	      case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 	    }
 	    
-		//TODO: After features is done, add appropriate information in the jobInfo.status	    
+	    if(resource.success){
+		   resource.resourceMap(FeatureResource.ResourceStr_UserFeature) match{
+		      case resourceStr:String => 
+		        jobInfo.jobStatus.resourceLocation_UserFeature("blah") = resourceStr
+		   }
+		}
+	    
+	    resource.success
+		  
 	}
 }

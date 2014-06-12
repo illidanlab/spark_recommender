@@ -11,5 +11,5 @@ import com.samsung.vddil.recsys.job.RecJob
  * three 
  */
 trait FeatureProcessingUnit {
-	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob)
+	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource
 }

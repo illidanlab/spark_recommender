@@ -216,38 +216,38 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	// Use the RecJob to initialize the RecJobStatus
 	// so we know what are things that we want to keep track.
-  
-  
-    /*
-     * This meta info data structure can be used to share information among different 
-     * components. 
-     * 
-     */  
-	val metaInfo:HashMap[String, Any] = new HashMap()
 	
 	/*
 	 * Here we store the location of the resources (prepared data, features, models). 
-	 */
-	val resourceLocation:HashMap[Any, String] = new HashMap()
-
+	 */ 
+	//val resourceLocation:HashMap[Any, String] = new HashMap() // a general place.
+	val resourceLocation_UserFeature:HashMap[String, String] = new HashMap() 
+	val resourceLocation_ItemFeature:HashMap[String, String] = new HashMap()
+	val resourceLocation_ClassifyModel:HashMap[String, String] = new HashMap()
+	val resourceLocation_RegressModel:HashMap[String, String] = new HashMap()
+	
 	/*
-	 * 
+	 *  As set of flags showing completed components. 
 	 */
-	val completedFeatures:HashSet[RecJobFeature] = new HashSet()
-  
-	/*
-	 * 
-	 */
-	val completedModels:HashSet[RecJobModel] = new HashSet()
+	val completedItemFeatures:HashSet[RecJobItemFeature] = new HashSet()
+	val completedUserFeatures:HashSet[RecJobUserFeature] = new HashSet()
+	val completedFactFeatures:HashSet[RecJobFactFeature] = new HashSet()
+	val completedRegressModels:HashSet[RecJobModel] = new HashSet()
+	val completedClassifyModels:HashSet[RecJobModel] = new HashSet()
 	
     def allCompleted():Boolean = {
        true
     }
     
     def showStatus():Unit = {
-    	Logger.logger.info("RecJobStatus.showStatus() not implemented.")
+    	Logger.logger.info("Completed Item Features " + completedItemFeatures)
+    	Logger.logger.info("Completed User Features " + completedItemFeatures)
+    	Logger.logger.info("Completed Fact Features " + completedItemFeatures)
+    	Logger.logger.info("Completed Regression Models " + completedItemFeatures)
+    	Logger.logger.info("Completed Classification Models " + completedItemFeatures)
     }
 } 
+
 
 /*
  * The recommendation job feature data structure. 
@@ -267,7 +267,7 @@ sealed trait RecJobFeature{
  */
 case class RecJobItemFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	   ItemFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	   jobInfo.jobStatus.completedItemFeatures(this) = ItemFeatureHandler.processFeature(featureName, featureParams, jobInfo)
 	}
 }
 
@@ -276,7 +276,7 @@ case class RecJobItemFeature(featureName:String, featureParams:HashMap[String, S
  */
 case class RecJobUserFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	   UserFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	   jobInfo.jobStatus.completedUserFeatures(this) = UserFeatureHandler.processFeature(featureName, featureParams, jobInfo)
 	}
 }
 
@@ -285,7 +285,7 @@ case class RecJobUserFeature(featureName:String, featureParams:HashMap[String, S
  */
 case class RecJobFactFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	    FactFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	    jobInfo.jobStatus.completedFactFeatures(this) = FactFeatureHandler.processFeature(featureName, featureParams, jobInfo)
 	}
 }
 

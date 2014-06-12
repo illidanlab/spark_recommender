@@ -14,19 +14,33 @@ import com.samsung.vddil.recsys.feature.fact.FactFeaturePMF
 object FactFeatureHandler {
 	val FFNMF = "nmf"
 	val FFPMF = "pmf"
-	  
-	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob) = {
-		Logger.logger.info("Processing factorization feature ["+ featureName + ":" + featureParams + "]")
-		Logger.logger.info("Processing factorization feature [%s : %s]".format(featureName, featureParams))
+	
+	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean = {
+		Logger.logger.info("Processing factorization feature [%s:%s]".format(featureName, featureParams))
 		 
 		//Process the features accordingly 
+		var resource:FeatureResource = new FeatureResource(false)
+		
 		featureName match{
-		  case FFNMF => FactFeatureNMF.processFeature(featureParams, jobInfo)
-		  case FFPMF => FactFeaturePMF.processFeature(featureParams, jobInfo)
+		  case FFNMF => resource = FactFeatureNMF.processFeature(featureParams, jobInfo)
+		  case FFPMF => resource = FactFeaturePMF.processFeature(featureParams, jobInfo)
 		  case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 		}
 		
-		//TODO: After features is done, add appropriate information in the jobInfo.status
+		if(resource.success){
+		  //upon success, the Fact feature handler generates a user feature and an item feature.
+		  
+		   resource.resourceMap(FeatureResource.ResourceStr_ItemFeature) match{
+		      case resourceStr:String => 
+		        jobInfo.jobStatus.resourceLocation_ItemFeature("blah") = resourceStr
+		   }
+		   
+		   resource.resourceMap(FeatureResource.ResourceStr_UserFeature) match{
+		      case resourceStr:String => 
+		        jobInfo.jobStatus.resourceLocation_UserFeature("blah") = resourceStr
+		   }
+		}
 		
+		resource.success
 	}
 }
