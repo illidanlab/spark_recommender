@@ -1,7 +1,11 @@
 package com.samsung.vddil.recsys.job
 
-/*
+/**
  * Constants for XML tags. 
+ * 
+ * These tags are used to parse XML file into Scala data structures. 
+ * 
+ *  @author jiayu.zhou 
  */
 object JobTag {
   
@@ -35,4 +39,18 @@ object JobTag {
 	val RecJobModelUnitName = "name"
 	val RecJobModelUnitType = "type"
 	val RecJobModelUnitParam = "param"
+	  
+	val RecJobResourceLocation = "resourceLocation"
+	val RecJobResourceLocationRoviHQ = "roviHq"
+	val RecJobResourceLocationWatchTime = "watchTime"
+	val RecJobResourceLocationWorkspace = "workspace"
+	  
+	val RecJobDataSplit = "dataSplit"
+	val RecJobDataSplitTestRatio = "testingRatio"
+	val RecJobDataSplitValidRatio = "validationRatio"
+	  
+	val RecJobEnsembleList = "ensembles"
+	val RecJobEnsembleUnit = "ensemble"
+	val RecJobEnsembleUnitType  = "type"
+	val RecJobEnsembleUnitParam = "param"
 }

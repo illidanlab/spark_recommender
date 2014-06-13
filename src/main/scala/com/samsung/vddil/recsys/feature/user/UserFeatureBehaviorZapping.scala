@@ -15,6 +15,16 @@ object UserFeatureBehaviorZapping extends FeatureProcessingUnit {
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob): FeatureResource = {
 		Logger.logger.error("%s has not been implmented.".format(getClass.getName()))
 		
+		// 1. Complete default parameters
+		
+		
+	    // 2. Generate resource identity using resouceIdentity()
+		
+		
+	    // 3. Feature generation algorithms (HDFS operations)
+		
+		
+	    // 4. Generate and return a FeatureResource that includes all resources.  
 		FeatureResource.fail
 	}
 	

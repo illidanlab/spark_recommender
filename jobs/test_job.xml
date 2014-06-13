@@ -3,6 +3,11 @@
 		<jobType>recommendation</jobType>
 		<jobName>exp_test_20140312_20140314</jobName>
 		<jobDesc>Test experiment from 20140312 to 20140314</jobDesc>
+		<resourceLocation>
+			<roviHq>hdfs://gnosis-01-01-01.crl.samsung.com/apps/vddil/rovi_hq</roviHq>
+			<watchTime>hdfs://gnosis-01-01-01.crl.samsung.com/apps/vddil/duid-program-watchTime</watchTime>
+			<workspace>hdfs://gnosis-01-01-01.crl.samsung.com/apps/data/vddil/recsys</workspace>
+		</resourceLocation>
 		<trainDates>
 			<date>20140312</date>
 			<date>20140313</date>
@@ -45,6 +50,10 @@
 				</param>
 			</feature>
 		</features>
+		<dataSplit>
+			<testingRatio>0.2</testingRatio>
+			<validationRatio>0.1</validationRatio>
+		</dataSplit>
 		<models>
 			<model>
 				<type>score_reg</type>
@@ -61,6 +70,14 @@
 				</param>
 			</model>
 		</models>
+		<ensembles>
+			<ensemble>
+				<type>max</type>
+				<param>
+					<num>2</num>
+				</param>
+			</ensemble>
+		</ensembles>
 	</jobEntry>
 	<jobEntry>
 		<jobType>recommendation</jobType>
