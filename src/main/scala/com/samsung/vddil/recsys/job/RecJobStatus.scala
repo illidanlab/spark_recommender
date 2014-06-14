@@ -22,9 +22,9 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	var resourceLocation_UserList:String = ""
 	var resourceLocation_ItemList:String = ""
 
-	var resourceLocation_AggregateData_Continuous_Real:String = ""
-	var resourceLocation_AggregateData_Continuous_Real_Train:String = ""
-	var resourceLocation_AggregateData_Continuous_Real_Test:String = ""
+	var resourceLocation_AggregateData_Continuous:String = ""
+	var resourceLocation_AggregateData_Continuous_Train:String = ""
+	var resourceLocation_AggregateData_Continuous_Test:String = ""
     var resourceLocation_AggregateData_Continuous_Valid:String = ""
       
     var resourceLocation_AggregateData_Binary:String = ""
