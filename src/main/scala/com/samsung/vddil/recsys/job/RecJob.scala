@@ -1,5 +1,5 @@
-/*
- * Recommendation Job
+/**
+ * The recommendation Job
  * 
  * @author jiayu.zhou
  * 
@@ -9,15 +9,60 @@ package com.samsung.vddil.recsys.job
 
 import scala.xml._
 import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
+
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 import com.samsung.vddil.recsys.data.DataProcess
-import scala.collection.mutable.HashSet
 import com.samsung.vddil.recsys.feature.UserFeatureHandler
 import com.samsung.vddil.recsys.feature.FactFeatureHandler
 
-/*
+object RecJob{
+	val ResourceLoc_RoviHQ     = "roviHq"
+	val ResourceLoc_WatchTime  = "watchTime"
+	val ResourceLoc_Workspace  = "workspace"
+	val ResourceLoc_JobFeature = "jobFeature"
+	val ResourceLoc_JobData    = "jobData"
+	val ResourceLoc_JobModel   = "jobModel"
+	  
+	val DataSplitting_trainRatio = "trainRatio"
+	val DataSplitting_testRatio  = "testRatio"
+	val DataSplitting_validRatio = "validRatio"
+	val DataSplitting_testRatio_default = 0.2
+	val DataSplitting_validRatio_default = 0.1
+}
+
+/**
  * The information about a particular recommendation Job. 
+ * 
+ * jobName: a name that will be display as well as construct job folder in the workspace. 
+ * jobDesc: a human readable job description 
+ * jobNode: a XML node of type scala.xml.Node, which will be used to parse all the job information.
+ * 
+ * derived fields.
+ * 
+ * resourceLoc: this is used to store resource location
+ * 				INPUT RESOURCE
+ *  				resourceLoc(RecJob.ResourceLoc_RoviHQ):String     ROVI data folder
+ *  				resourceLoc(RecJob.ResourceLoc_WatchTime):String  ACR data folder
+ *     			OUTPUT RESOURCE
+ *  				resourceLoc(RecJob.ResourceLoc_JobFeature):String store features for this job 
+ *  				resourceLoc(RecJob.ResourceLoc_JobData):String    store data for this job 
+ *  				resourceLoc(RecJob.ResourceLoc_JobModel):String   store model for this job
+ * 
+ * featureList: a list of features. 
+ * 
+ * modelList: a list of models
+ * 
+ * trainDates: a list of dates used to generate training data/features 
+ * 
+ * dataSplit: data splitting information 
+ * 				dataSplit(RecJob.DataSplitting_trainRatio):Double  double (0,1)
+ *     			dataSplit(RecJob.DataSplitting_testRatio):Double   double (0,1)
+ *     			dataSplit(RecJob.DataSplitting_validRatio):Double  double (0,1)
+ * 
+ * jobStatus: a data structure maintaining resources for intermediate results. 
+ * 
  */
 case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	
@@ -27,13 +72,127 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     
     Logger.logger.info("Parsing job ["+ jobName + "]")
     Logger.logger.info("        job desc:"+ jobDesc)
+    val resourceLoc:HashMap[String, String] = populateResourceLoc() 
     val featureList:Array[RecJobFeature] = populateFeatures()
     val modelList:Array[RecJobModel] = populateMethods()
     val trainDates:Array[String] = populateTrainDates()
-     
+    val dataSplit:HashMap[String, Double] = populateDataSplitting()
+    //TODO: parse and ensemble 
+    
     val jobStatus:RecJobStatus = new RecJobStatus(this)
     
-    Logger.logger.info("Job Parse => " + this.toString)
+    Logger.logger.info("Job Parse done => " + this.toString)
+    
+    /*
+     * The main workflow of a recommender system job. 
+     */
+    def run():Unit= {
+    	val logger = Logger.logger 
+    	
+    	//Preparing processing data. 
+    	//In this step the user/item lists are available in the JobStatus. 
+    	logger.info("**preparing processing data")
+    	DataProcess.prepare(this)
+    	
+    	logger.info("**preparing features")
+    	
+    	//preparing features
+    	//   for each feature, we generate the resource  
+    	this.featureList.foreach{
+    		featureUnit =>{
+    		    logger.info("*preparing features" + featureUnit.toString())
+    		    featureUnit.run(this)
+    		    //status: update Job status
+    		}
+    	}
+    	    	
+    	//learning models
+    	if (this.modelList.length > 0){
+    		  
+    		logger.info("**learning models")
+	    	this.modelList.foreach{
+	    	     modelUnit => {
+	    	         logger.info("*buildling model" + modelUnit.toString())
+	    	         modelUnit.run(this)
+	    	     }
+	    	}
+    	}
+    	
+    	//testing recommendation performance on testing dates.
+    	
+    	
+    }
+    
+    /*
+     * Populate data splitting information. 
+     */
+    def populateDataSplitting():HashMap[String, Double] = {
+       var dataSplit:HashMap[String, Double] = new HashMap()
+       
+       var nodeList = jobNode \ JobTag.RecJobDataSplit
+       if (nodeList.size == 0){
+          //parse numbers when users have specified.
+    	   if((nodeList(0) \ JobTag.RecJobDataSplitTestRatio).size > 0){
+    	       try{
+    	          dataSplit(RecJob.DataSplitting_testRatio) = ((nodeList(0) \ JobTag.RecJobDataSplitTestRatio).text).toDouble 
+    	       }catch{ case _:Throwable => None}
+    	   }
+    	   
+    	   if((nodeList(0) \ JobTag.RecJobDataSplitValidRatio).size > 0){
+    	       try{
+    	          dataSplit(RecJob.DataSplitting_validRatio) = ((nodeList(0) \ JobTag.RecJobDataSplitValidRatio).text).toDouble 
+    	       }catch{ case _:Throwable => None}
+    	   }
+       }
+       
+       //use default if users have not specified we use default. 
+       if(dataSplit.isDefinedAt(JobTag.RecJobDataSplitTestRatio)) 
+           dataSplit(RecJob.DataSplitting_testRatio) = RecJob.DataSplitting_testRatio_default
+       
+       if(dataSplit.isDefinedAt(JobTag.RecJobDataSplitValidRatio))
+           dataSplit(RecJob.DataSplitting_validRatio) = RecJob.DataSplitting_validRatio_default
+       
+       dataSplit(RecJob.DataSplitting_trainRatio) 
+       	   = 1.0 - dataSplit(RecJob.DataSplitting_validRatio) - dataSplit(RecJob.DataSplitting_testRatio)
+           
+       dataSplit
+    }
+    
+    /*
+     * Populate resource locations
+     */
+    def populateResourceLoc():HashMap[String, String] = {
+       var resourceLoc:HashMap[String, String] = new HashMap()
+       
+       var nodeList = jobNode \ JobTag.RecJobResourceLocation
+       if (nodeList.size == 0){
+          Logger.logger.error("Resource locations are not given. ")
+          return resourceLoc
+       }
+       
+       
+       if ((nodeList(0) \ JobTag.RecJobResourceLocationRoviHQ).size > 0) 
+    	   resourceLoc(RecJob.ResourceLoc_RoviHQ)     = (nodeList(0) \ JobTag.RecJobResourceLocationRoviHQ).text
+       
+       if ((nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).size > 0) 
+    	   resourceLoc(RecJob.ResourceLoc_WatchTime)  = (nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).text
+       
+       if ((nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).size > 0){ 
+	       resourceLoc(RecJob.ResourceLoc_Workspace)  = (nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).text
+	       //derivative
+	       resourceLoc(RecJob.ResourceLoc_JobData)    = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/data"
+	       resourceLoc(RecJob.ResourceLoc_JobFeature) = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/feature"
+	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/model"
+       }
+       
+       Logger.logger.info("Resource WATCHTIME:   " + resourceLoc(RecJob.ResourceLoc_WatchTime))
+       Logger.logger.info("Resource ROVI:        " + resourceLoc(RecJob.ResourceLoc_RoviHQ))
+       Logger.logger.info("Resource Job Data:    " + resourceLoc(RecJob.ResourceLoc_JobData))
+       Logger.logger.info("Resource Job Feature: " + resourceLoc(RecJob.ResourceLoc_JobFeature))
+       Logger.logger.info("Resource Job Model:   " + resourceLoc(RecJob.ResourceLoc_JobModel))
+       resourceLoc
+    } 
+    
     
     /*
      * Populate training dates. 
@@ -157,97 +316,15 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        s"Job [Recommendation][${this.jobName}][${this.trainDates.length} dates][${this.featureList.length} features][${this.modelList.length} models]"
     }
     
-    /*
-     * The main workflow of a recommender system job. 
-     */
-    def run():Unit= {
-    	val logger = Logger.logger 
-        
-    	//TODO: consider cache each of these components. 
-    	//      the cache may be done in file system level. 
-    	
-    	//Preparing processing data. 
-    	//In this step the user/item lists are available in the JobStatus. 
-    	logger.info("**preparing processing data")
-    	DataProcess.prepare(this)
-    	
-    	logger.info("**preparing features")
-    	//preparing features
-    	this.featureList.foreach{
-    		featureUnit =>{
-    		    logger.info("*preparing features" + featureUnit.toString())
-    		    featureUnit.run(this)
-    		    //status: update Job status
-    		}
-    	}
-    	    	
-    	//learning models
-    	if (this.modelList.length > 0){
-    		logger.info("**assembling data")
-    		//TODO: assembling module 
-    		
-    		logger.info("**divide training/testing/validation")
-    		//TODO: split data
-    		
-    		logger.info("**learning models")
-	    	this.modelList.foreach{
-	    	     modelUnit => {
-	    	         logger.info("*buildling model" + modelUnit.toString())
-	    	         modelUnit.run(this)
-	    	         //status: update Job status
-	    	     }
-	    	}
-    		
-    		//testing recommendation performance. 
-    		
-    		logger.info("**testing models")
-    		//TODO: testing models. 
-    	}
-    }
-    
     def getStatus():JobStatus = {
        return this.jobStatus
     }
     
-    
 }
 
 
-case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
-	// Use the RecJob to initialize the RecJobStatus
-	// so we know what are things that we want to keep track.
-  
-  
-    /*
-     * This meta info data structure can be used to share information among different 
-     * components. 
-     * 
-     */  
-	val metaInfo:HashMap[String, Any] = new HashMap()
-	
-	/*
-	 * Here we store the location of the resources (prepared data, features, models). 
-	 */
-	val resourceLocation:HashMap[Any, String] = new HashMap()
 
-	/*
-	 * 
-	 */
-	val completedFeatures:HashSet[RecJobFeature] = new HashSet()
-  
-	/*
-	 * 
-	 */
-	val completedModels:HashSet[RecJobModel] = new HashSet()
-	
-    def allCompleted():Boolean = {
-       true
-    }
-    
-    def showStatus():Unit = {
-    	Logger.logger.info("RecJobStatus.showStatus() not implemented.")
-    }
-} 
+
 
 /*
  * The recommendation job feature data structure. 
@@ -267,7 +344,7 @@ sealed trait RecJobFeature{
  */
 case class RecJobItemFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	   ItemFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	   jobInfo.jobStatus.completedItemFeatures(this) = ItemFeatureHandler.processFeature(featureName, featureParams, jobInfo)
 	}
 }
 
@@ -276,7 +353,7 @@ case class RecJobItemFeature(featureName:String, featureParams:HashMap[String, S
  */
 case class RecJobUserFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	   UserFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	   jobInfo.jobStatus.completedUserFeatures(this) = UserFeatureHandler.processFeature(featureName, featureParams, jobInfo)
 	}
 }
 
@@ -285,12 +362,21 @@ case class RecJobUserFeature(featureName:String, featureParams:HashMap[String, S
  */
 case class RecJobFactFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	    FactFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	    jobInfo.jobStatus.completedFactFeatures(this) = FactFeatureHandler.processFeature(featureName, featureParams, jobInfo)
 	}
 }
 
+
+
+
+
+
+
 /*
- *  The learning to rank model 
+ *  The learning to rank models
+ *  
+ *  modelName:  model name
+ *  modelParam: model parameters
  */
 sealed trait RecJobModel{
 	def run(jobInfo: RecJob):Unit
@@ -300,12 +386,43 @@ sealed trait RecJobModel{
  * Regression model
  */
 case class RecJobScoreRegModel(modelName:String, modelParam:HashMap[String, String]) extends RecJobModel{
-	def run(jobInfo: RecJob):Unit = {}
+	def run(jobInfo: RecJob):Unit = {
+	    //1. prepare data with continuous labels (X, y). 
+		Logger.logger.info("**assembling data")
+    	//TODO: assembling module
+		
+		//2. divide training, testing, validation
+		Logger.logger.info("**divide training/testing/validation")
+		
+		
+	    //3. train model on training and tune using validation.
+		
+		//4. testing model
+	    Logger.logger.info("**testing models")
+	    //TODO: testing models.
+	}
 }
 
 /*
  * Classification model
  */
 case class RecJobBinClassModel(modelName:String, modelParam:HashMap[String, String]) extends RecJobModel{
-	def run(jobInfo: RecJob):Unit = {}
+	def run(jobInfo: RecJob):Unit = {
+	    //1. prepare data with binary labels (X, y)
+	   Logger.logger.info("**assembling binary data")  
+	   //TODO: assembling module
+	   
+	   //2. divide training, testing, validation
+	   Logger.logger.info("**divide training/testing/validation")
+	   
+	   //3. train model on training and tune using validation.
+	   
+	   //4. testing model
+	   Logger.logger.info("**testing models")
+       //TODO: testing models. 
+	}
 }
+
+
+
+

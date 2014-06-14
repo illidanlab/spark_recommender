@@ -13,6 +13,7 @@ object DataProcess {
 	  
 	    val jobStatus:RecJobStatus = jobInfo.jobStatus
 	    
+
 	     val sc = new SparkContext("local[16]", "MovieLensALS")
 	    //1. aggregate the dates and generate sparse matrix in JobStatus
 	    //? sparse matrix in what form

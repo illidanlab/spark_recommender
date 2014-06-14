@@ -12,24 +12,33 @@ import com.samsung.vddil.recsys.feature.item.ItemFeatureGenre
  * 
  * TODO: change this component to dynamic class loading.
  */
-object ItemFeatureHandler {
+object ItemFeatureHandler extends FeatureHandler{
 	//predefined values for feature name 
 	val IFSynopsisTopic:String = "syn_topic"
 	val IFSynopsisTFIDF:String = "syn_tfidf"
 	val IFGenre:String = "genre"
   
-	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob) = {
-		Logger.logger.info("Processing item feature ["+ featureName + ":" + featureParams + "]")
-		Logger.logger.info("Processing item feature [%s : %s]".format(featureName, featureParams))
+	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean = {
+		Logger.logger.info("Processing item feature [%s:%s]".format(featureName, featureParams))
 		 
-		//Process the features accordingly 
+		var resource:FeatureResource = FeatureResource.fail
+		
+		//Process the features accordingly
 		featureName match{
-		  case IFSynopsisTopic => ItemFeatureSynopsisTopic.processFeature(featureParams, jobInfo)
-		  case IFSynopsisTFIDF => ItemFeatureSynopsisTFIDF.processFeature(featureParams, jobInfo)
-		  case IFGenre =>         ItemFeatureGenre.processFeature(featureParams, jobInfo)
+		  case IFSynopsisTopic => resource = ItemFeatureSynopsisTopic.processFeature(featureParams, jobInfo)
+		  case IFSynopsisTFIDF => resource = ItemFeatureSynopsisTFIDF.processFeature(featureParams, jobInfo)
+		  case IFGenre =>         resource = ItemFeatureGenre.processFeature(featureParams, jobInfo)
 		  case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 		}
 		
-		//TODO: After features is done, add appropriate information in the jobInfo.status
+		//For the successful ones, push resource information to jobInfo.jobStatus.
+		if(resource.success){
+		   resource.resourceMap(FeatureResource.ResourceStr_ItemFeature) match{
+		      case resourceStr:String => 
+		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = resourceStr
+		   }
+		}
+		
+		resource.success
 	}
 }
