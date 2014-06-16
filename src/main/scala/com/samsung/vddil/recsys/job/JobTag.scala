@@ -18,7 +18,12 @@ object JobTag {
   
 	val JobType_Recommendation = "recommendation"
 	val JobType_HelloWorld = "helloworld"
+	
 	  
+	val RecJobSparkContext = "sparkContext"
+    val RecJobSparkContextMaster = "master"
+    val RecJobSparkContextJobName = "jobName" // by default use the job name of RecJob. 
+	
     val RecJobTrainDateList = "trainDates"
 	val RecJobTrainDateUnit = "date"
 	  

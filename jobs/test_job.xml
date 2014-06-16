@@ -1,17 +1,24 @@
 <jobList xmlns:recsys="Samsung Recsys">
 	<jobEntry>
 		<jobType>recommendation</jobType>
-		<jobName>exp_test_20140312_20140314</jobName>
-		<jobDesc>Test experiment from 20140312 to 20140314</jobDesc>
+		<jobName>exp_test_20140522_20140525</jobName>
+		<jobDesc>Test experiment from 20140522 to 20140525</jobDesc>
+		<sparkContext>
+			<master>local[4]</master>
+		</sparkContext>
 		<resourceLocation>
-			<roviHq>hdfs://gnosis-01-01-01.crl.samsung.com/apps/vddil/rovi_hq</roviHq>
+			<roviHq>data/ROVI/</roviHq>
+			<watchTime>data/ACR/</watchTime>
+			<workspace>/tmp/vddil/recsys</workspace>
+			<!--<roviHq>hdfs://gnosis-01-01-01.crl.samsung.com/apps/vddil/rovi_hq</roviHq>
 			<watchTime>hdfs://gnosis-01-01-01.crl.samsung.com/apps/vddil/duid-program-watchTime</watchTime>
-			<workspace>hdfs://gnosis-01-01-01.crl.samsung.com/apps/data/vddil/recsys</workspace>
+			<workspace>hdfs://gnosis-01-01-01.crl.samsung.com/apps/data/vddil/recsys</workspace>-->
 		</resourceLocation>
 		<trainDates>
-			<date>20140312</date>
-			<date>20140313</date>
-			<date>20140314</date></trainDates>
+			<date>20140522</date>
+			<date>20140523</date>
+			<date>20140524</date>
+			<date>20140525</date></trainDates>
 		<features>			
 			<feature>
 				<type>itemFeature</type>
@@ -78,40 +85,6 @@
 				</param>
 			</ensemble>
 		</ensembles>
-	</jobEntry>
-	<jobEntry>
-		<jobType>recommendation</jobType>
-		<jobName>exp_test_20140312_20140313</jobName>
-		<jobDesc>Test experiment from 20140312 to 20140312</jobDesc>
-		<trainDates>
-			<date>20140312</date>
-			<date>20140313</date></trainDates>
-		<features>			
-			<feature>
-				<type>itemFeature</type>
-				<name>syn_topic</name>
-				<param>
-					<topicType>wiki</topicType>
-					<topicDim>100</topicDim>
-				</param>
-			</feature>
-			<feature>
-				<type>factFeature</type>
-				<name>pmf</name>
-				<param>
-					<dim>10</dim>
-				</param>
-			</feature>
-		</features>
-		<models>
-			<model>
-				<type>score_reg</type>
-				<name>ridge_reg</name>
-				<param>
-					<rhoRange>0.001,0.01,0.1,1,10,100,1000</rhoRange>
-				</param>
-			</model>
-		</models>
 	</jobEntry>
 	<jobEntry>
 		<jobType>helloworld</jobType>

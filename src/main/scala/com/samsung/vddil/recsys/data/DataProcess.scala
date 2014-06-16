@@ -8,13 +8,19 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
 
+/**
+ * 
+ * Modified by Jiayu: added resource path
+ */
 object DataProcess {
 	def prepare(jobInfo:RecJob){
 	  
 	    val jobStatus:RecJobStatus = jobInfo.jobStatus
 	    
 
-	    val sc = new SparkContext("local[16]", "MovieLensALS")
+	    //val sc = new SparkContext("local[16]", "MovieLensALS")
+	    val sc = jobInfo.sc
+	    
 	    //1. aggregate the dates and generate sparse matrix in JobStatus
 	    //? sparse matrix in what form
 	    //read
@@ -36,19 +42,23 @@ object DataProcess {
 	    }
 	    
 	    //save merged data
-	    data.saveAsTextFile(jobInfo.resourceLoc(RecJob.ResourceLoc_JobData)) 
+	    jobStatus.resourceLocation_CombineData
+	    	= jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/combineData"
+	    data.saveAsTextFile(jobStatus.resourceLocation_CombineData) 
 	    
     	//2. generate and maintain user list in JobStatus
 	    val users = data.map(_._1).distinct
 	    //save users list
-	    //TODO: read this from xml
+	    jobStatus.resourceLocation_UserList 
+	    	= jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList"
 	    users.saveAsTextFile(jobStatus.resourceLocation_UserList) 
 	    
     	//3. generate and maintain item list in JobStatus
 	    val items = data.map(_._2).distinct
 	    //save items list
-	    //TODO: read this from xml
-	    items.saveAsTextFile(jobStatus.resourceLocation_UserList)
+	    jobStatus.resourceLocation_ItemList
+	    	= jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemList"
+	    items.saveAsTextFile(jobStatus.resourceLocation_ItemList)
 	    
 	}
 }
