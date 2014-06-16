@@ -10,12 +10,12 @@ package com.samsung.vddil.recsys.job
 import scala.xml._
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
-
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 import com.samsung.vddil.recsys.data.DataProcess
 import com.samsung.vddil.recsys.feature.UserFeatureHandler
 import com.samsung.vddil.recsys.feature.FactFeatureHandler
+import org.apache.spark.SparkContext
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -30,6 +30,8 @@ object RecJob{
 	val DataSplitting_validRatio = "validRatio"
 	val DataSplitting_testRatio_default = 0.2
 	val DataSplitting_validRatio_default = 0.1
+	
+	val SparkContext_master_default = "local[2]"
 }
 
 /**
@@ -63,15 +65,16 @@ object RecJob{
  * 
  * jobStatus: a data structure maintaining resources for intermediate results. 
  * 
+ * sc: an instance of SparkContext created according to user specification.
  */
 case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	
 	//initialization 
     val jobType = JobType.Recommendation
     
-    
     Logger.logger.info("Parsing job ["+ jobName + "]")
     Logger.logger.info("        job desc:"+ jobDesc)
+    val sc:SparkContext = initSparkContext()
     val resourceLoc:HashMap[String, String] = populateResourceLoc() 
     val featureList:Array[RecJobFeature] = populateFeatures()
     val modelList:Array[RecJobModel] = populateMethods()
@@ -118,9 +121,37 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	    	}
     	}
     	
-    	//testing recommendation performance on testing dates.
-    	
-    	
+    	//TODO: testing recommendation performance on testing dates.
+    }
+    
+    /*
+     * Create an instance of SparkContext
+     * according to specification. 
+     */
+    def initSparkContext():SparkContext={
+       var nodeList = jobNode \ JobTag.RecJobSparkContext
+      
+       var sparkContext_master:String  = RecJob.SparkContext_master_default
+       // by default we use this.jobName as default job name of the spark context. 
+       var sparkContext_jobName:String = this.jobName 
+       
+       if( nodeList.size > 0 && (nodeList(0) \JobTag.RecJobSparkContextMaster ).size > 0){
+    	   sparkContext_master = (nodeList(0) \JobTag.RecJobSparkContextMaster).text 
+       }else{
+           Logger.logger.warn("SparkContext specification not found, will try using local.")
+       }
+          
+       if( nodeList.size > 0 && (nodeList(0) \JobTag.RecJobSparkContextJobName).size > 0){
+    	   sparkContext_jobName = (nodeList(0) \JobTag.RecJobSparkContextJobName).text
+       }  
+   
+       try{
+          return new SparkContext(sparkContext_master, sparkContext_jobName)
+       }catch{
+         case _:Throwable => Logger.logger.error("Failed to build SparkContext!") 
+       }
+       
+       null
     }
     
     /*
@@ -130,7 +161,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        var dataSplit:HashMap[String, Double] = new HashMap()
        
        var nodeList = jobNode \ JobTag.RecJobDataSplit
-       if (nodeList.size == 0){
+       if (nodeList.size > 0){
           //parse numbers when users have specified.
     	   if((nodeList(0) \ JobTag.RecJobDataSplitTestRatio).size > 0){
     	       try{
@@ -143,13 +174,15 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	          dataSplit(RecJob.DataSplitting_validRatio) = ((nodeList(0) \ JobTag.RecJobDataSplitValidRatio).text).toDouble 
     	       }catch{ case _:Throwable => None}
     	   }
+       }else{
+          Logger.logger.warn("Data splitting is not specified for job [%s]".format(jobName))
        }
        
        //use default if users have not specified we use default. 
-       if(dataSplit.isDefinedAt(JobTag.RecJobDataSplitTestRatio)) 
+       if(! dataSplit.isDefinedAt(JobTag.RecJobDataSplitTestRatio)) 
            dataSplit(RecJob.DataSplitting_testRatio) = RecJob.DataSplitting_testRatio_default
        
-       if(dataSplit.isDefinedAt(JobTag.RecJobDataSplitValidRatio))
+       if(! dataSplit.isDefinedAt(JobTag.RecJobDataSplitValidRatio))
            dataSplit(RecJob.DataSplitting_validRatio) = RecJob.DataSplitting_validRatio_default
        
        dataSplit(RecJob.DataSplitting_trainRatio) 
