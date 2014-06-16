@@ -38,9 +38,19 @@ object FactFeatureHandler extends FeatureHandler{
 		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = resourceStr
 		   }
 		   
+		   resource.resourceMap(FeatureResource.ResourceStr_ItemFeatureMap) match{
+		      case resourceStr:String =>
+		        jobInfo.jobStatus.resourceLocation_ItemFeatureMap(resource.resourceIden) = resourceStr
+		   }
+		   
 		   resource.resourceMap(FeatureResource.ResourceStr_UserFeature) match{
 		      case resourceStr:String => 
 		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = resourceStr
+		   }
+		   
+		   resource.resourceMap(FeatureResource.ResourceStr_UserFeatureMap) match{
+		     case resourceStr:String =>
+		        jobInfo.jobStatus.resourceLocation_UserFeatureMap(resource.resourceIden) = resourceStr
 		   }
 		}
 		

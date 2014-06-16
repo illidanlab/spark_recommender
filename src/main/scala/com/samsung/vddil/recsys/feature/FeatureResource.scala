@@ -11,6 +11,18 @@ import scala.collection.mutable.HashMap
  * 
  * resourceIden: a unique identifier for this feature (to be used in HashMap purpose).
  * 
+ * Usage example: 
+ * 1) When the resource has failed due to any reason. 
+ * 		return FeatureResource.fail
+ *   
+ * 2) When features have been built. 
+ * 		//get identity
+ *   	val idenStr:String = someIdentityFunction(...)
+ *   	//set resource
+ *   	resourceMap(FeatureResource.ResourceStr_UserFeature) = "hdfs://blah/feature_"+idenStr
+ *      resourceMap(FeatureResource.ResourceStr_UserFeature) = "hdfs://blah/featureMap_"+idenStr
+ *   	return new FeatureResource(true,resourceMap, idenStr)
+ * 
  *  @author jiayu.zhou
  *   
  */
@@ -23,6 +35,9 @@ object FeatureResource{
 	val ResourceStr_UserFeature = "userFeature"
 	val ResourceStr_ItemFeature = "itemFeature"
 	
+	val ResourceStr_UserFeatureMap = "userFeatureMap"
+	val ResourceStr_ItemFeatureMap = "itemFeatureMap"
+	  
 	/*
 	 * Provides a shortcut with an empty FeatureResource indicating a failed status. 
 	 */

@@ -37,6 +37,11 @@ object ItemFeatureHandler extends FeatureHandler{
 		      case resourceStr:String => 
 		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = resourceStr
 		   }
+		   
+		   resource.resourceMap(FeatureResource.ResourceStr_ItemFeatureMap) match{
+		      case resourceStr:String =>
+		        jobInfo.jobStatus.resourceLocation_ItemFeatureMap(resource.resourceIden) = resourceStr
+		   }
 		}
 		
 		resource.success
