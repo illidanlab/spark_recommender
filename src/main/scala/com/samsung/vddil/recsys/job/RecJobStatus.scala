@@ -32,8 +32,13 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	var resourceLocation_AggregateData_Binary_Test:String = ""
     var resourceLocation_AggregateData_Binary_Valid:String = ""
 	  
+    //Store user/item feature resource 
 	val resourceLocation_UserFeature:HashMap[String, String] = new HashMap() 
 	val resourceLocation_ItemFeature:HashMap[String, String] = new HashMap()
+	//Store user/item feature map resource
+	val resourceLocation_UserFeatureMap:HashMap[String, String] = new HashMap() 
+	val resourceLocation_ItemFeatureMap:HashMap[String, String] = new HashMap()
+	
 	val resourceLocation_ClassifyModel:HashMap[String, String] = new HashMap()
 	val resourceLocation_RegressModel:HashMap[String, String] = new HashMap()
 	
