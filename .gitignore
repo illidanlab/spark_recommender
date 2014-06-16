@@ -4,3 +4,5 @@
 C:/logs/notify-subscription.log
 
 *.log
+.cache
+.gitignore
