@@ -18,7 +18,7 @@ object DataProcess {
 	    val jobStatus:RecJobStatus = jobInfo.jobStatus
 	    
 
-	    //val sc = new SparkContext("local[16]", "MovieLensALS")
+	    //get the spark context
 	    val sc = jobInfo.sc
 	    
 	    //1. aggregate the dates and generate sparse matrix in JobStatus
@@ -48,17 +48,24 @@ object DataProcess {
 	    
     	//2. generate and maintain user list in JobStatus
 	    val users = data.map(_._1).distinct
+	    users.persist
 	    //save users list
 	    jobStatus.resourceLocation_UserList 
 	    	= jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList"
 	    users.saveAsTextFile(jobStatus.resourceLocation_UserList) 
+	    jobStatus.users = users.collect
 	    
     	//3. generate and maintain item list in JobStatus
 	    val items = data.map(_._2).distinct
+	    items.persist
 	    //save items list
 	    jobStatus.resourceLocation_ItemList
 	    	= jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemList"
 	    items.saveAsTextFile(jobStatus.resourceLocation_ItemList)
+	    jobStatus.items = items.collect
 	    
+	    //unpersist the persisted objects
+	    users.unpersist(false)
+	    items.unpersist(false)
 	}
 }
