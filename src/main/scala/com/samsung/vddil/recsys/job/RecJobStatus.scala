@@ -46,6 +46,19 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	val completedRegressModels:HashSet[RecJobModel] = new HashSet()
 	val completedClassifyModels:HashSet[RecJobModel] = new HashSet()
 	
+	
+	/* 
+	 *store necessary counts
+	 */
+	var numUsers:Long = 0
+	var numItems:Long = 0
+	
+	/*
+	 * store persisted spark lists
+	 */
+	var users:List[String] = List[String]()
+	var items:List[String] = List[String]()
+	
     def allCompleted():Boolean = {
        true
     }
