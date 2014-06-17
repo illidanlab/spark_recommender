@@ -44,7 +44,8 @@ object DataProcess {
 	    //save merged data
 	    jobStatus.resourceLocation_CombineData
 	    	= jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/combineData"
-	    data.saveAsTextFile(jobStatus.resourceLocation_CombineData) 
+	    data.map{s => s._1 + "," + s._2 + "," + s._3}
+	        .saveAsTextFile(jobStatus.resourceLocation_CombineData) 
 	    
     	//2. generate and maintain user list in JobStatus
 	    val users = data.map(_._1).distinct
