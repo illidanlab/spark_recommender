@@ -19,7 +19,14 @@
 			<date>20140523</date>
 			<date>20140524</date>
 			<date>20140525</date></trainDates>
-		<features>			
+		<features>		
+			<feature>
+				<type>itemFeature</type>
+				<name>genre</name>
+				<param>
+					<lang>en</lang>
+				</param>
+			</feature>	
 			<feature>
 				<type>itemFeature</type>
 				<name>syn_topic</name>
@@ -86,6 +93,8 @@
 			</ensemble>
 		</ensembles>
 	</jobEntry>
-	<jobEntry>
+	<!-- <jobEntry>
 		<jobType>helloworld</jobType>
-		<jobName>simple_spark_test</jobName></jobEntry></jobList>
+		<jobName>simple_spark_test</jobName>
+	</jobEntry> -->
+</jobList>

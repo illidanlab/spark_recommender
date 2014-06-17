@@ -20,14 +20,20 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
     val GENRE_ID_IND = 1
     val GENRE_LANG_IND = 2
     val GENRE_DESC_IND = 3
-    val GENRE_LANG_FILT = "en"
+    val GENRE_LANG_FILT = "en" //default language 
+      
+    val Param_GenreLang = "lang" 
     
     def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
         
         val sc = jobInfo.sc
         
         // 1. Complete default parameters
-        //No default parameter for genre
+        //  default parameter for genre: lang filtering. 
+        var param_GenreLang:String = GENRE_LANG_FILT
+        if(featureParams.isDefinedAt(Param_GenreLang)){
+            param_GenreLang = featureParams(Param_GenreLang)
+        }
           
         // 2. Generate resource identity using resouceIdentity()
         var resourceIden = resourceIdentity(featureParams)
@@ -38,19 +44,19 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         val itemSet = jobInfo.jobStatus.items.toSet
         
         
-        //get RDDs of genres only for "en" if exists
+        //get RDDs of genres only for param_GenreLang if exists
         var fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + jobInfo.trainDates(0) + "/genre*" 
         var genreMap = sc.textFile(fileName).map { line =>
           val fields = line.split('|')
           (fields(GENRE_ID_IND), fields(GENRE_LANG_IND), fields(GENRE_DESC_IND))
-        }.filter(x => x._2 == GENRE_LANG_FILT)        
+        }.filter(x => x._2 == param_GenreLang)        
         
         for (trainDate <- jobInfo.trainDates.tail) {
             fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/genre*"
             val nextGenreMap = sc.textFile(fileName).map { line =>
                 val fields = line.split('|')
                 (fields(GENRE_ID_IND), fields(GENRE_LANG_IND), fields(GENRE_DESC_IND))
-            }.filter(x => x._2 == GENRE_LANG_FILT)
+            }.filter(x => x._2 == param_GenreLang)
             genreMap = genreMap.union(nextGenreMap).distinct
         }  
         
@@ -97,9 +103,11 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         }
         
         //save item features as textfile
-        var featureFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/"+ resourceIden
-        var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/"+ resourceIden + "Map"
+        var featureFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/"+ resourceIden
+        var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/"+ resourceIden + "Map"
+        Logger.logger.info("Dumping feature resource: " + featureFileName)
         itemGenreInds.saveAsTextFile(featureFileName)
+        Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
         genreInd2KeyDescRDD.saveAsTextFile(featureMapFileName)
      
         // 4. Generate and return a FeatureResource that includes all resources.  
