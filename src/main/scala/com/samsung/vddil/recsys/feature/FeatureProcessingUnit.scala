@@ -2,6 +2,7 @@ package com.samsung.vddil.recsys.feature
 
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.utils.HashString
 
 /**
  * This is a trait for feature processing unit. 
@@ -31,8 +32,13 @@ trait FeatureProcessingUnit {
 	 * Note that this resource identity should include all parameters in order to generate a string. Therefore
 	 * default values not specified in job should be completed in the featureParam before sending to resource identity.  
 	 */
-	def resourceIdentity(featureParam:HashMap[String, String]):String
+	def IdenPrefix: String
+	def resourceIdentity(featureParam:HashMap[String, String]):String = {
+        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
+    }
+
+    def checkIdentity(ideString:String):Boolean = {
+        ideString.startsWith(IdenPrefix)
+    }
 	
-	
-	def checkIdentity(ideString:String):Boolean
 }

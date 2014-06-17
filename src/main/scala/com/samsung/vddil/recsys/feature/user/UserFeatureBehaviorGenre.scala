@@ -5,7 +5,7 @@ import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
-import com.samsung.vddil.recsys.utils.HashString
+
 
 object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
@@ -38,11 +38,4 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 	
 	val IdenPrefix:String = "UserFeatureGenre"
     
-    def resourceIdentity(featureParam:HashMap[String, String]):String = {
-        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
-    }
-    
-    def checkIdentity(ideString:String):Boolean = {
-        ideString.startsWith(IdenPrefix)
-    }
 }

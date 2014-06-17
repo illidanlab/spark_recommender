@@ -30,11 +30,4 @@ object UserFeatureBehaviorZapping extends FeatureProcessingUnit {
 	
 	val IdenPrefix:String = "UserFeatureZapping"
     
-    def resourceIdentity(featureParam:HashMap[String, String]):String = {
-        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
-    }
-    
-    def checkIdentity(ideString:String):Boolean = {
-        ideString.startsWith(IdenPrefix)
-    }
 }
