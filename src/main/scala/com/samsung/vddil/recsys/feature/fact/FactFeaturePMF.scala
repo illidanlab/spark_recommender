@@ -27,8 +27,14 @@ object FactFeaturePMF  extends FeatureProcessingUnit{
 		FeatureResource.fail
 	}
 	
-	def resourceIdentity(featureParam:HashMap[String, String]):String = {
-	    "FactFeaturePMF_" + HashString.generateHash(featureParam.toString)
-	}
+	val IdenPrefix:String = "FactFeaturePMF"
+    
+    def resourceIdentity(featureParam:HashMap[String, String]):String = {
+        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
+    }
+    
+    def checkIdentity(ideString:String):Boolean = {
+        ideString.startsWith(IdenPrefix)
+    }
 	
 }

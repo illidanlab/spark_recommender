@@ -27,7 +27,13 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
 		FeatureResource.fail
 	}
 	
-	def resourceIdentity(featureParam:HashMap[String, String]):String = {
-	    "ItemFeatureSynTFIDF_" + HashString.generateHash(featureParam.toString)
-	}
+	val IdenPrefix:String = "ItemFeatureSynTFIDF"
+    
+    def resourceIdentity(featureParam:HashMap[String, String]):String = {
+        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
+    }
+    
+    def checkIdentity(ideString:String):Boolean = {
+        ideString.startsWith(IdenPrefix)
+    }
 }

@@ -32,4 +32,7 @@ trait FeatureProcessingUnit {
 	 * default values not specified in job should be completed in the featureParam before sending to resource identity.  
 	 */
 	def resourceIdentity(featureParam:HashMap[String, String]):String
+	
+	
+	def checkIdentity(ideString:String):Boolean
 }

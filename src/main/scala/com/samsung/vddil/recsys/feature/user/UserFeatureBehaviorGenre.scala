@@ -24,7 +24,13 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		FeatureResource.fail
 	}
 	
-	def resourceIdentity(featureParam:HashMap[String, String]):String = {
-	    "UserFeatureGenre_" + HashString.generateHash(featureParam.toString)
-	}
+	val IdenPrefix:String = "UserFeatureGenre"
+    
+    def resourceIdentity(featureParam:HashMap[String, String]):String = {
+        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
+    }
+    
+    def checkIdentity(ideString:String):Boolean = {
+        ideString.startsWith(IdenPrefix)
+    }
 }
