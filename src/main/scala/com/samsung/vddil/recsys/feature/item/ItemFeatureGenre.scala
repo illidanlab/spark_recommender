@@ -129,7 +129,14 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         new FeatureResource(true, resourceMap, resourceIden)
     }
     
+    
+    val IdenPrefix:String = "ItemFeatureGenre"
+    
     def resourceIdentity(featureParam:HashMap[String, String]):String = {
-        "ItemFeatureGenre_" + HashString.generateHash(featureParam.toString)
+        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
+    }
+    
+    def checkIdentity(ideString:String):Boolean = {
+        ideString.startsWith(IdenPrefix)
     }
 }

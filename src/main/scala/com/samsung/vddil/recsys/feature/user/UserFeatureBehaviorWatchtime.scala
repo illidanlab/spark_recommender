@@ -27,7 +27,13 @@ object UserFeatureBehaviorWatchtime extends FeatureProcessingUnit {
 		FeatureResource.fail
 	}
 	
-	def resourceIdentity(featureParam:HashMap[String, String]):String = {
-	    "UserFeatureWatchtime_" + HashString.generateHash(featureParam.toString)
-	}
+	val IdenPrefix:String = "UserFeatureWatchtime"
+    
+    def resourceIdentity(featureParam:HashMap[String, String]):String = {
+        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
+    }
+    
+    def checkIdentity(ideString:String):Boolean = {
+        ideString.startsWith(IdenPrefix)
+    }
 }
