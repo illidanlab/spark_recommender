@@ -1,7 +1,7 @@
 recsys-spark
 ============
 
-A recommender system built upon Apache Spark. 
+A learning-to-rank recommender system built upon Apache Spark. This page shows how to set up development environment and [a wiki](https://github.com/vddil/recsys-spark/wiki) is associated with this project, showing technical details. 
 
 
 Setup Development Environment
