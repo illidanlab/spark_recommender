@@ -13,7 +13,7 @@ import org.apache.spark.rdd.RDD
  * Modified by Jiayu: added resource path
  */
 object DataProcess {
-	def prepare(jobInfo:RecJob){
+	def prepare(jobInfo:RecJob) {
 	  
 	    val jobStatus:RecJobStatus = jobInfo.jobStatus
 	    

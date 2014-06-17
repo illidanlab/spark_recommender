@@ -20,7 +20,7 @@ import scala.collection.mutable.HashMap
  *   	val idenStr:String = someIdentityFunction(...)
  *   	//set resource
  *   	resourceMap(FeatureResource.ResourceStr_UserFeature) = "hdfs://blah/feature_"+idenStr
- *      resourceMap(FeatureResource.ResourceStr_UserFeature) = "hdfs://blah/featureMap_"+idenStr
+ *      resourceMap(FeatureResource.ResourceStr_UserFeatureMap) = "hdfs://blah/featureMap_"+idenStr
  *   	return new FeatureResource(true,resourceMap, idenStr)
  * 
  *  @author jiayu.zhou
