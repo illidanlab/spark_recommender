@@ -10,9 +10,6 @@
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
 			<workspace>/tmp/vddil/recsys</workspace>
-			<!--<roviHq>hdfs://gnosis-01-01-01.crl.samsung.com/apps/vddil/rovi_hq</roviHq>
-			<watchTime>hdfs://gnosis-01-01-01.crl.samsung.com/apps/vddil/duid-program-watchTime</watchTime>
-			<workspace>hdfs://gnosis-01-01-01.crl.samsung.com/apps/data/vddil/recsys</workspace>-->
 		</resourceLocation>
 		<trainDates>
 			<date>20140522</date>
@@ -28,40 +25,8 @@
 				</param>
 			</feature>	
 			<feature>
-				<type>itemFeature</type>
-				<name>syn_topic</name>
-				<param>
-					<topicType>wiki</topicType>
-					<topicDim>200</topicDim>
-				</param>
-			</feature>
-			<feature>
-				<type>itemFeature</type>
-				<name>rand</name>
-				<param>
-					<dim>4</dim>
-				</param>
-			</feature>
-			<feature>
 				<type>userFeature</type>
-				<name>zap</name>
-				<param>
-					<interval>2</interval>
-				</param>
-			</feature>
-			<feature>
-				<type>userFeature</type>
-				<name>watchtime</name>
-				<param>
-					<minThr>10</minThr>
-				</param>
-			</feature>
-			<feature>
-				<type>factFeature</type>
-				<name>pmf</name>
-				<param>
-					<dim>10</dim>
-				</param>
+				<name>genre</name>
 			</feature>
 		</features>
 		<dataSplit>
