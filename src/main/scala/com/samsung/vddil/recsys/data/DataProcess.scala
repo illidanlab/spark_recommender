@@ -74,29 +74,6 @@ object DataProcess {
 	    items.unpersist(false)
 	}
 	
-	val minUserFeatureCoverage = 0.8
-	val minItemFeatureCoverage = 0.8
-	/*
-	 *  Joining features 
-	 */
-	def joinContinuousData(jobInfo:RecJob){
-		//check if the regression data has already generated in jobInfo.jobStatus
-	  
-	    //1. inspect all available features
-		//   drop features have low coverage (which significant reduces our training due to missing)
-	    //   TODO: minUserFeatureCoverage and minItemFeatureCoverage from file. 
-		
-	  
-		//2. perform an intersection on selected user features, generate <intersectUF>
-	  
-		//3. perform an intersection on selected item features, generate <intersectIF>
-	  
-		//4. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
-	    //   and generate <intersectTuple>
-	  
-		//5. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback ) 
-		
-		//6. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous> 
-	    
-	}
+	
+	
 }

@@ -16,6 +16,7 @@ import com.samsung.vddil.recsys.data.DataProcess
 import com.samsung.vddil.recsys.feature.UserFeatureHandler
 import com.samsung.vddil.recsys.feature.FactFeatureHandler
 import org.apache.spark.SparkContext
+import com.samsung.vddil.recsys.data.DataAssemble
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -415,6 +416,16 @@ sealed trait RecJobModel{
 	def run(jobInfo: RecJob):Unit
 }
 
+object RecJobModel{
+	val defaultMinUserFeatureCoverage = 0.9
+	val defaultMinItemFeatureCoverage = 0.9
+  
+	val Param_MinUserFeatureCoverage = "minUFCoverage"
+	val Param_MinItemFeatureCoverage = "minIFCoverage"
+}
+
+
+
 /*
  * Regression model
  */
@@ -422,7 +433,13 @@ case class RecJobScoreRegModel(modelName:String, modelParam:HashMap[String, Stri
 	def run(jobInfo: RecJob):Unit = {
 	    //1. prepare data with continuous labels (X, y). 
 		Logger.logger.info("**assembling data")
-    	//TODO: assembling module
+    	
+		var minIFCoverage = RecJobModel.defaultMinItemFeatureCoverage
+		var minUFCoverage = RecJobModel.defaultMinUserFeatureCoverage
+		
+		//TODO: parse from XML
+		
+		val dataResourceStr = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
 		
 		//2. divide training, testing, validation
 		Logger.logger.info("**divide training/testing/validation")
@@ -443,7 +460,13 @@ case class RecJobBinClassModel(modelName:String, modelParam:HashMap[String, Stri
 	def run(jobInfo: RecJob):Unit = {
 	    //1. prepare data with binary labels (X, y)
 	   Logger.logger.info("**assembling binary data")  
-	   //TODO: assembling module
+	   
+	   var minIFCoverage = RecJobModel.defaultMinItemFeatureCoverage
+	   var minUFCoverage = RecJobModel.defaultMinUserFeatureCoverage
+		
+	   //TODO: parse from XML
+	   
+	   val dataResourceStr = DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
 	   
 	   //2. divide training, testing, validation
 	   Logger.logger.info("**divide training/testing/validation")
@@ -452,7 +475,7 @@ case class RecJobBinClassModel(modelName:String, modelParam:HashMap[String, Stri
 	   
 	   //4. testing model
 	   Logger.logger.info("**testing models")
-       //TODO: testing models. 
+       
 	}
 }
 

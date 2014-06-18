@@ -39,6 +39,8 @@
 				<name>ridge_reg</name>
 				<param>
 					<rho>1.5</rho>
+					<minUFCoverage>0.8</minUFCoverage>
+					<minIFCoverage>0.8</minIFCoverage>
 				</param>
 			</model>
 			<model>
@@ -46,6 +48,8 @@
 				<name>ridge_reg</name>
 				<param>
 					<rho>0.1</rho>
+					<minUFCoverage>0.7</minUFCoverage>
+					<minIFCoverage>0.7</minIFCoverage>
 				</param>
 			</model>
 		</models>
