@@ -109,7 +109,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
           for (genre <- x._2) {
               featureVec(genre2Ind(genre)) = 1
           }
-          (itemId, featureVec.mkString(","))
+          itemId + "," + featureVec.mkString(",")
         }
         
         Logger.info("created item genre feature vectors")
