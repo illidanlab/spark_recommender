@@ -14,7 +14,7 @@ import org.apache.spark.rdd.RDD
  */
 object DataProcess {
     /**
-     *   This method generates ( UserID, ItemID, rating ) tuples from ACR watch time data
+     *   This method generates ( UserID, ItemID, feedback ) tuples from ACR watch time data
      *   and stores the tuples, list of UserID, list of ItemID into the system. 
      */
 	def prepare(jobInfo:RecJob) {
@@ -79,7 +79,7 @@ object DataProcess {
 	/*
 	 *  Joining features 
 	 */
-	def prepareRegressionData(jobInfo:RecJob){
+	def joinContinuousData(jobInfo:RecJob){
 		//check if the regression data has already generated in jobInfo.jobStatus
 	  
 	    //1. inspect all available features
@@ -87,15 +87,16 @@ object DataProcess {
 	    //   TODO: minUserFeatureCoverage and minItemFeatureCoverage from file. 
 		
 	  
-		//2. perform an intersection on selected user features, generate intersectUF 
+		//2. perform an intersection on selected user features, generate <intersectUF>
 	  
-		//3. perform an intersection on selected item features, generate intersectIF
+		//3. perform an intersection on selected item features, generate <intersectIF>
 	  
-		//4. perform a filtering on ( UserID, ItemID, rating) using intersectUF and intersectIF, 
-	    //   and generate intersectTuple
+		//4. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
+	    //   and generate <intersectTuple>
 	  
-		//5. join features and intersectTuple 
+		//5. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback ) 
 		
-		
+		//6. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous> 
+	    
 	}
 }
