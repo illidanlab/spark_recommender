@@ -21,19 +21,29 @@ object DataAssemble {
 	    //   TODO: minUserFeatureCoverage and minItemFeatureCoverage from file. 
 		
 	  
-		//2. perform an intersection on selected user features, generate <intersectUF>
-		var intersectUserFeature:HashSet[String] = new HashSet()
+		
+		
+	    //enumerate jobInfo.jobStatus.resourceLocation_ItemFeature.keySet
+	    //check each feature against minIFCoverage
 	  
-		//3. perform an intersection on selected item features, generate <intersectIF>
-	    var intersectItemFeature:HashSet[String] = new HashSet()
+	    
+		var usedUserFeature:HashSet[String] = new HashSet()
+	  
+	    var usedItemFeature:HashSet[String] = new HashSet()
 		
 		//4. generate ID string 
-		val resourceStr = assembleContinuousDataIden(intersectUserFeature,intersectItemFeature)
+		val resourceStr = assembleContinuousDataIden(usedUserFeature,usedItemFeature)
 	  
 		//check if the regression data has already generated in jobInfo.jobStatus
 		//  it is possible this combination has been used (and thus generated) by other classifiers. 
 		//  in that case directly return resourceStr. 
-		if (jobInfo.jobStatus.resourceLocation_AggregateData_Continuous.isDefinedAt(resourceStr)){
+		if (! jobInfo.jobStatus.resourceLocation_AggregateData_Continuous.isDefinedAt(resourceStr)){
+		
+			//2. perform an intersection on selected user features, generate <intersectUF>
+		
+	  
+			//3. perform an intersection on selected item features, generate <intersectIF>
+		  
 		  
 			//5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
 			//   and generate <intersectTuple>
