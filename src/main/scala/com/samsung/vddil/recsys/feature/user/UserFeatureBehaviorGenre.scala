@@ -29,7 +29,9 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		//accumulate weighted features in firstFeats
 		for (userGenreWatchtime <- userGenreWatchtimes.tail) {
 			for (i <- 0 until featLen) {
+				//accumulate sum of weighted feature vectors
 				firstFeats(i) += userGenreWatchtime._1(i)*userGenreWatchtime._2
+				//get sum of watch times
 				sumWatchTime += userGenreWatchtime._2
 			}
 		}
