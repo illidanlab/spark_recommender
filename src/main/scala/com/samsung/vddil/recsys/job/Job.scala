@@ -54,6 +54,11 @@ trait Job {
 	 * Get the current job status. 
 	 */
 	def getStatus():JobStatus
+	
+	/*
+	 * Generate job XML from current information to be written in file. 
+	 */
+	def generateXML():scala.xml.Elem
 }
 
 
@@ -69,15 +74,36 @@ object Job{
 	  
 	  var jobList:List[Job] = List() 
 	  
+	  var xml:scala.xml.Elem = null
+	  
+	  
+	  
 	  val jobfile:File = new File(filename)
 	  
 	  // If the job file exists, we parse it and look for all job entries, and 
 	  // populate these entries into classes. 
 	  if (jobfile.exists()) {
-	    logger.info("Job file found!")
+	    logger.info("Job file found in file system!")
+	    xml = XML.loadFile(jobfile)
+	  }else{
+	    val resLoc = "/jobs/" + jobfile
 	    
+	    logger.info("Job file not found in file system, try loading resource: [%s]".format(resLoc) )
 	    
-	    val xml = XML.loadFile(jobfile)
+	    //if file is not found we try to see if we can use one in resource folder.
+	    try{
+		    val IS = TestObj.getClass().getResourceAsStream(resLoc);
+		    xml = XML.load(IS)
+		    
+		    logger.info("Job file found in resource!")
+	    }catch{
+	        case th:Throwable => logger.warn("Job file not found!") 
+	    }
+	  }
+	  
+	  
+	  if (xml!= null){
+	    
 	    // look for all job entries in the job list. 
 	    for (node <- xml \ JobTag.JobEntry){
 	        val jobTypeStr:String = (node \ JobTag.JobType).text 
@@ -94,9 +120,9 @@ object Job{
 	    }
 
 	    logger.info("There are ["+ jobList.length + "] Jobs found. ")
-	  }else{
-	    logger.warn("Job file not found!")
+	    
 	  }
+	  
 	  
 	  jobList
 	}
@@ -119,6 +145,10 @@ case class UnknownJob (jobName:String, jobDesc:String, jobNode:Node) extends Job
     
     def getStatus():JobStatus = {
        return this.jobStatus
+    }
+    
+    def generateXML():Elem = {
+       null
     }
 }
 

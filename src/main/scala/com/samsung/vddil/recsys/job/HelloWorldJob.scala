@@ -48,6 +48,10 @@ case class HelloWorldJob (jobName:String, jobDesc:String, jobNode:Node) extends 
     def getStatus():HelloWorldJobStatus = {
        return this.jobStatus
     }
+    
+    def generateXML():Elem = {
+       null
+    }
 }
 
 /*

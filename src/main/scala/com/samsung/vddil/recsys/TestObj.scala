@@ -17,7 +17,8 @@ object TestObj {
 		PropertyConfigurator.configure("log4j.properties")
 		
 		val logger = Logger.logger
-    
+		
+		//Read job file
 		var jobFileStr:String = "./jobs/test_job.xml" 
 		if (args.size > 0){
 		  jobFileStr = args(0)
@@ -26,6 +27,16 @@ object TestObj {
 		  logger.warn("No job file specified. Used default job file: " + jobFileStr)
 		}
 		
+		//Read config file
+		var cfgFileStr:String = "local_config.xml"
+		if (args.size > 1){
+		   cfgFileStr = args(1)
+		   logger.info("Config file specified: " + cfgFileStr)
+		}else{
+		  logger.warn("No config file specified. Used default job file: " + cfgFileStr)
+		}
+		
+		//Process job file
 		val jobList : List[Job] = Job.readFromXMLFile(jobFileStr)
 		
 		for (job:Job <- jobList){

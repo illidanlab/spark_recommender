@@ -17,6 +17,7 @@ import com.samsung.vddil.recsys.feature.UserFeatureHandler
 import com.samsung.vddil.recsys.feature.FactFeatureHandler
 import org.apache.spark.SparkContext
 import com.samsung.vddil.recsys.data.DataAssemble
+import com.samsung.vddil.recsys.data.DataSplitting
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -123,6 +124,10 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	}
     	
     	//TODO: testing recommendation performance on testing dates.
+    }
+    
+    def generateXML():Elem = {
+       null
     }
     
     /*
@@ -439,11 +444,15 @@ case class RecJobScoreRegModel(modelName:String, modelParam:HashMap[String, Stri
 		
 		//TODO: parse from XML
 		
-		val dataResourceStr = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
+		val dataResourceStr = DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
 		
 		//2. divide training, testing, validation
 		Logger.logger.info("**divide training/testing/validation")
-		
+		DataSplitting.splitContinuousData(jobInfo, dataResourceStr, 
+		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
+		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
+		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio)
+		)
 		
 	    //3. train model on training and tune using validation.
 		
@@ -463,13 +472,21 @@ case class RecJobBinClassModel(modelName:String, modelParam:HashMap[String, Stri
 	   
 	   var minIFCoverage = RecJobModel.defaultMinItemFeatureCoverage
 	   var minUFCoverage = RecJobModel.defaultMinUserFeatureCoverage
-		
+	   
+	   var balanceTraining = false
+	   
 	   //TODO: parse from XML
 	   
-	   val dataResourceStr = DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
+	   val dataResourceStr = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
 	   
 	   //2. divide training, testing, validation
 	   Logger.logger.info("**divide training/testing/validation")
+	   DataSplitting.splitBinaryData(jobInfo, dataResourceStr, 
+		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
+		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
+		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio),
+		    balanceTraining
+		)
 	   
 	   //3. train model on training and tune using validation.
 	   
