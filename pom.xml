@@ -112,16 +112,19 @@
          <groupId>org.apache.maven.plugins</groupId>
          <artifactId>maven-jar-plugin</artifactId>
          <configuration>
-       <archive>
-         <manifest>
-           <mainClass>com.samsung.vddil.recsys.TestObj</mainClass>
-           <packageName>com.samsung.vddil.recsys</packageName>
-         </manifest>
-         <manifestEntries>
-           <mode>development</mode>
-           <url>${pom.url}</url>
-         </manifestEntries>
-       </archive>
+	       <archive>
+	         <manifest>
+	           <mainClass>com.samsung.vddil.recsys.TestObj</mainClass>
+	           <packageName>com.samsung.vddil.recsys</packageName>
+	         </manifest>
+	         <manifestEntries>
+	           <mode>development</mode>
+	           <url>${pom.url}</url>
+	         </manifestEntries>
+	       </archive>
+<!-- 	       <includes>
+	       	 <include>**/*.xml</include>
+	       </includes> -->
          </configuration>
      </plugin>
  

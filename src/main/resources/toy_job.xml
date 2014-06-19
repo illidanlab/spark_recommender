@@ -1,0 +1,6 @@
+<jobList xmlns:recsys="Samsung Recsys">
+	<jobEntry>
+		<jobType>helloworld</jobType>
+		<jobName>simple_spark_test</jobName>
+	</jobEntry>
+</jobList>
