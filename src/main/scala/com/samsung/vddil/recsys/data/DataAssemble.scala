@@ -2,6 +2,7 @@ package com.samsung.vddil.recsys.data
 
 
 import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJobStatus
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
@@ -13,74 +14,43 @@ import com.samsung.vddil.recsys.utils.HashString
 
 object DataAssemble {
 	
-	
-	def flattenNestedTuple(x : ((String,String),String)): String = {
-		List(x._1._1, x._1._2, x._2).mkString(",")
-	}
-	
-	def flattenTuple2(x : (String, String)): String = {
-        List(x._1, x._2).mkString(",")
-    }
-	
-	
 	/**
-	 * return join of features of specified Ids
+	 * return join of features of specified Ids and ordering of features
 	 */
 	def getCombinedFeatures(idSet: Set[String], usedFeatures: HashSet[String], 
-                  featureResourceMap: HashMap[String, String], 
-                  sc: SparkContext):RDD[(String, String)] = {
+                              featureResourceMap: HashMap[String, String], 
+                              sc: SparkContext): (RDD[(String, String)], List[String]) = {
 		//initialize list of RDD of format (id,features)
 		var idFeatures:List[RDD[(String, String)]]  = List.empty
-		//TODO: need to save feature order
+		
 		val usedFeaturesList = usedFeatures.toList
-		//add all features RDD to list
-		for (usedFeature <- usedFeaturesList) {
-			idFeatures  = idFeatures :+ sc.textFile(featureResourceMap(usedFeature))
-			  .map { line =>
-			  	val fields = line.split(',')
-				val id = fields(0)
-				val features = fields.slice(1, fields.length).mkString(",")
-				(id, features)
-			    }
-			  .filter(x => idSet.contains(x._1)) //id matches specified id
-		}
 		
-		//join features in idFeatures
-		//TODO: check this functionality
-		var joinedFeatures = idFeatures.head
-		
-		if (idFeatures.length > 3) {
-			var tempJoinFeature = idFeatures(0).join(idFeatures(1)).join(idFeatures(2))
-            var temp2 = tempJoinFeature.map {x =>
-                    (x._1, flattenNestedTuple(x._2))
+		//join all features RDD
+		//add first feature to join
+		var featureJoin = sc.textFile(featureResourceMap(usedFeaturesList.head))
+              .map { line =>
+                val fields = line.split(',')
+                val id = fields(0)
+                val features = fields.slice(1, fields.length).mkString(",")
+                (id, features)
                 }
-            idFeatures = idFeatures.updated(2, temp2)
+              .filter(x => idSet.contains(x._1)) //id matches specified id
+        
+        //add remaining features
+		for (usedFeature <- usedFeaturesList.tail) {
+			featureJoin  = featureJoin.join( sc.textFile(featureResourceMap(usedFeature))
+                			                    .map { line =>
+                		                                val fields = line.split(',')
+                		                                val id = fields(0)
+                		                                val features = fields.slice(1, fields.length).mkString(",")
+                		                                (id, features)
+                                			    }
+                                			    .filter(x => idSet.contains(x._1)) //id matches specified id
+                                    		).map {x =>
+                				                (x._1, x._2._1 + "," + x._2._2)
+                			                }
 		}
-		
-		//below for loop will join 3 features at a time and in the last index will 
-		//store the concatenated RDD
-		for (i <- 0 until idFeatures.length by 2) {
-		    
-			if (i + 2 < idFeatures.length) {
-			    //join 3 at a time
-			    var tempJoinFeature = idFeatures(i).join(idFeatures(i+1)).join(idFeatures(i+2))
-			
-			    var temp2 = tempJoinFeature.map {x =>
-				    (x._1, flattenNestedTuple(x._2))
-				}
-			    idFeatures = idFeatures.updated(i+2, temp2)
-			} else if (i + 1 < idFeatures.length) {
-				//join last 2
-				var tempJoinFeature = idFeatures(i).join(idFeatures(i+1))
-				var temp2 = tempJoinFeature.map {x =>
-                    (x._1, flattenTuple2(x._2))
-                }
-				idFeatures = idFeatures.updated(i+1, temp2)
-			}
-		}
-		
-		//idFeatures[length-1] contains all features concatenated
-		idFeatures(idFeatures.length - 1)
+        (featureJoin, usedFeaturesList)
 	}
 	
 	
@@ -188,33 +158,58 @@ object DataAssemble {
 		    		        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
 	  
 		    //parse eligible features and extract only those with ids present in userIntersectIds
-		    val userFeaturesRDD =  getCombinedFeatures(userIntersectIds, 
-            		    		usedUserFeature, 
-            		    		jobInfo.jobStatus.resourceLocation_UserFeature, 
-            		    		sc)
+		    val (userFeaturesRDD, userFeatureOrder) =  getCombinedFeatures(userIntersectIds, 
+            		    		                        usedUserFeature, 
+            		    		                        jobInfo.jobStatus.resourceLocation_UserFeature, 
+            		    		                        sc)
             		    		        
 		    		        
 			//3. perform an intersection on selected item features, generate <intersectIF>
 		    val itemIntersectIds = getIntersectIds(usedItemFeature, 
-                            jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+                                                   jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
                             
             //parse eligible features and extract only those with ids present in itemIntersectIds
-            val itemFeaturesRDD =  getCombinedFeatures(itemIntersectIds, 
-                                usedItemFeature, 
-                                jobInfo.jobStatus.resourceLocation_ItemFeature, 
-                                sc)
+            val (itemFeaturesRDD, itemFeatureOrder) =  getCombinedFeatures(itemIntersectIds, 
+                                                        usedItemFeature, 
+                                                        jobInfo.jobStatus.resourceLocation_ItemFeature, 
+                                                        sc)
 		  
 			//5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
 			//   and generate <intersectTuple>
-		  
-		  
-			 
+		    val filteredData = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
+		                         .map{lines => 
+		                        	  val fields = lines.split(',')
+		                        	  //user, item, watchtime
+		                        	  Rating(fields(0), fields(1), fields(2).toDouble)
+		                             }
+			                     .filter(x => userIntersectIds.contains(x.user)
+			                    		       && itemIntersectIds.contains(x.item))
 			   
 			//6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
-			val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_all"
-		
-			// join features and store in assembleFileName
+			val aggData = filteredData.map{x => (x.user, (x.item, x.rating))}
+			                          .join(userFeaturesRDD) // (user, ((item, rating), UF)) 
+			                    	  .map {y =>
+			                    	  	  //(item, (user, UF, rating))
+			                    	      (y._2._1._1, (y._1, y._2._2, y._2._1._2)) 
+			                    	   }
+			                          .join(itemFeaturesRDD) //(item, ((user, UF, rating), IF))
+			                          .map {z =>
+			                          	  //user, item, UF, IF, rating
+			                          	  z._2._1._1 + "," + z._1 + "," + 
+			                          	  		z._2._1._2 + "," + z._2._2 + 
+			                          	  		"," + z._2._1._3
+			                          	  //UF, IF, rating
+			                          	  //z._2._1._2 + "," + z._2._2 + "," 
+			                          	  //+ z._2._1._3
+			                           }
 			
+			//TODO: save the following ordering for later usage
+			val ordering = userFeatureOrder.mkString(",") + itemFeatureOrder.mkString(",")
+			 
+			val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_all"
+			
+			// join features and store in assembleFileName
+			aggData.saveAsTextFile(assembleFileName)
 			
 			//7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
 			jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) = assembleFileName 
