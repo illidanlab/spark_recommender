@@ -9,7 +9,7 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
-
+import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.utils.HashString
 
 object DataAssemble {
@@ -145,6 +145,10 @@ object DataAssemble {
                                                              minUFCoverage, 
                                                              sc, numItems)
 		
+        if (usedUserFeature.size == 0 || usedItemFeature.size == 0) {
+        	Logger.warn("Either user or item feature set is empty")
+        }
+                                                             
 		//4. generate ID string 
 		val resourceStr = assembleContinuousDataIden(usedUserFeature, usedItemFeature)
 	  
@@ -204,7 +208,7 @@ object DataAssemble {
 			                           }
 			
 			//TODO: save the following ordering for later usage
-			val ordering = userFeatureOrder.mkString(",") + itemFeatureOrder.mkString(",")
+			val ordering = userFeatureOrder.mkString(",") + ":" + itemFeatureOrder.mkString(",")
 			 
 			val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_all"
 			

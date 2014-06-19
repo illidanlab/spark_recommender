@@ -30,10 +30,10 @@ object DataSplitting {
 	def splitContinuousData(jobInfo:RecJob, resourceStr:String, 
 			trainingPerc:Double, testingPerc:Double, validationPerc:Double) = {
 	    
-		assert(trainingPerc + testingPerc + validationPerc == 1)
+		assert(trainingPerc + testingPerc + validationPerc >= 0.99)
 	    
 	    // check if the resource has already implemented. 
-	    if (jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train.isDefinedAt(resourceStr)){
+	    if ( ! jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train.isDefinedAt(resourceStr)){
 	    	//construct file names (locations). 
 	    	val trDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_tr"
 	    	val teDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_te"
@@ -73,7 +73,7 @@ object DataSplitting {
 	    			               .map(_._2) //remove the random id get only the data
 	        
 	        //get the validation data i.e. all randomId > (trainPc+testPc)
-	    	val valData = randData.filter(x => x._1 >= (trainingPerc + testingPerc)*10)
+	    	val valData = randData.filter(x => x._1 >= (trainingPerc + testingPerc))
 	    	                      .map(_._2) //remove the random id get only the data
 	    	
 	        //save data into files
