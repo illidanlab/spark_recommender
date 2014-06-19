@@ -30,6 +30,7 @@ object DataSplitting {
 	def splitContinuousData(jobInfo:RecJob, resourceStr:String, 
 			trainingPerc:Double, testingPerc:Double, validationPerc:Double) = {
 	    
+		assert(trainingPerc + testingPerc + validationPerc == 1)
 	    
 	    // check if the resource has already implemented. 
 	    if (jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train.isDefinedAt(resourceStr)){
@@ -38,13 +39,55 @@ object DataSplitting {
 	    	val teDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_te"
 	    	val vaDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_va"
 	    	
-	    	//TODO: generate random numbers and map to files. 
-	    	Logger.logger.error("Not implemented")
+	    	//get the data file
+	    	val assembleContinuousDataFile = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr)
+	    	
+	    	//get spark context
+	    	val sc = jobInfo.sc
+	    	
+	    	//randomize the passed data
+	    	val randData = sc.textFile(assembleContinuousDataFile).map { line =>
+	    		//generate a random id for splitting 
+	    		//First, get a random string, in current case get the first 
+	    		//field of this data
+	    		val randStr = line.split(',')(0)
+	    		//generate a number between 0 to 9 by dividing last character by 10
+	    		var randId = randStr(randStr.length-1).toInt % 10
+	    		//divide it by 10 to make it lie between 0 to 1, 
+	    		//to make it comparable to split percentages
+	    		(randId.toDouble / 10, line)
+	    	}
+	    	
+	    	//persist the randomize data for faster split generation
+	    	randData.persist
+	    	
+	    	//split the data based on specified percentage
+	    	
+	    	//get the train data, i.e all random id < trainPc
+	    	val trainData = randData.filter(_._1 < trainingPerc)
+	    	                        .map(_._2) //remove the random id get only the data
+	    	
+	    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
+	    	val testData = randData.filter(x => x._1 >= trainingPerc 
+	    	                                && x._1 < (trainingPerc + testingPerc))
+	    			               .map(_._2) //remove the random id get only the data
+	        
+	        //get the validation data i.e. all randomId > (trainPc+testPc)
+	    	val valData = randData.filter(x => x._1 >= (trainingPerc + testingPerc)*10)
+	    	                      .map(_._2) //remove the random id get only the data
+	    	
+	        //save data into files
+	    	trainData.saveAsTextFile(trDataFilename)
+	    	testData.saveAsTextFile(teDataFilename)
+	    	valData.saveAsTextFile(vaDataFilename)
 	    	
 	    	//save resource to jobStatus
 	    	jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train(resourceStr) = trDataFilename
 	    	jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Test(resourceStr)  = teDataFilename
 	    	jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Valid(resourceStr) = vaDataFilename
+	    	
+	    	//unpersist the persisted data to free up memory associated
+	    	randData.unpersist(false)
 	    }
 	}
   
