@@ -18,6 +18,8 @@ import com.samsung.vddil.recsys.feature.FactFeatureHandler
 import org.apache.spark.SparkContext
 import com.samsung.vddil.recsys.data.DataAssemble
 import com.samsung.vddil.recsys.data.DataSplitting
+import com.samsung.vddil.recsys.model.RegressionModelHandler
+import com.samsung.vddil.recsys.model.ClassificationModelHandler
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -434,7 +436,7 @@ object RecJobModel{
 /*
  * Regression model
  */
-case class RecJobScoreRegModel(modelName:String, modelParam:HashMap[String, String]) extends RecJobModel{
+case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, String]) extends RecJobModel{
 	def run(jobInfo: RecJob):Unit = {
 	    //1. prepare data with continuous labels (X, y). 
 		Logger.logger.info("**assembling data")
@@ -454,18 +456,16 @@ case class RecJobScoreRegModel(modelName:String, modelParam:HashMap[String, Stri
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio)
 		)
 		
-	    //3. train model on training and tune using validation.
-		
-		//4. testing model
-	    Logger.logger.info("**testing models")
-	    //TODO: testing models.
+	    //3. train model on training and tune using validation, and testing.
+		Logger.logger.info("**building and testing models")
+		RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo)
 	}
 }
 
 /*
  * Classification model
  */
-case class RecJobBinClassModel(modelName:String, modelParam:HashMap[String, String]) extends RecJobModel{
+case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, String]) extends RecJobModel{
 	def run(jobInfo: RecJob):Unit = {
 	    //1. prepare data with binary labels (X, y)
 	   Logger.logger.info("**assembling binary data")  
@@ -488,10 +488,9 @@ case class RecJobBinClassModel(modelName:String, modelParam:HashMap[String, Stri
 		    balanceTraining
 		)
 	   
-	   //3. train model on training and tune using validation.
-	   
-	   //4. testing model
-	   Logger.logger.info("**testing models")
+	   //3. train model on training and tune using validation, and testing.
+	   Logger.logger.info("**building and testing models")
+	   ClassificationModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo)
        
 	}
 }
