@@ -30,6 +30,8 @@ object DataSplitting {
 	def splitContinuousData(jobInfo:RecJob, resourceStr:String, 
 			trainingPerc:Double, testingPerc:Double, validationPerc:Double) = {
 	    
+		//NOTE: as floating comparison in general not accurate hence using 0.99
+		//ideally it should be 1.0
 		assert(trainingPerc + testingPerc + validationPerc >= 0.99)
 	    
 	    // check if the resource has already implemented. 
