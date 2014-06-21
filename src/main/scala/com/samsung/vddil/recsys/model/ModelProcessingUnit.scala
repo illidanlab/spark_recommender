@@ -4,7 +4,7 @@ import scala.collection.mutable.HashMap
 import org.apache.hadoop.mapred.JobInfo
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.utils.HashString
-
+import org.apache.spark.SparkContext
 
 
 /**
@@ -47,5 +47,9 @@ trait ModelProcessingUnit {
 	def checkIdentity(idenString:String):Boolean = {
 	    idenString.startsWith(IdenPrefix)
 	}
+	
+	def saveModel(modelFileName: String, sc: SparkContext)
+	
+	def getModel(modelFileName: String, sc: SparkContext)
 	
 }

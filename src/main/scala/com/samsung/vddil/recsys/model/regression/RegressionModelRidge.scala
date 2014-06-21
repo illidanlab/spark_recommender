@@ -12,9 +12,14 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.commons.math.stat.descriptive.moment.Mean
+import org.apache.hadoop.conf._
+import org.apache.hadoop.fs._
 
 object RegressionModelRidge extends ModelProcessingUnit {
 	
+	var weights: Option[Vector] = None
+	var intercept: Option[Double] = None
+
 	
 	/*
 	 * get labels and prediction on data
@@ -42,17 +47,21 @@ object RegressionModelRidge extends ModelProcessingUnit {
        }
 	}
 	
+	
 	/*
 	 * compute mean square error
 	 */
 	def getMSE(labelAndPreds:RDD[(Double, Double)]): Double = {
 		val (diffSum, count) = labelAndPreds.map { case(v,p) => 
+			                                        //square, 1 (for count) 
                                                     (math.pow((v-p),2), 1)
                                                  }.reduce { (a, b)  =>
+                                                	 //sum square, sum count
                                                     (a._1 + b._1, a._2 + b._2)
                                                  }
         diffSum/count
 	}
+	
 	
 	//models...
 	def learnModel(modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob):ModelResource = {
@@ -77,9 +86,24 @@ object RegressionModelRidge extends ModelProcessingUnit {
 		val valData = parseData(vaDataFilename, sc)
 
 		//build model
-		//TODO: put this parameter in input file
-		val numIterations = 100
-		val model = RidgeRegressionWithSGD.train(trainData, numIterations)
+		//TODO: put these parameter in input file
+		var numIterations = 100
+		var stepSize = 1.0
+		var regParam = 1.0
+		
+		//get model parameters
+		if (modelParams.contains("regParam")) {
+			regParam = modelParams("regParam").toDouble
+		}
+		if (modelParams.contains("stepSize")) {
+            stepSize = modelParams("stepSize").toDouble
+        }
+		if (modelParams.contains("numIterations")) {
+            numIterations = modelParams("numIterations").toInt
+        }
+		
+		val model = RidgeRegressionWithSGD.train(trainData, numIterations, stepSize, regParam)
+		
 		
 		//compute prediction on validation data
 		val valLabelAndPreds = getLabelAndPred(valData, model)
@@ -101,12 +125,12 @@ object RegressionModelRidge extends ModelProcessingUnit {
 		//compute error on test
 		val testMSE = getMSE(testLabelAndPreds)
 		
-		Logger.error("TO BE IMPLEMENTED")
+		Logger.info("trainMSE = " + trainMSE + "testMSE = " + testMSE + " valMSE = " + valMSE)
 		
-		model.weights
-		model.intercept
+		weights = Some(model.weights)
+		intercept = Some(model.intercept)
 		
-		//model.saveAsXXXFile(modelFileName)
+		saveModel(modelFileName, sc)
 		
 		// 5. Generate and return a ModelResource that includes all resources. 
 		
@@ -114,11 +138,59 @@ object RegressionModelRidge extends ModelProcessingUnit {
 		resourceMap(ModelResource.ResourceStr_RegressModel) = modelFileName
 		resourceMap(ModelResource.ResourceStr_RegressPerf) = null
 		
-		
 		Logger.info("Saved regression model")
 		
 		new ModelResource(true, resourceMap, resourceIden)
 	}
 	
 	val IdenPrefix:String = "RegModelRidge"
+		
+	def saveModel(modelFileName: String, sc: SparkContext) = {
+		val hadoopConf = sc.hadoopConfiguration
+		val fileSystem = FileSystem.get(hadoopConf)
+		//create file on hdfs
+		val out = fileSystem.create(new Path(modelFileName))
+
+		//write weights if exists, note using Options hence first for each
+		weights foreach { value =>
+			value.toArray foreach {v => 
+                                        out.writeChars(v.toString)  
+                                        out.write(',')
+			                        }
+		}
+		out.write('\n')
+		
+		//write intercept if exists
+		intercept foreach {
+			value => out.writeChars(value.toString)
+		}
+		
+		//close file
+		out.close()
+	}
+		
+	def getModel(modelFileName: String, sc: SparkContext) = {
+		val hadoopConf = sc.hadoopConfiguration
+        val fileSystem = FileSystem.get(hadoopConf)
+        
+        //open file on hdfs
+        val in = fileSystem.open(new Path(modelFileName))
+        
+        //read weights
+        val weightsStr =  in.readLine().trim().split(',')
+        if (weightsStr.length > 0) {
+        	weights = Some(Vectors.dense(weightsStr.map(_.toDouble)))
+        }
+        //read intercept
+        val interceptStr = in.readLine().trim()
+        if (interceptStr.length() > 0) {
+        	intercept = Some(interceptStr.toDouble)
+        }
+        
+        //close file
+        in.close()
+        
+	}
+	
+	
 }
