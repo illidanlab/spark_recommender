@@ -38,16 +38,20 @@
 				<type>score_reg</type>
 				<name>ridge_reg</name>
 				<param>
-					<rho>1.5</rho>
+					<regParam>1.5</regParam>
 					<minUFCoverage>0.8</minUFCoverage>
 					<minIFCoverage>0.8</minIFCoverage>
+					<numIterations>100</numIterations>
+					<stepSize>1</stepSize>
 				</param>
 			</model>
 			<model>
 				<type>score_reg</type>
 				<name>ridge_reg</name>
 				<param>
-					<rho>0.1</rho>
+					<regParam>0.1</regParam>
+					<numIterations>100</numIterations>
+					<stepSize>1</stepSize>
 					<minUFCoverage>0.7</minUFCoverage>
 					<minIFCoverage>0.7</minIFCoverage>
 				</param>
