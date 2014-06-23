@@ -67,10 +67,10 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
     
     def showStatus():Unit = {
     	Logger.logger.info("Completed Item Features " + completedItemFeatures)
-    	Logger.logger.info("Completed User Features " + completedItemFeatures)
-    	Logger.logger.info("Completed Fact Features " + completedItemFeatures)
-    	Logger.logger.info("Completed Regression Models " + completedItemFeatures)
-    	Logger.logger.info("Completed Classification Models " + completedItemFeatures)
+    	Logger.logger.info("Completed User Features " + completedUserFeatures)
+    	Logger.logger.info("Completed Fact Features " + completedFactFeatures)
+    	Logger.logger.info("Completed Regression Models " + completedRegressModels)
+    	Logger.logger.info("Completed Classification Models " + completedClassifyModels)
     }
 } 
 
