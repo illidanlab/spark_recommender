@@ -24,13 +24,8 @@ object RegressionModelHandler extends ModelHandler {
 		//For the successful ones, push resource information to jobInfo.jobStatus
 		if(resource.success){
 		   resource.resourceMap(ModelResource.ResourceStr_RegressModel) match{
-		     case resourceStr:String => 
-		       jobInfo.jobStatus.resourceLocation_RegressModel(resource.resourceIden) = resourceStr
-		   }
-		   
-		   if (resource.resourceMap.isDefinedAt(ModelResource.ResourceStr_RegressPerf)){
-			   jobInfo.jobStatus.resourceLocation_RegressPerf(resource.resourceIden) =
-				   resource.resourceMap(ModelResource.ResourceStr_RegressPerf)
+		     case model:ModelStruct => 
+		       jobInfo.jobStatus.resourceLocation_RegressModel(resource.resourceIden) = model
 		   }
 		}
 	    

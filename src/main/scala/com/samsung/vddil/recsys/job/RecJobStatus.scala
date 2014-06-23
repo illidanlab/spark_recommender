@@ -4,6 +4,7 @@ package com.samsung.vddil.recsys.job
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
 import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.model.ModelStruct
 
 /**
  * A JobStatus implementation for recommendation job. 
@@ -40,12 +41,8 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	val resourceLocation_ItemFeatureMap:HashMap[String, String] = new HashMap()
 	
 	//Store classification/regression models
-	val resourceLocation_ClassifyModel:HashMap[String, String] = new HashMap()
-	val resourceLocation_RegressModel:HashMap[String, String]  = new HashMap()
-	
-	//Store classification/regression performance
-	val resourceLocation_ClassifyPerf:HashMap[String, Any]     = new HashMap()
-	val resourceLocation_RegressPerf:HashMap[String, Any]      = new HashMap()
+	val resourceLocation_ClassifyModel:HashMap[String, ModelStruct] = new HashMap()
+	val resourceLocation_RegressModel:HashMap[String, ModelStruct]  = new HashMap()
 	
 	/*
 	 *  As set of flags showing completed components. 

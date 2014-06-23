@@ -1,7 +1,7 @@
 package com.samsung.vddil.recsys.testing
 
 import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.model.Model
+import com.samsung.vddil.recsys.model.ModelStruct
 
 /**
  * This object handles the testing  
@@ -14,7 +14,7 @@ object TestingHandler {
 	/*
 	 * This function handles the testing of a given model.
 	 */
-	def testModel(testingType:String, model:Model, testParam:HashMap[String, String]) {
+	def testModel(testingType:String, model:ModelStruct, testParam:HashMap[String, String]) {
 		
 		
 	}

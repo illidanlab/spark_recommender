@@ -48,8 +48,8 @@ trait ModelProcessingUnit {
 	    idenString.startsWith(IdenPrefix)
 	}
 	
-	def saveModel(modelFileName: String, sc: SparkContext)
 	
-	def getModel(modelFileName: String, sc: SparkContext)
-	
+	//The definition of the following two methods are moved to ModelStruct. 
+	//def saveModel(modelFileName: String, sc: SparkContext)
+	//def getModel(modelFileName: String, sc: SparkContext)
 }

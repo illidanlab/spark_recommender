@@ -22,13 +22,8 @@ object ClassificationModelHandler extends ModelHandler {
 		//For the successful ones, push resource information to jobInfo.jobStatus
 		if(resource.success){
 		   resource.resourceMap(ModelResource.ResourceStr_ClassifyModel) match{
-		     case resourceStr:String => 
-		       jobInfo.jobStatus.resourceLocation_ClassifyModel(resource.resourceIden) = resourceStr
-		   }
-		   
-		   if (resource.resourceMap.isDefinedAt(ModelResource.ResourceStr_ClassifyPerf)){
-			   jobInfo.jobStatus.resourceLocation_ClassifyPerf(resource.resourceIden) =
-				   resource.resourceMap(ModelResource.ResourceStr_ClassifyPerf)
+		     case model:ModelStruct => 
+		       jobInfo.jobStatus.resourceLocation_ClassifyModel(resource.resourceIden) = model
 		   }
 		}
 	    
