@@ -34,24 +34,15 @@ object FactFeatureHandler extends FeatureHandler{
 		  //upon success, the Fact feature handler generates a user feature and an item feature.
 		  
 		   resource.resourceMap(FeatureResource.ResourceStr_ItemFeature) match{
-		      case resourceStr:String => 
-		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = resourceStr
-		   }
-		   
-		   resource.resourceMap(FeatureResource.ResourceStr_ItemFeatureMap) match{
-		      case resourceStr:String =>
-		        jobInfo.jobStatus.resourceLocation_ItemFeatureMap(resource.resourceIden) = resourceStr
+		      case featureStruct:ItemFeatureStruct => 
+		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
 		   }
 		   
 		   resource.resourceMap(FeatureResource.ResourceStr_UserFeature) match{
-		      case resourceStr:String => 
-		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = resourceStr
+		      case featureStruct:UserFeatureStruct => 
+		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = featureStruct
 		   }
 		   
-		   resource.resourceMap(FeatureResource.ResourceStr_UserFeatureMap) match{
-		     case resourceStr:String =>
-		        jobInfo.jobStatus.resourceLocation_UserFeatureMap(resource.resourceIden) = resourceStr
-		   }
 		}
 		
 		resource.success

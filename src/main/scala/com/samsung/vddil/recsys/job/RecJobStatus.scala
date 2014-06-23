@@ -5,6 +5,9 @@ import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model.ModelStruct
+import com.samsung.vddil.recsys.feature.UserFeatureStruct
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.feature.FeatureStruct
 
 /**
  * A JobStatus implementation for recommendation job. 
@@ -33,12 +36,10 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	val resourceLocation_AggregateData_Binary_Test:HashMap[String, String]  = new HashMap() 
     val resourceLocation_AggregateData_Binary_Valid:HashMap[String, String] = new HashMap() 
 	  
-    //Store user/item feature resource 
-	val resourceLocation_UserFeature:HashMap[String, String] = new HashMap() 
-	val resourceLocation_ItemFeature:HashMap[String, String] = new HashMap()
-	//Store user/item feature map resource
-	val resourceLocation_UserFeatureMap:HashMap[String, String] = new HashMap() 
-	val resourceLocation_ItemFeatureMap:HashMap[String, String] = new HashMap()
+    //Store user/item feature resource
+	// meta information such as user/item feature map resource are now move to FeatureStruct.
+	val resourceLocation_UserFeature:HashMap[String, FeatureStruct] = new HashMap() 
+	val resourceLocation_ItemFeature:HashMap[String, FeatureStruct] = new HashMap()
 	
 	//Store classification/regression models
 	val resourceLocation_ClassifyModel:HashMap[String, ModelStruct] = new HashMap()

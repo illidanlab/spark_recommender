@@ -11,6 +11,9 @@ import scala.collection.mutable.HashSet
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.feature.FeatureStruct
+import com.samsung.vddil.recsys.feature.FeatureStruct
+import com.samsung.vddil.recsys.feature.FeatureStruct
 
 object DataAssemble {
 	
@@ -18,7 +21,7 @@ object DataAssemble {
 	 * return join of features of specified Ids and ordering of features
 	 */
 	def getCombinedFeatures(idSet: Set[String], usedFeatures: HashSet[String], 
-                              featureResourceMap: HashMap[String, String], 
+                              featureResourceMap: HashMap[String, FeatureStruct], 
                               sc: SparkContext): (RDD[(String, String)], List[String]) = {
 		//initialize list of RDD of format (id,features)
 		var idFeatures:List[RDD[(String, String)]]  = List.empty
@@ -27,7 +30,7 @@ object DataAssemble {
 		
 		//join all features RDD
 		//add first feature to join
-		var featureJoin = sc.textFile(featureResourceMap(usedFeaturesList.head))
+		var featureJoin = sc.textFile(featureResourceMap(usedFeaturesList.head).featureFileName)
               .map { line =>
                 val fields = line.split(',')
                 val id = fields(0)
@@ -38,7 +41,7 @@ object DataAssemble {
         
         //add remaining features
 		for (usedFeature <- usedFeaturesList.tail) {
-			featureJoin  = featureJoin.join( sc.textFile(featureResourceMap(usedFeature))
+			featureJoin  = featureJoin.join( sc.textFile(featureResourceMap(usedFeature).featureFileName)
                 			                    .map { line =>
                 		                                val fields = line.split(',')
                 		                                val id = fields(0)
@@ -62,12 +65,12 @@ object DataAssemble {
 	 * sc: SparkContext
 	 */
 	def getIntersectIds(usedFeatures: HashSet[String], 
-			      featureResourceMap: HashMap[String, String], 
+			      featureResourceMap: HashMap[String, FeatureStruct], 
 			      sc: SparkContext):  Set[String] = {
 	    val usedFeaturesList = usedFeatures.toList
 	    
 	    //get Ids from first feature
-		var intersectIds = sc.textFile(featureResourceMap(usedFeaturesList.head))
+		var intersectIds = sc.textFile(featureResourceMap(usedFeaturesList.head).featureFileName)
 		                     .map{line  => 
 		                         line.split(',')(0) //assuming first field is always id
 	                          }
@@ -75,7 +78,7 @@ object DataAssemble {
 	    //do intersection with other features
 	    for (usedFeature <- usedFeaturesList.tail) {
 	    	intersectIds = intersectIds.intersection(
-	    			sc.textFile(featureResourceMap(usedFeature))
+	    			sc.textFile(featureResourceMap(usedFeature).featureFileName)
 	    			  .map{line  => line.split(',')(0)}
 	    			)
 	    }
@@ -91,7 +94,7 @@ object DataAssemble {
 	 * sc: spark context
 	 * total: number of items or users
 	 */
-	def filterFeatures(featureResourceMap: HashMap[String, String], 
+	def filterFeatures(featureResourceMap: HashMap[String, FeatureStruct], 
 			minCoverage: Double, sc: SparkContext, total: Int) :HashSet[String] = {
 		//set to keep keys of item feature having desired coverage
         var usedFeatures:HashSet[String] = new HashSet()
@@ -100,7 +103,7 @@ object DataAssemble {
 	    featureResourceMap foreach {
             case (k, v) =>
                 {
-                    val numFeatures = sc.textFile(v).count
+                    val numFeatures = sc.textFile(v.featureFileName).count
                     if ( (numFeatures.toDouble/total)  > minCoverage) {
                     	//coverage satisfy by feature add it to used set
                         usedFeatures += k
