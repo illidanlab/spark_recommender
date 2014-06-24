@@ -20,6 +20,8 @@ import com.samsung.vddil.recsys.data.DataAssemble
 import com.samsung.vddil.recsys.data.DataSplitting
 import com.samsung.vddil.recsys.model.RegressionModelHandler
 import com.samsung.vddil.recsys.model.ClassificationModelHandler
+import org.apache.hadoop.fs.FileSystem
+import com.samsung.vddil.recsys.Pipeline
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -69,7 +71,8 @@ object RecJob{
  * 
  * jobStatus: a data structure maintaining resources for intermediate results. 
  * 
- * sc: an instance of SparkContext created according to user specification.
+ * sc:         an instance of SparkContext created according to user specification.
+ * fs: 		   the file system associated with sc, which can be used to operate HDFS/local FS.  
  */
 case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	
@@ -78,7 +81,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     
     Logger.logger.info("Parsing job ["+ jobName + "]")
     Logger.logger.info("        job desc:"+ jobDesc)
-    val sc:SparkContext = initSparkContext()
+    val sc:SparkContext = Pipeline.instance.get.sc
+    val fs:FileSystem   = Pipeline.instance.get.fs
+		    
     val resourceLoc:HashMap[String, String] = populateResourceLoc() 
     val featureList:Array[RecJobFeature] = populateFeatures()
     val modelList:Array[RecJobModel] = populateMethods()
@@ -135,6 +140,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     /*
      * Create an instance of SparkContext
      * according to specification. 
+     * 
+     * NOTE: this method is deprecated. Using Pipeline.instance.get.sc to 
+     * 		 get the instance of spark. 
      */
     def initSparkContext():SparkContext={
        var nodeList = jobNode \ JobTag.RecJobSparkContext
@@ -458,7 +466,9 @@ case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, Str
 		
 	    //3. train model on training and tune using validation, and testing.
 		Logger.logger.info("**building and testing models")
-		RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo)
+		
+		jobInfo.jobStatus.completedRegressModels(this) = 
+		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
 	}
 }
 
@@ -490,7 +500,9 @@ case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, Str
 	   
 	   //3. train model on training and tune using validation, and testing.
 	   Logger.logger.info("**building and testing models")
-	   ClassificationModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo)
+	   
+	   jobInfo.jobStatus.completedClassifyModels(this) = 
+	       ClassificationModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo)
        
 	}
 }
