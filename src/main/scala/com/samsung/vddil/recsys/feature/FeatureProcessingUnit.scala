@@ -32,7 +32,7 @@ trait FeatureProcessingUnit {
 	 * Note that this resource identity should include all parameters in order to generate a string. Therefore
 	 * default values not specified in job should be completed in the featureParam before sending to resource identity.  
 	 */
-	val IdenPrefix: String
+	def IdenPrefix: String
 	def resourceIdentity(featureParam:HashMap[String, String]):String = {
         IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
     }
