@@ -3,12 +3,14 @@ package com.samsung.vddil.recsys.feature.item
 import scala.collection.mutable.HashMap
 import org.apache.spark.rdd._
 import org.apache.spark.SparkContext._
-
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 
 
 object ItemFeatureGenre  extends FeatureProcessingUnit{
@@ -118,11 +120,12 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         var featureFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + resourceIden
         Logger.logger.info("Dumping feature resource: " + featureFileName)
         itemGenreInds.saveAsTextFile(featureFileName)
-     
+        
+        val featureStruct:ItemFeatureStruct = 
+          	new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName)
         // 4. Generate and return a FeatureResource that includes all resources.  
         val resourceMap:HashMap[String, Any] = new HashMap()
-        resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureFileName
-        resourceMap(FeatureResource.ResourceStr_ItemFeatureMap) = featureMapFileName
+        resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
         
         Logger.info("Saved item features and feature map")
         

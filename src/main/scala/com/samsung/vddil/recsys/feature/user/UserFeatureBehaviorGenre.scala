@@ -7,6 +7,8 @@ import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.feature.item.ItemFeatureGenre
 import org.apache.spark.SparkContext._
+import com.samsung.vddil.recsys.feature.UserFeatureStruct
+import com.samsung.vddil.recsys.feature.UserFeatureStruct
 
 
 object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
@@ -65,9 +67,10 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		jobInfo.jobStatus.resourceLocation_ItemFeature.keys.foreach { k =>
 			if ( ItemFeatureGenre.checkIdentity(k) ) {
 				//got the correct key
-			  itemGenreFeatureFile = jobInfo.jobStatus.resourceLocation_ItemFeature(k)
-			  itemGenreFeatureMapFile = jobInfo.jobStatus.resourceLocation_ItemFeatureMap(k)
+			  itemGenreFeatureFile = jobInfo.jobStatus.resourceLocation_ItemFeature(k).featureFileName
+			  itemGenreFeatureMapFile = jobInfo.jobStatus.resourceLocation_ItemFeature(k).featureMapFileName
 			}
+			//TODO: if not then what to do? 
 		}
 		
 		//read item genre features. item -> feature vector array
@@ -104,10 +107,12 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
         Logger.logger.info("Dumping feature resource: " + featureFileName)
         userGenreFeatures.saveAsTextFile(featureFileName)
 						   
-	    // 4. Generate and return a FeatureResource that includes all resources.  
+        
+	    // 4. Generate and return a FeatureResource that includes all resources.
+        val featureStruct:UserFeatureStruct = 
+          	new UserFeatureStruct(IdenPrefix, resourceIden, featureFileName, itemGenreFeatureMapFile)
         val resourceMap:HashMap[String, Any] = new HashMap()
-		resourceMap(FeatureResource.ResourceStr_UserFeature) = featureFileName
-		resourceMap(FeatureResource.ResourceStr_UserFeatureMap) = itemGenreFeatureMapFile
+		resourceMap(FeatureResource.ResourceStr_UserFeature) = featureStruct
 		
 		Logger.info("Saved user features and feature map")
 		
