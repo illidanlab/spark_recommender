@@ -16,14 +16,14 @@ import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model.ModelProcessingUnit
 import com.samsung.vddil.recsys.model.ModelStruct
 
-object RegressionModelLasso extends ModelProcessingUnit  {
+object RegressionModelLasso extends ModelProcessingUnit with RegLinearModel {
 	
 	
 	//models...
 	def learnModel(modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob):ModelResource = {
 		
 		// 1. Complete default parameters 
-		val (numIterations, stepSizes, regParams) = RegLinearModel.getParameters(modelParams)
+		val (numIterations, stepSizes, regParams) = getParameters(modelParams)
 		
 		
 		// 2. Generate resource identity using resouceIdentity()
@@ -43,14 +43,14 @@ object RegressionModelLasso extends ModelProcessingUnit  {
 		val sc = jobInfo.sc
 		
 		//parse the data to get Label and feature information in LabeledPoint form
-		val trainData = RegLinearModel.parseData(trDataFilename, sc)
-		val testData = RegLinearModel.parseData(teDataFilename, sc)
-		val valData = RegLinearModel.parseData(vaDataFilename, sc)
+		val trainData = parseData(trDataFilename, sc)
+		val testData = parseData(teDataFilename, sc)
+		val valData = parseData(vaDataFilename, sc)
 
 		//build model for each parameter combination
 		var bestParams:Option[(Double,Double,Double)] = None
 		var bestValMSE:Option[Double] = None
-		val bestModel = RegLinearModel.getBestModelByValidation(
+		val bestModel = getBestModelByValidation(
 				                                LassoWithSGD.train, trainData, 
 				                                valData, regParams, stepSizes, 
 				                                numIterations)
@@ -65,7 +65,7 @@ object RegressionModelLasso extends ModelProcessingUnit  {
 		// 4. Compute training and testing error.
 		
 		//compute prediction on training data
-		val (trainMSE, testMSE) = RegLinearModel.trainNTestError(bestModel.get, trainData, testData)
+		val (trainMSE, testMSE) = trainNTestError(bestModel.get, trainData, testData)
 		modelStruct.performance(ModelStruct.PerformanceTrainMSE) = trainMSE
 		modelStruct.performance(ModelStruct.PerformanceTestMSE)  = testMSE
 		

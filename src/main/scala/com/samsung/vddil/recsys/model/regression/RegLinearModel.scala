@@ -14,7 +14,7 @@ import com.samsung.vddil.recsys.Logger
 import org.apache.spark.mllib.regression.GeneralizedLinearModel
 import org.apache.spark.mllib.regression.GeneralizedLinearAlgorithm
 
-object RegLinearModel  {
+trait RegLinearModel  {
 	
 	/*
      * get labels and prediction on data
