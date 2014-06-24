@@ -50,8 +50,6 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         val valData = parseData(vaDataFilename, sc)
 
         //build model for each parameter combination
-        var bestParams:Option[(Double,Double,Double)] = None
-        var bestValMSE:Option[Double] = None
         val bestModel = getBestModelByValidation(
                                                 RidgeRegressionWithSGD.train, trainData, 
                                                 valData, regParams, stepSizes, 
@@ -71,8 +69,7 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         modelStruct.performance(ModelStruct.PerformanceTrainMSE) = trainMSE
         modelStruct.performance(ModelStruct.PerformanceTestMSE)  = testMSE
         
-        Logger.info("trainMSE = " + trainMSE + "testMSE = " + testMSE 
-                        + " valMSE = " + bestValMSE.get)
+        Logger.info("trainMSE = " + trainMSE + "testMSE = " + testMSE)
         
         modelStruct.saveModel(sc)
         
