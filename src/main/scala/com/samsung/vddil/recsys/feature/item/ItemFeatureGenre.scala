@@ -38,7 +38,12 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         }
           
         // 2. Generate resource identity using resouceIdentity()
-        var resourceIden = resourceIdentity(featureParams)
+        val resourceIden = resourceIdentity(featureParams)
+        val dataHashingStr = HashString.generateHash(jobInfo.trainDates.deep.toString())
+        val featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
+        							"/" + resourceIden + "_" + dataHashingStr
+        var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
+        							"/" + resourceIden + "_" + dataHashingStr + "_Map"
         
         // 3. Feature generation algorithms (HDFS operations)
         
@@ -77,10 +82,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         Logger.info("created genres to index map, numGenres: " + numGenres 
                     + " numItems: " + itemSet.size)
         
-        //save genre mapping to indexes
-        var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/"+ resourceIden + "Map"
-        Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
-        genreInd2KeyDescRDD.saveAsTextFile(featureMapFileName)
+        
         
         //get RDDs of items itemGenreList: itemId, subgenre, Genre   
         //filter only those for which genre is already found
@@ -117,9 +119,16 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         Logger.info("created item genre feature vectors")
         
         //save item features as textfile
-        var featureFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + resourceIden
-        Logger.logger.info("Dumping feature resource: " + featureFileName)
-        itemGenreInds.saveAsTextFile(featureFileName)
+        if (jobInfo.outputResource(featureFileName)){
+        	Logger.logger.info("Dumping feature resource: " + featureFileName)
+        	itemGenreInds.saveAsTextFile(featureFileName)
+        }
+        
+        //save genre mapping to indexes
+        if (jobInfo.outputResource(featureFileName)){
+        	Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
+        	genreInd2KeyDescRDD.saveAsTextFile(featureMapFileName)
+        }
         
         val featureStruct:ItemFeatureStruct = 
           	new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName)
@@ -129,7 +138,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         
         Logger.info("Saved item features and feature map")
         
-        new FeatureResource(true, resourceMap, resourceIden)
+        new FeatureResource(true, Some(resourceMap), resourceIden)
     }
     
     

@@ -22,6 +22,7 @@ import com.samsung.vddil.recsys.model.RegressionModelHandler
 import com.samsung.vddil.recsys.model.ClassificationModelHandler
 import org.apache.hadoop.fs.FileSystem
 import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.utils.HashString
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -75,7 +76,6 @@ object RecJob{
  * fs: 		   the file system associated with sc, which can be used to operate HDFS/local FS.  
  */
 case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
-	
 	//initialization 
     val jobType = JobType.Recommendation
     
@@ -83,7 +83,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     Logger.logger.info("        job desc:"+ jobDesc)
     val sc:SparkContext = Pipeline.instance.get.sc
     val fs:FileSystem   = Pipeline.instance.get.fs
-		    
+    val overwriteResource = false
+    def outputResource(resourceLoc:String) = Pipeline.outputResource(resourceLoc, overwriteResource)
+    
     val resourceLoc:HashMap[String, String] = populateResourceLoc() 
     val featureList:Array[RecJobFeature] = populateFeatures()
     val modelList:Array[RecJobModel] = populateMethods()
@@ -133,8 +135,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	//TODO: testing recommendation performance on testing dates.
     }
     
-    def generateXML():Elem = {
-       null
+    def generateXML():Option[Elem] = {
+       None
     }
     
     /*
@@ -144,7 +146,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      * NOTE: this method is deprecated. Using Pipeline.instance.get.sc to 
      * 		 get the instance of spark. 
      */
-    def initSparkContext():SparkContext={
+    def initSparkContext():Option[SparkContext]={
        var nodeList = jobNode \ JobTag.RecJobSparkContext
       
        var sparkContext_master:String  = RecJob.SparkContext_master_default
@@ -162,12 +164,12 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        }  
    
        try{
-          return new SparkContext(sparkContext_master, sparkContext_jobName)
+          return Some(new SparkContext(sparkContext_master, sparkContext_jobName))
        }catch{
          case _:Throwable => Logger.logger.error("Failed to build SparkContext!") 
        }
        
-       null
+       None
     }
     
     /*
@@ -258,6 +260,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
       
       dateList = (nodeList(0) \ JobTag.RecJobTrainDateUnit).map(_.text)
       
+      Logger.logger.info("Training dates: " + dateList.toArray.deep.toString 
+          + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
       return dateList.toArray
     }
     

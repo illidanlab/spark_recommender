@@ -33,7 +33,7 @@ object ItemFeatureHandler extends FeatureHandler{
 		
 		//For the successful ones, push resource information to jobInfo.jobStatus.
 		if(resource.success){
-		   resource.resourceMap(FeatureResource.ResourceStr_ItemFeature) match{
+		   resource.resourceMap.get(FeatureResource.ResourceStr_ItemFeature) match{
 		      case featureStruct:ItemFeatureStruct=> 
 		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
 		   }

@@ -9,6 +9,8 @@ import com.samsung.vddil.recsys.feature.item.ItemFeatureGenre
 import org.apache.spark.SparkContext._
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
+import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.Pipeline
 
 
 object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
@@ -56,6 +58,11 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		
 	    // 2. Generate resource identity using resouceIdentity()
 		var resourceIden = resourceIdentity(featureParams)
+		val dataHashingStr = HashString.generateHash(jobInfo.trainDates.deep.toString())
+		var featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
+								    "/" + resourceIden + "_" + dataHashingStr
+		var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
+								    "/" + resourceIden + "_" + dataHashingStr + "_Map"
 		
 	    // 3. Feature generation algorithms (HDFS operations)
 		
@@ -103,10 +110,10 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 			  
 		
 		//save user features in text file
-		var featureFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + resourceIden
-        Logger.logger.info("Dumping feature resource: " + featureFileName)
-        userGenreFeatures.saveAsTextFile(featureFileName)
-						   
+		if(jobInfo.outputResource(featureFileName)){
+			Logger.logger.info("Dumping feature resource: " + featureFileName)
+			userGenreFeatures.saveAsTextFile(featureFileName)
+		}
         
 	    // 4. Generate and return a FeatureResource that includes all resources.
         val featureStruct:UserFeatureStruct = 
@@ -116,7 +123,7 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		
 		Logger.info("Saved user features and feature map")
 		
-		new FeatureResource(true, resourceMap, resourceIden)
+		new FeatureResource(true, Some(resourceMap), resourceIden)
 	}
 	
 	val IdenPrefix:String = "UserFeatureGenre"

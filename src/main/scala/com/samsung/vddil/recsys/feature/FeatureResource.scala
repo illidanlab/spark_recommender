@@ -26,7 +26,7 @@ import scala.collection.mutable.HashMap
  *  @author jiayu.zhou
  *   
  */
-class FeatureResource(var success:Boolean, var resourceMap:HashMap[String, Any] = new HashMap, var resourceIden:String) {
+class FeatureResource(var success:Boolean, var resourceMap:Option[HashMap[String, Any]] = Some(new HashMap), var resourceIden:String) {
   
 }
 
@@ -39,6 +39,6 @@ object FeatureResource{
 	 * Provides a shortcut with an empty FeatureResource indicating a failed status. 
 	 */
 	def fail:FeatureResource = {
-	   new FeatureResource(false, null, "")
+	   new FeatureResource(false, None, "")
 	}
 }

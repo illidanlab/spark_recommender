@@ -6,6 +6,7 @@ import org.apache.spark.SparkConf
 import scala.xml._
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.Pipeline
 
 /*
  * This is an example showing how to implement a job. 
@@ -28,7 +29,7 @@ case class HelloWorldJob (jobName:String, jobDesc:String, jobNode:Node) extends 
         try{
         	val sc = new SparkContext("local[4]", "TestWordCount")    
 	   
-			val lines = sc.textFile(inputFileStr)
+			val lines = Pipeline.instance.get.sc.textFile(inputFileStr)
 			
 			//println(System.getProperty("user.home"))
 			
@@ -49,8 +50,8 @@ case class HelloWorldJob (jobName:String, jobDesc:String, jobNode:Node) extends 
        return this.jobStatus
     }
     
-    def generateXML():Elem = {
-       null
+    def generateXML():Option[Elem] = {
+       None
     }
 }
 

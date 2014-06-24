@@ -58,7 +58,7 @@ trait Job {
 	/*
 	 * Generate job XML from current information to be written in file. 
 	 */
-	def generateXML():scala.xml.Elem
+	def generateXML():Option[scala.xml.Elem]
 }
 
 
@@ -74,7 +74,7 @@ object Job{
 	  
 	  var jobList:List[Job] = List() 
 	  
-	  var xml:scala.xml.Elem = null
+	  var xml:Option[scala.xml.Elem] = None
 	  
 	  
 	  
@@ -84,7 +84,7 @@ object Job{
 	  // populate these entries into classes. 
 	  if (jobfile.exists()) {
 	    logger.info("Job file found in file system!")
-	    xml = XML.loadFile(jobfile)
+	    xml = Some(XML.loadFile(jobfile))
 	  }else{
 	    val resLoc = "/jobs/" + jobfile
 	    
@@ -93,7 +93,7 @@ object Job{
 	    //if file is not found we try to see if we can use one in resource folder.
 	    try{
 		    val IS = TestObj.getClass().getResourceAsStream(resLoc);
-		    xml = XML.load(IS)
+		    xml = Some(XML.load(IS))
 		    
 		    logger.info("Job file found in resource!")
 	    }catch{
@@ -102,10 +102,10 @@ object Job{
 	  }
 	  
 	  
-	  if (xml!= null){
+	  if (xml.isDefined){
 	    
 	    // look for all job entries in the job list. 
-	    for (node <- xml \ JobTag.JobEntry){
+	    for (node <- xml.get \ JobTag.JobEntry){
 	        val jobTypeStr:String = (node \ JobTag.JobType).text 
 	        val jobNameStr:String = (node \ JobTag.JobName).text
 	        val jobDescStr:String = (node \ JobTag.JobDesc).text
@@ -147,8 +147,8 @@ case class UnknownJob (jobName:String, jobDesc:String, jobNode:Node) extends Job
        return this.jobStatus
     }
     
-    def generateXML():Elem = {
-       null
+    def generateXML():Option[Elem] = {
+       None
     }
 }
 

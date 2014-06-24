@@ -32,7 +32,7 @@ object UserFeatureHandler extends FeatureHandler{
 	    
 		//For the successful ones, push resource information to jobInfo.jobStatus. 
 	    if(resource.success){
-		   resource.resourceMap(FeatureResource.ResourceStr_UserFeature) match{
+		   resource.resourceMap.get(FeatureResource.ResourceStr_UserFeature) match{
 		      case featureStruct:UserFeatureStruct => 
 		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = featureStruct
 		   }
