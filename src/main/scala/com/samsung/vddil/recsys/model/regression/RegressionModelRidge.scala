@@ -48,30 +48,47 @@ object RegressionModelRidge extends ModelProcessingUnit {
        }
 	}
 	
+	/*
+	 * will parse parameter string to give parameters
+	 * "0:2:8,10,12" -> [0,2,4,6,8,10,12]
+	 */
+	def parseParamString(param: String):Array[Double] = {
+		param.split(",").map(_.split(":")).flatMap { _ match {
+			    //Array(0,2,8)
+			    case Array(a,b,c) => a.toDouble to c.toDouble by b.toDouble 
+			    //Array(10) or Array(12)
+			    case Array(a) => List(a.toDouble)
+		    }
+		}
+	}
+	
+	
 	//models...
 	def learnModel(modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob):ModelResource = {
 		
 		// 1. Complete default parameters 
 		//TODO: put these parameter in input file
-		var numIterations = 100
-		var stepSize = 1.0
-		var regParam = 1.0
+		var numIterations = Array(100.0)
+		var stepSizes = Array(1.0)
+		var regParams = Array(1.0)
 		
 		//get model parameters
 		if (modelParams.contains("regParam")) {
-			regParam = modelParams("regParam").toDouble
-		}else{
-		    modelParams("regParam") = regParam.toString() 
+			regParams = parseParamString(modelParams("regParam"))
+		} else{
+		    modelParams("regParam") = regParams.mkString(",") 
 		}
+		
 		if (modelParams.contains("stepSize")) {
-            stepSize = modelParams("stepSize").toDouble
-        }else{
-            modelParams("stepSize") = stepSize.toString()
+            stepSizes = parseParamString(modelParams("stepSize"))
+        } else{
+            modelParams("stepSize") = stepSizes.mkString(",")
         }
+		
 		if (modelParams.contains("numIterations")) {
-            numIterations = modelParams("numIterations").toInt
-        }else{
-            modelParams("numIterations") = numIterations.toString() 
+            numIterations = parseParamString(modelParams("numIterations"))
+        } else{
+            modelParams("numIterations") = numIterations.mkString(",") 
         }
 	  
 		
@@ -82,9 +99,6 @@ object RegressionModelRidge extends ModelProcessingUnit {
 		//if the model is already there, we can safely return a fail. Will do that later.
 		if (jobInfo.jobStatus.resourceLocation_RegressModel.isDefinedAt(resourceIden))
 			return ModelResource.fail
-		
-		
-		
 		
 		// 3. Model learning algorithms (HDFS operations)
 		val trDataFilename:String = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train(dataResourceStr)
@@ -99,17 +113,38 @@ object RegressionModelRidge extends ModelProcessingUnit {
 		val testData = parseData(teDataFilename, sc)
 		val valData = parseData(vaDataFilename, sc)
 
-		//build model
-		val model = RidgeRegressionWithSGD.train(trainData, numIterations, stepSize, regParam)
+		//build model for each parameter combination
+		var bestParams:Option[(Double,Double,Double)] = None
+		var bestValMSE:Option[Double] = None
+		var bestModel:Option[RidgeRegressionModel] = None
+		for (regParam <- regParams; stepSize <- stepSizes; 
+		                            numIter <- numIterations) {
+			//learn model
+			val model = RidgeRegressionWithSGD.train(trainData, numIter.toInt, stepSize, regParam)
+			
+			//perform validation
+			//compute prediction on validation data
+			val valLabelAndPreds = getLabelAndPred(valData, model)
+        
+			//compute error on validation
+			val valMSE = ContinuousPrediction.computeMSE(valLabelAndPreds)
+			
+			Logger.info("regParam: " + regParam + " stepSize: " + stepSize 
+					        + " numIter: " + numIter + " valMSE: " + valMSE)
+			
+		    //compare and update best parameters
+			if (!bestValMSE.isDefined || bestValMSE.get > valMSE) {
+				bestValMSE = Some(valMSE)
+				bestParams = Some(regParam, stepSize, numIter)
+				bestModel = Some(model)
+			}
+		}
 		
+		//save best model found above
 		val modelStruct:LinearRegressionModelStruct 
-			= new LinearRegressionModelStruct(IdenPrefix, resourceIden, modelFileName, modelParams, model)
-		
-		//compute prediction on validation data
-		val valLabelAndPreds = getLabelAndPred(valData, modelStruct.model)
-		
-		//compute error on validation
-		val valMSE = ContinuousPrediction.computeMSE(valLabelAndPreds)
+			= new LinearRegressionModelStruct(IdenPrefix, resourceIden, 
+					                            modelFileName, modelParams, 
+					                            bestModel.get)
 		
 		// 4. Compute training and testing error.
 		
@@ -125,8 +160,8 @@ object RegressionModelRidge extends ModelProcessingUnit {
 		val testMSE = ContinuousPrediction.computeMSE(testLabelAndPreds)
 		modelStruct.performance(ModelStruct.PerformanceTestMSE)  = testMSE
 		
-		
-		Logger.info("trainMSE = " + trainMSE + "testMSE = " + testMSE + " valMSE = " + valMSE)
+		Logger.info("trainMSE = " + trainMSE + "testMSE = " + testMSE 
+				        + " valMSE = " + bestValMSE.get)
 		
 		modelStruct.saveModel(sc)
 		
