@@ -90,6 +90,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     val featureList:Array[RecJobFeature] = populateFeatures()
     val modelList:Array[RecJobModel] = populateMethods()
     val trainDates:Array[String] = populateTrainDates()
+    val testDates:Array[String] = populateTestDates()
+    
     val dataSplit:HashMap[String, Double] = populateDataSplitting()
     //TODO: parse and ensemble 
     
@@ -106,7 +108,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	//Preparing processing data. 
     	//In this step the user/item lists are available in the JobStatus. 
     	logger.info("**preparing processing data")
-    	DataProcess.prepare(this)
+    	DataProcess.prepareTrain(this)
     	
     	logger.info("**preparing features")
     	
@@ -133,6 +135,12 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	}
     	
     	//TODO: testing recommendation performance on testing dates.
+    	DataProcess.prepareTest(this)
+    	if (jobStatus.testWatchTime.isDefined) {
+    		//evaluate models on test data
+    		
+    	}
+    	
     }
     
     def generateXML():Option[Elem] = {
@@ -265,6 +273,28 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
       return dateList.toArray
     }
     
+    
+    /*
+     * Populate test dates. 
+     */
+    def populateTestDates():Array[String] = {
+      
+      var dateList:Seq[String] = Seq()
+     
+      var nodeList = jobNode \ JobTag.RecJobTestDateList
+      if (nodeList.size == 0){
+        Logger.logger.warn("No training dates given!")
+        return dateList.toArray
+      }
+      
+      dateList = (nodeList(0) \ JobTag.RecJobTestDateUnit).map(_.text)
+      
+      Logger.logger.info("Testing dates: " + dateList.toArray.deep.toString 
+          + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
+      return dateList.toArray
+    }
+    
+    
     /*
      * Populate features from XML. 
      */
@@ -317,6 +347,17 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
       
       featList
     }
+    
+    
+    /*
+     * populate test type from XML
+     */
+    def populateTests():Array[String] = {
+    	var testLists:Array[String] = Array()
+    	//TODO
+    	testLists
+    }
+    
     
     /*
      * Populate learning methods from XML. 

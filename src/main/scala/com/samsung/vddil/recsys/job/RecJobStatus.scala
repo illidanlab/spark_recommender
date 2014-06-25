@@ -3,6 +3,8 @@ package com.samsung.vddil.recsys.job
 
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
+import org.apache.spark.rdd.RDD
+
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
@@ -60,6 +62,11 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	 */
 	var users:Array[String] = Array[String]()
 	var items:Array[String] = Array[String]()
+	
+	/*
+	 * test data in RDD[Rating] form
+	 */
+	var testWatchTime:Option[RDD[Rating]] = None
 	
     def allCompleted():Boolean = {
        true

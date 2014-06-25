@@ -10,6 +10,7 @@ import com.samsung.vddil.recsys.utils.HashString
 import org.apache.hadoop.fs.Path
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.job.Rating
 
 /**
  * 
@@ -20,7 +21,7 @@ object DataProcess {
      *   This method generates ( UserID, ItemID, feedback ) tuples from ACR watch time data
      *   and stores the tuples, list of UserID, list of ItemID into the system. 
      */
-	def prepare(jobInfo:RecJob) {
+	def prepareTrain(jobInfo:RecJob) {
 	    
 		val dataHashingStr = HashString.generateHash(jobInfo.trainDates.deep.toString())
 	  
@@ -44,7 +45,7 @@ object DataProcess {
 	    		(fields(0), fields(1), fields(2))
 	    }
 	    
-	    for (trainDate <- jobInfo.trainDates.tail) {
+	    for (trainDate <- jobInfo.trainDates.tail) yield {
 	    	val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + trainDate
 	    	val dataNext = sc.textFile(fileName).map { line =>
 	    		val fields = line.split('\t')
@@ -56,7 +57,7 @@ object DataProcess {
 	    
 	    //save merged data
 	    jobStatus.resourceLocation_CombineData = dataLocCombine
-	    if(jobInfo.outputResource(dataLocCombine)){
+	    if(jobInfo.outputResource(dataLocCombine)) {
 	    	Logger.info("Dumping combined data")
 		    data.map{s => s._1 + "," + s._2 + "," + s._3}
 		        .saveAsTextFile(dataLocCombine) 
@@ -89,6 +90,33 @@ object DataProcess {
 	    items.unpersist(false)
 	}
 	
+	
+	/*
+	 * read the data from test dates into RDD form
+	 */
+	def prepareTest(jobInfo: RecJob)  = {
+		//get spark context
+		val sc  = jobInfo.sc
+		
+		//read all data mentioned in test dates 
+		val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + 
+		                    jobInfo.testDates.head
+		var data = sc.textFile(fileName).map { line =>
+		    val fields = line.split('\t')
+		    Rating(fields(0), fields(1), fields(2).toDouble)
+		}
+		
+		for (testDate <- jobInfo.testDates.tail) {
+			val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + testDate
+			data = data.union(sc.textFile(fileName).map { line =>
+                                val fields = line.split('\t')
+                                Rating(fields(0), fields(1), fields(2).toDouble)
+			                  })
+		}
+		
+		data.persist
+		jobInfo.jobStatus.testWatchTime = Some(data)
+	}
 	
 	
 }
