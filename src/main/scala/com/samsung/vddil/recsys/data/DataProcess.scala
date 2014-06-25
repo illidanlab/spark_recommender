@@ -23,7 +23,7 @@ object DataProcess {
      */
 	def prepareTrain(jobInfo:RecJob) {
 	    
-		val dataHashingStr = HashString.generateHash(jobInfo.trainDates.deep.toString())
+		val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
 	  
 	    val dataLocCombine  = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/combineData_" + dataHashingStr
 	    val dataLocUserList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList_" + dataHashingStr

@@ -7,6 +7,7 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.utils.HashString
 
 /**
  * This process splits an assembled data into training, testing and validation, and store 

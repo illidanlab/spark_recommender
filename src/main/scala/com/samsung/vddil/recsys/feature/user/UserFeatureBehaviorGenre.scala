@@ -57,12 +57,12 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		
 		
 	    // 2. Generate resource identity using resouceIdentity()
-		var resourceIden = resourceIdentity(featureParams)
-		val dataHashingStr = HashString.generateHash(jobInfo.trainDates.deep.toString())
+		val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+		var resourceIden = resourceIdentity(featureParams,dataHashingStr)
 		var featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
-								    "/" + resourceIden + "_" + dataHashingStr
+								    "/" + resourceIden
 		var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
-								    "/" + resourceIden + "_" + dataHashingStr + "_Map"
+								    "/" + resourceIden + "_Map"
 		
 	    // 3. Feature generation algorithms (HDFS operations)
 		
