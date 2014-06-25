@@ -33,8 +33,8 @@ trait FeatureProcessingUnit {
 	 * default values not specified in job should be completed in the featureParam before sending to resource identity.  
 	 */
 	def IdenPrefix: String
-	def resourceIdentity(featureParam:HashMap[String, String]):String = {
-        IdenPrefix + "_" + HashString.generateHash(featureParam.toString)
+	def resourceIdentity(featureParam:HashMap[String, String], dataIdentifier:String):String = {
+        IdenPrefix + "_" + HashString.generateHash(featureParam.toString) + "_" + dataIdentifier 
     }
 
     def checkIdentity(ideString:String):Boolean = {

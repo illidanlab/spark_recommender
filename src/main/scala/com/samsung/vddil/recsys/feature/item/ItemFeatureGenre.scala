@@ -38,12 +38,13 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         }
           
         // 2. Generate resource identity using resouceIdentity()
-        val resourceIden = resourceIdentity(featureParams)
-        val dataHashingStr = HashString.generateHash(jobInfo.trainDates.deep.toString())
+        val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+        val resourceIden = resourceIdentity(featureParams, dataHashingStr)
+        
         val featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
-        							"/" + resourceIden + "_" + dataHashingStr
+        							"/" + resourceIden
         var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
-        							"/" + resourceIden + "_" + dataHashingStr + "_Map"
+        							"/" + resourceIden + "_Map"
         
         // 3. Feature generation algorithms (HDFS operations)
         

@@ -153,16 +153,17 @@ object DataAssemble {
         }
                                                              
 		//4. generate ID string 
-		val resourceStr = assembleContinuousDataIden(usedUserFeature, usedItemFeature)
+	    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+		val resourceStr = assembleContinuousDataIden(dataHashingStr, usedUserFeature, usedItemFeature)
 	  
 		//check if the regression data has already generated in jobInfo.jobStatus
 		//  it is possible this combination has been used (and thus generated) by other classifiers. 
 		//  in that case directly return resourceStr. 
 		if (! jobInfo.jobStatus.resourceLocation_AggregateData_Continuous.isDefinedAt(resourceStr)){
 		  
-			val dataHashingStr = HashString.generateHash(jobInfo.trainDates.deep.toString())
+			
 			val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
-										"/" + resourceStr + "_" + dataHashingStr + "_all"
+										"/" + resourceStr  + "_all"
 										
 			//check if it is necessary to output the resource
 			if (jobInfo.outputResource(assembleFileName)){
@@ -230,8 +231,13 @@ object DataAssemble {
 	    return resourceStr
 	}
 	
-	def assembleContinuousDataIden(userFeature:HashSet[String], itemFeature:HashSet[String]):String = {
-		return "ContAggData_" + HashString.generateHash(userFeature.toString) + "_"  + HashString.generateHash(itemFeature.toString) 
+	def assembleContinuousDataIden(
+			dataIdentifier:String,
+			userFeature:HashSet[String], 
+			itemFeature:HashSet[String]):String = {
+		return "ContAggData_" + dataIdentifier+ 
+					HashString.generateHash(userFeature.toString) + "_" + 
+					HashString.generateHash(itemFeature.toString) 
 	}
 	
 	def assembleBinaryData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double):String = {
@@ -239,7 +245,12 @@ object DataAssemble {
 		return null
 	}
 	
-	def assembleBinaryDataIden(userFeature:HashSet[String], itemFeature:HashSet[String]):String = {
-		return "BinAggData_" + HashString.generateHash(userFeature.toString) + "_"  + HashString.generateHash(itemFeature.toString)
+	def assembleBinaryDataIden(
+			dataIdentifier:String,
+			userFeature:HashSet[String], 
+			itemFeature:HashSet[String]):String = {
+		return "BinAggData_" + dataIdentifier + 
+					HashString.generateHash(userFeature.toString) + "_" + 
+					HashString.generateHash(itemFeature.toString)
 	}
 }

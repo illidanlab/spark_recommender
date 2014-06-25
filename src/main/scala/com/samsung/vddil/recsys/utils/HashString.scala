@@ -13,6 +13,26 @@ object HashString {
 	val HashType_SHA1   = "SHA-1"
 	val HashType_SHA256 = "SHA-256"
 	
+	/**
+	 * Generate a hashing for ordered array (with distinct values). 
+	 * 
+	 * This method first sort an array, and take the distinct, and then 
+	 * use a deep and concatenated using the specified delimiter. 
+	 */
+	def generateOrderedUniqueArrayHash[T:Ordering](array:Array[T], 
+						  delimiter:String = "%", 
+						  hashType:String = HashType_MD5):String = 
+	    generateHash(array.sorted.distinct.deep.mkString(delimiter), hashType)
+	
+	/**
+	 * Generate a hashing for ordered array 
+	 */
+	def generateOrderedArrayHash[T:Ordering](array:Array[T], 
+						  delimiter:String = "%", 
+						  hashType:String = HashType_MD5):String = 
+	    generateHash(array.sorted.deep.mkString(delimiter), hashType)
+	    
+	    
 	/** 
 	 * Hashing a plain string using desired hashing  
 	 * 
