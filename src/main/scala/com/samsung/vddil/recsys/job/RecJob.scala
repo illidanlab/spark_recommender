@@ -84,8 +84,6 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     val sc:SparkContext = Pipeline.instance.get.sc
     val fs:FileSystem   = Pipeline.instance.get.fs
     val overwriteResource = false
-    def outputResource(resourceLoc:String) = Pipeline.outputResource(resourceLoc, overwriteResource)
-    
     val resourceLoc:HashMap[String, String] = populateResourceLoc() 
     val featureList:Array[RecJobFeature] = populateFeatures()
     val modelList:Array[RecJobModel] = populateMethods()
@@ -142,6 +140,25 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	}
     	
     }
+    
+    /**
+     * If this returns true, the resource is available in HDFS.
+     * And therefore the Spark save MUST BE skipped. 
+     * 
+     * If overwriteResource is on, then this function will remove the file 
+     * from HDFS, and it is thus safe to use Spark to save files. 
+     */
+    def outputResource(resourceLoc:String) = 
+        Pipeline.outputResource(resourceLoc, overwriteResource)
+    /**
+     * If this returns true, all resources are available in HDFS. 
+     * And therefore the entire process logic can be skipped.
+     * 
+     * If overwriteResource is on, then this function returns false. 
+     */
+    def skipProcessing(resLocArr:Array[String]) = 
+        (!overwriteResource) && Pipeline.exists(resLocArr)
+    
     
     def generateXML():Option[Elem] = {
        None

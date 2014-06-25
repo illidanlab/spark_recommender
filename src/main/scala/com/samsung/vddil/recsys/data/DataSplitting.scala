@@ -43,8 +43,8 @@ object DataSplitting {
 	    	val teDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_te"
 	    	val vaDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_va"
 	    	
-	    	if(!jobInfo.overwriteResource && Pipeline.exists(Array(trDataFilename, teDataFilename, vaDataFilename))){
-	    		Logger.info("All resources are exists, and skipped.")
+	    	if(jobInfo.skipProcessing(Array(trDataFilename, teDataFilename, vaDataFilename))){
+	    		Logger.info("All resources exist, and processing skipped.")
 	    	}else{
 	    		//Generate resources. 
 	    	
