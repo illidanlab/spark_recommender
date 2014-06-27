@@ -69,22 +69,12 @@ object DataAssemble {
 	def getIntersectIds(usedFeatures: HashSet[String], 
 			      featureResourceMap: HashMap[String, FeatureStruct], 
 			      sc: SparkContext):  Set[String] = {
-	    val usedFeaturesList = usedFeatures.toList
 	    
-	    //get Ids from first feature
-		var intersectIds = sc.textFile(featureResourceMap(usedFeaturesList.head).featureFileName)
-		                     .map{line  => 
-		                         line.split(',')(0) //assuming first field is always id
-	                          }
-	    
-	    //do intersection with other features
-	    for (usedFeature <- usedFeaturesList.tail) {
-	    	intersectIds = intersectIds.intersection(
-	    			sc.textFile(featureResourceMap(usedFeature).featureFileName)
-	    			  .map{line  => line.split(',')(0)}
-	    			)
-	    }
-	    
+	    val intersectIds = usedFeatures.map{feature =>
+	      sc.textFile(featureResourceMap(feature).featureFileName)
+	      	.map(_.split(',')(0)) //assuming first field is always id
+	    }.reduce((idSetA, idSetB) => idSetA.intersection(idSetB)) // reduce to get instersection of all sets
+	        
 	    intersectIds.collect.toSet
 	}
 	
