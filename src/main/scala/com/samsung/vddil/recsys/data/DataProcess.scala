@@ -106,16 +106,9 @@ object DataProcess {
 		
 		//read all data mentioned in test dates l date
 		//get RDD of data of each individua
-		val arrRatingsRDD = jobInfo.testDates.map{date => 
-					sc.textFile(jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + date)
-					  .map {line =>    //convert each line of file to rating
-						val fields = line.split('\t')
-						Rating(fields(0), fields(1), fields(2).toDouble)
-					}
-				}
-		
-		//combine RDDs to get the full data
-		val data = arrRatingsRDD.reduce((a,b) => a.union(b))
+		val data = getDataFromDates(jobInfo.testDates, 
+	    							jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+	    							sc)
 				
 		data.persist
 		jobInfo.jobStatus.testWatchTime = Some(data)
