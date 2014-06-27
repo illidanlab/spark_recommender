@@ -59,6 +59,7 @@ object RegressionModelLasso extends ModelProcessingUnit with RegLinearModel {
 		//save best model found above
 		val modelStruct:LinearRegressionModelStruct 
 			= new LinearRegressionModelStruct(IdenPrefix, resourceIden, 
+					                            dataResourceStr,
 					                            modelFileName, modelParams, 
 					                            bestModel.get)
 		

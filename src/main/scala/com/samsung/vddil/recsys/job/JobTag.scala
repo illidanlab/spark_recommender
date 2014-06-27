@@ -29,10 +29,24 @@ object JobTag {
 	  
 	val RecJobTestDateList = "testDates"
 	val RecJobTestDateUnit = "date"
-	val RecJobTestType_FutureNotCold = "futureNotColdstart"
+	val RecJobTestList = "tests"
+	val RecJobTestUnit = "test"
+	val RecJobTestUnitName = "name"
+	val RecJobTestUnitType = "type"
+	val RecJobTestUnitParam = "param"
+	val RecJobTestType_NotCold = "futureNotColdstart"
 	val RecJobTestType_ColdItems = "futureColdItems"
 	val RecJobTestType_ColdUsers = "futureColdUsers"
 	val RecJobTestType_ColdItemUsers = "futureColdItemUsers"
+		
+	val RecJobMetricList = "metrics"
+	val RecJobMetricUnit = "metric"
+	val RecJobMetricUnitName = "name"
+    val RecJobMetricUnitType = "type"
+    val RecJobMetricUnitParam = "param"
+	val RecJobMetricType_MSE = "mse"
+	val RecJobMetricType_RMSE = "rmse"
+    	
 		
 	val RecJobFeatureList = "features"
 	val RecJobFeatureType_Item = "itemFeature"

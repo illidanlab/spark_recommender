@@ -102,7 +102,7 @@ trait LinearModelStruct extends ModelStruct{
 }
 
 case class LinearRegressionModelStruct(
-		    var modelName:String, var resourceStr:String, var modelFileName:String,
+		    var modelName:String, var resourceStr:String, var learnDataResourceStr:String, var modelFileName:String,
 		    var modelParams:HashMap[String, String] = new HashMap(), var model:GeneralizedLinearModel
 	    ) extends LinearModelStruct{
 }

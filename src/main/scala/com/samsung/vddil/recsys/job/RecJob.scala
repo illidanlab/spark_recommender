@@ -10,19 +10,31 @@ package com.samsung.vddil.recsys.job
 import scala.xml._
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
+import org.apache.spark.rdd.RDD
+import org.apache.hadoop.fs.FileSystem
+import org.apache.spark.SparkContext
+
 import com.samsung.vddil.recsys.Logger
+
 import com.samsung.vddil.recsys.feature.ItemFeatureHandler
-import com.samsung.vddil.recsys.data.DataProcess
 import com.samsung.vddil.recsys.feature.UserFeatureHandler
 import com.samsung.vddil.recsys.feature.FactFeatureHandler
-import org.apache.spark.SparkContext
+
+import com.samsung.vddil.recsys.data.DataProcess
 import com.samsung.vddil.recsys.data.DataAssemble
 import com.samsung.vddil.recsys.data.DataSplitting
-import com.samsung.vddil.recsys.model.RegressionModelHandler
-import com.samsung.vddil.recsys.model.ClassificationModelHandler
-import org.apache.hadoop.fs.FileSystem
+
+import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
+
+
+import com.samsung.vddil.recsys.model._
+
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
+
+import com.samsung.vddil.recsys.testing.TestingHandler
+import com.samsung.vddil.recsys.testing.LinearRegNotColdTestHandler
+
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -89,6 +101,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     val modelList:Array[RecJobModel] = populateMethods()
     val trainDates:Array[String] = populateTrainDates()
     val testDates:Array[String] = populateTestDates()
+    val testList:Array[RecJobTest] = populateTests()
+    val metricList:Array[RecJobMetric] = populateMetric()
     
     val dataSplit:HashMap[String, Double] = populateDataSplitting()
     //TODO: parse and ensemble 
@@ -102,7 +116,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      */
     def run():Unit= {
     	val logger = Logger.logger 
-    	
+
     	//Preparing processing data. 
     	//In this step the user/item lists are available in the JobStatus. 
     	logger.info("**preparing processing data")
@@ -132,14 +146,64 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	    	}
     	}
     	
-    	//TODO: testing recommendation performance on testing dates.
+    	//testing recommendation performance on testing dates.
     	DataProcess.prepareTest(this)
-    	if (jobStatus.testWatchTime.isDefined) {
-    		//evaluate models on test data
-    		
-    	}
-    	
+    	performTestNEvaluation()
     }
+    
+    
+    
+    /*
+     * perform evaluation of models on test data 
+     */
+    def performTestNEvaluation() {
+    	
+    	jobStatus.testWatchTime foreach { testData =>
+    		
+    		//size of test data
+    		Logger.info("Size of test data: " + testData.count)
+    		
+            //evaluate models on test data
+            //go through all regression models
+            jobStatus.resourceLocation_RegressModel.keys foreach { k =>
+                evaluateModel(jobStatus.resourceLocation_RegressModel(k))
+            }//for all regression model
+            
+            //TODO
+            //go through all classification models
+            jobStatus.resourceLocation_ClassifyModel.keys foreach { k =>
+                evaluateModel(jobStatus.resourceLocation_RegressModel(k))
+            }//for all classification model
+        }
+    }
+    
+  
+    /*
+     * perform all the test on the passed model and generate score metrics
+     */
+    def evaluateModel(model: ModelStruct) {
+    	//apply all the tests on passed model
+        for (test <- testList) {
+            
+            //prediction results after applying test
+            val pred = test.run(this, model)
+            
+            //perform evaluation if we got predictions above
+            pred foreach { predValue =>  
+                //perform evaluation on predicted value
+                metricList.map {metric => 
+                	metric match {
+                      case metricSE:RecJobMetricSE => {
+                               val score = metricSE.run(predValue.map{x => (x._3, x._4)})
+                               Logger.info(s"Evaluated $model $test $metric = $score")
+                            }
+                      case _ => Logger.warn(s"$metric not known metric")
+                    }
+                }
+           }
+        } //end all test
+    }
+    
     
     /**
      * If this returns true, the resource is available in HDFS.
@@ -150,6 +214,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      */
     def outputResource(resourceLoc:String) = 
         Pipeline.outputResource(resourceLoc, overwriteResource)
+    
     /**
      * If this returns true, all resources are available in HDFS. 
      * And therefore the entire process logic can be skipped.
@@ -158,6 +223,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      */
     def skipProcessing(resLocArr:Array[String]) = 
         (!overwriteResource) && Pipeline.exists(resLocArr)
+    
     
     
     def generateXML():Option[Elem] = {
@@ -367,12 +433,86 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     
     
     /*
+     * populate required evaluation metrics from XML
+     */
+    def populateMetric():Array[RecJobMetric] = {
+    	var metricList:Array[RecJobMetric] = Array()
+    	var nodeList = jobNode \ JobTag.RecJobMetricList
+    	if (nodeList.size == 0) {
+            Logger.logger.warn("No metrics found!")
+            metricList
+        } else {
+        	nodeList = nodeList(0) \ JobTag.RecJobMetricUnit
+        	//populate each metric
+        	for (node <- nodeList) {
+        	    val metricType = (node \ JobTag.RecJobMetricUnitType).text
+                val metricName = (node \ JobTag.RecJobMetricUnitName).text
+                val metricParam = node \ JobTag.RecJobMetricUnitParam
+                var paramList:HashMap[String, String] = HashMap()
+                
+                //populate metric parameters
+                for (param <- metricParam) {
+                	val paraPairList = param.child
+                                            .map(line => (line.label, line.text))
+                                            .filter(_._1 != "#PCDATA") //TODO: why ?
+                    for (paraPair <- paraPairList) {
+                        paramList += (paraPair._1 -> paraPair._2)
+                    }                      
+                }
+        	    
+        	    //create metrics by type
+        	    metricType match {
+        	    	case JobTag.RecJobMetricType_MSE => metricList = metricList :+ RecJobMetricMSE(metricName, paramList)
+        	    	case JobTag.RecJobMetricType_RMSE => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
+        	    	case _ => Logger.logger.warn("Metric type $metricType not found or ignored.")
+        	    }
+        	}
+        }
+    	
+    	metricList
+    }
+    
+    
+    /*
      * populate test type from XML
      */
-    def populateTests():Array[String] = {
-    	var testLists:Array[String] = Array()
-    	//TODO
-    	testLists
+    def populateTests():Array[RecJobTest] = {
+    	var testList:Array[RecJobTest] = Array()
+    	var nodeList = jobNode \ JobTag.RecJobTestList
+    	if (nodeList.size == 0){
+    	    Logger.logger.warn("No tests found!")
+    	    testList
+    	} else {
+    		nodeList = nodeList(0) \ JobTag.RecJobTestUnit
+    		
+    		//populate each test
+    		for (node <- nodeList) {
+    			val testType = (node \ JobTag.RecJobTestUnitType).text
+    			val testName = (node \ JobTag.RecJobTestUnitName).text
+    			val testParam = node \ JobTag.RecJobTestUnitParam
+    			var paramList:HashMap[String, String] = HashMap()
+    			
+    			//populate test parameters
+    			for (param <- testParam) {
+    			    val paraPairList = param.child
+    			                            .map(line => (line.label, line.text))
+    			                            .filter(_._1 != "#PCDATA") //TODO: why ?
+    			    for (paraPair <- paraPairList) {
+    			    	paramList += (paraPair._1 -> paraPair._2)
+    			    }
+    			}
+    			
+    			//create tests by type
+    			testType match {
+    				case JobTag.RecJobTestType_NotCold => testList = testList :+ RecJobTestNoCold(testName, paramList)
+    				case _ => Logger.logger.warn("Test type $testType not found or ignored.")
+    			}
+    			
+    			
+    		}
+    	}
+    	
+    	testList
     }
     
     
@@ -478,9 +618,64 @@ case class RecJobFactFeature(featureName:String, featureParams:HashMap[String, S
 }
 
 
+/*
+ * metric types
+ */
+sealed trait RecJobMetric 
+
+trait RecJobMetricSE extends RecJobMetric {
+	def run(labelNPred: RDD[(Double, Double)]): Double
+}
+
+case class RecJobMetricMSE(metricName: String, metricParams: HashMap[String, String])
+    extends RecJobMetricSE {
+	def run(labelNPred: RDD[(Double, Double)]): Double = {
+		//NOTE: can be further extended to use metricName and metricParams like test and model
+		ContinuousPrediction.computeMSE(labelNPred)
+	}
+}
 
 
+case class RecJobMetricRMSE(metricName: String, metricParams: HashMap[String, String])
+    extends RecJobMetricSE {
+    def run(labelNPred: RDD[(Double, Double)]): Double = {
+        //NOTE: can be further extended to use metricName and metricParams like test and model
+        ContinuousPrediction.computeRMSE(labelNPred)
+    }
+}
 
+
+/*
+ * test types
+ */
+sealed trait RecJobTest {
+	/*
+     * run model on test data and return RDD of (user, item, actual label, predicted label)
+     */
+	def run(jobInfo: RecJob, model:ModelStruct): Option[RDD[(String, String, Double, Double)]]
+	
+	
+}
+
+
+//Non-coldstart
+case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String]) 
+    extends RecJobTest {
+	/*
+	 * run model on test data and return RDD of (user, item, actual label, predicted label)
+	 */
+	def run(jobInfo: RecJob, model:ModelStruct): Option[RDD[(String, String, Double, Double)]] = {
+		
+		//TODO: add more models
+		model match {
+			//get predicted labels
+			case linearModel:LinearRegressionModelStruct => 
+				Some(LinearRegNotColdTestHandler.performTest(jobInfo, testName, 
+						                                testParams, linearModel))
+			case _ => None
+		}
+	}
+}
 
 
 /*
@@ -533,6 +728,8 @@ case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, Str
 		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
 	}
 }
+
+
 
 /*
  * Classification model

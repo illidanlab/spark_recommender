@@ -12,8 +12,10 @@ import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.FeatureStruct
-import com.samsung.vddil.recsys.feature.FeatureStruct
-import com.samsung.vddil.recsys.feature.FeatureStruct
+
+
+case class AggDataWFeatures(location: String, userFeatureOrder: List[String],
+		                        itemFeatureOrder: List[String])
 
 object DataAssemble {
 	
@@ -37,7 +39,7 @@ object DataAssemble {
                 val features = fields.slice(1, fields.length).mkString(",")
                 (id, features)
                 }
-              .filter(x => idSet.contains(x._1)) //id matches specified id
+              .filter(x => idSet.contains(x._1)) //id matches specified id in set
         
         //add remaining features
 		for (usedFeature <- usedFeaturesList.tail) {
@@ -48,7 +50,7 @@ object DataAssemble {
                 		                                val features = fields.slice(1, fields.length).mkString(",")
                 		                                (id, features)
                                 			    }
-                                			    .filter(x => idSet.contains(x._1)) //id matches specified id
+                                			    .filter(x => idSet.contains(x._1)) //id matches specified id in set
                                     		).map {x =>
                 				                (x._1, x._2._1 + "," + x._2._2)
                 			                }
@@ -67,22 +69,12 @@ object DataAssemble {
 	def getIntersectIds(usedFeatures: HashSet[String], 
 			      featureResourceMap: HashMap[String, FeatureStruct], 
 			      sc: SparkContext):  Set[String] = {
-	    val usedFeaturesList = usedFeatures.toList
 	    
-	    //get Ids from first feature
-		var intersectIds = sc.textFile(featureResourceMap(usedFeaturesList.head).featureFileName)
-		                     .map{line  => 
-		                         line.split(',')(0) //assuming first field is always id
-	                          }
-	    
-	    //do intersection with other features
-	    for (usedFeature <- usedFeaturesList.tail) {
-	    	intersectIds = intersectIds.intersection(
-	    			sc.textFile(featureResourceMap(usedFeature).featureFileName)
-	    			  .map{line  => line.split(',')(0)}
-	    			)
-	    }
-	    
+	    val intersectIds = usedFeatures.map{feature =>
+	      sc.textFile(featureResourceMap(feature).featureFileName)
+	      	.map(_.split(',')(0)) //assuming first field is always id
+	    }.reduce((idSetA, idSetB) => idSetA.intersection(idSetB)) // reduce to get instersection of all sets
+	        
 	    intersectIds.collect.toSet
 	}
 	
@@ -156,76 +148,76 @@ object DataAssemble {
 	    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
 		val resourceStr = assembleContinuousDataIden(dataHashingStr, usedUserFeature, usedItemFeature)
 	  
+		
+		val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
+                                        "/" + resourceStr  + "_all"
+		
 		//check if the regression data has already generated in jobInfo.jobStatus
 		//  it is possible this combination has been used (and thus generated) by other classifiers. 
 		//  in that case directly return resourceStr. 
-		if (! jobInfo.jobStatus.resourceLocation_AggregateData_Continuous.isDefinedAt(resourceStr)){
-		  
+		if (! jobInfo.jobStatus.resourceLocation_AggregateData_Continuous.isDefinedAt(resourceStr)) {
+		     //TODO: enable resource check after figuring out a way to save feature ordering
+			 //&& jobInfo.outputResource(assembleFileName)) { //check if it is necessary to output the resource
 			
-			val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
-										"/" + resourceStr  + "_all"
-										
-			//check if it is necessary to output the resource
-			if (jobInfo.outputResource(assembleFileName)){
-				//2. perform an intersection on selected user features, generate <intersectUF>
-			    val userIntersectIds = getIntersectIds(usedUserFeature, 
-			    		        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
-		  
-			    //parse eligible features and extract only those with ids present in userIntersectIds
-			    val (userFeaturesRDD, userFeatureOrder) =  getCombinedFeatures(userIntersectIds, 
-	            		    		                        usedUserFeature, 
-	            		    		                        jobInfo.jobStatus.resourceLocation_UserFeature, 
-	            		    		                        sc)
-	            		    		        
-			    		        
-				//3. perform an intersection on selected item features, generate <intersectIF>
-			    val itemIntersectIds = getIntersectIds(usedItemFeature, 
-	                                                   jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
-	                            
-	            //parse eligible features and extract only those with ids present in itemIntersectIds
-	            val (itemFeaturesRDD, itemFeatureOrder) =  getCombinedFeatures(itemIntersectIds, 
-	                                                        usedItemFeature, 
-	                                                        jobInfo.jobStatus.resourceLocation_ItemFeature, 
-	                                                        sc)
-			  
-				//5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
-				//   and generate <intersectTuple>
-			    val filteredData = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
-			                         .map{lines => 
-			                        	  val fields = lines.split(',')
-			                        	  //user, item, watchtime
-			                        	  Rating(fields(0), fields(1), fields(2).toDouble)
-			                             }
-				                     .filter(x => userIntersectIds.contains(x.user)
-				                    		       && itemIntersectIds.contains(x.item))
-				   
-				//6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
-				val aggData = filteredData.map{x => (x.user, (x.item, x.rating))}
-				                          .join(userFeaturesRDD) // (user, ((item, rating), UF)) 
-				                    	  .map {y =>
-				                    	  	  //(item, (user, UF, rating))
-				                    	      (y._2._1._1, (y._1, y._2._2, y._2._1._2)) 
-				                    	   }
-				                          .join(itemFeaturesRDD) //(item, ((user, UF, rating), IF))
-				                          .map {z =>
-				                          	  //user, item, UF, IF, rating
-				                          	  z._2._1._1 + "," + z._1 + "," + 
-				                          	  		z._2._1._2 + "," + z._2._2 + 
-				                          	  		"," + z._2._1._3
-				                          	  //UF, IF, rating
-				                          	  //z._2._1._2 + "," + z._2._2 + "," 
-				                          	  //+ z._2._1._3
-				                           }
-				
-				//TODO: save the following ordering for later usage
-				val ordering = userFeatureOrder.mkString(",") + ":" + itemFeatureOrder.mkString(",")
-				 
-				// join features and store in assembleFileName
-				aggData.saveAsTextFile(assembleFileName)
-			}
+			//2. perform an intersection on selected user features, generate <intersectUF>
+		    val userIntersectIds = getIntersectIds(usedUserFeature, 
+		    		        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+	  
+		    //parse eligible features and extract only those with ids present in userIntersectIds
+		    val (userFeaturesRDD, userFeatureOrder) =  getCombinedFeatures(userIntersectIds, 
+            		    		                        usedUserFeature, 
+            		    		                        jobInfo.jobStatus.resourceLocation_UserFeature, 
+            		    		                        sc)
+		    		        
+			//3. perform an intersection on selected item features, generate <intersectIF>
+		    val itemIntersectIds = getIntersectIds(usedItemFeature, 
+                                                   jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+                            
+            //parse eligible features and extract only those with ids present in itemIntersectIds
+            val (itemFeaturesRDD, itemFeatureOrder) =  getCombinedFeatures(itemIntersectIds, 
+                                                        usedItemFeature, 
+                                                        jobInfo.jobStatus.resourceLocation_ItemFeature, 
+                                                        sc)
+		    
+		    
+			//5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
+			//   and generate <intersectTuple>
+            //filtering such that we have only user-item pairs such that for both features have been found
+		    val filteredData = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
+		                         .map{lines => 
+		                        	  val fields = lines.split(',')
+		                        	  //user, item, watchtime
+		                        	  Rating(fields(0), fields(1), fields(2).toDouble)
+		                             }
+			                     .filter(x => userIntersectIds.contains(x.user)
+			                    		       && itemIntersectIds.contains(x.item))
+			 
+			
+			//6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
+			val aggData = filteredData.map{x => (x.user, (x.item, x.rating))}
+			                          .join(userFeaturesRDD) // (user, ((item, rating), UF)) 
+			                    	  .map {y =>
+			                    	  	  //(item, (user, UF, rating))
+			                    	      (y._2._1._1, (y._1, y._2._2, y._2._1._2)) 
+			                    	   }
+			                          .join(itemFeaturesRDD) //(item, ((user, UF, rating), IF))
+			                          .map {z =>
+			                          	  //user, item, UF, IF, rating
+			                          	  z._2._1._1 + "," + z._1 + "," + 
+			                          	  		z._2._1._2 + "," + z._2._2 + 
+			                          	  		"," + z._2._1._3
+			                          	  //UF, IF, rating
+			                          	  //z._2._1._2 + "," + z._2._2 + "," 
+			                          	  //+ z._2._1._3
+			                           }
+			
+			// join features and store in assembleFileName
+			aggData.saveAsTextFile(assembleFileName)
 			
 			//7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
-			jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) = assembleFileName 
+            jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
+                    AggDataWFeatures(assembleFileName, userFeatureOrder, itemFeatureOrder)
+            Logger.info("assembled features: " + assembleFileName)
 		}
 		 
 	    return resourceStr

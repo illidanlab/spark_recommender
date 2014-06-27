@@ -37,6 +37,7 @@ trait RegLinearModel  {
             //(U,I,UF[],IF[], rating)
             val parts = line.split(',')
             val rating = parts(parts.length - 1).toDouble
+            //features start from 3rd index
             val features = parts.slice(2, parts.length -1).map(_.toDouble)
             LabeledPoint(rating, Vectors.dense(features))
        }

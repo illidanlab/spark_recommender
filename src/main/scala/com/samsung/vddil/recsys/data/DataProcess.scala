@@ -17,6 +17,26 @@ import com.samsung.vddil.recsys.job.Rating
  * Modified by Jiayu: added resource path
  */
 object DataProcess {
+  
+	def getDataFromDates(dates:Array[String], 
+							pathPrefix: String,
+							sc: SparkContext):RDD[Rating] = {
+		
+		//read all data mentioned in test dates l date
+		//get RDD of data of each individua
+		val arrRatingsRDD = dates.map{date => 
+									  sc.textFile(pathPrefix + date)
+										.map {line =>    //convert each line of file to rating
+										  	  val fields = line.split('\t')
+										  	  Rating(fields(0), fields(1), fields(2).toDouble)
+										   }
+								  }
+		
+		//combine RDDs to get the full data
+		arrRatingsRDD.reduce((a,b) => a.union(b))
+	}
+  
+  
     /**
      *   This method generates ( UserID, ItemID, feedback ) tuples from ACR watch time data
      *   and stores the tuples, list of UserID, list of ItemID into the system. 
@@ -36,35 +56,21 @@ object DataProcess {
 	    val sc = jobInfo.sc
 	    
 	    //1. aggregate the dates and generate sparse matrix in JobStatus
-	    //? sparse matrix in what form
 	    //read
-	    val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + jobInfo.trainDates(0)
-	    var data = sc.textFile(fileName).map { line =>
-	    		val fields = line.split('\t')
-	    		//user, item, watchtime
-	    		(fields(0), fields(1), fields(2))
-	    }
-	    
-	    for (trainDate <- jobInfo.trainDates.tail) yield {
-	    	val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + trainDate
-	    	val dataNext = sc.textFile(fileName).map { line =>
-	    		val fields = line.split('\t')
-	    		//user, item, watchtime
-	    		(fields(0), fields(1), fields(2))
-	    	}
-	    	data = data.union(dataNext)
-	    }
+	    val data = getDataFromDates(jobInfo.trainDates, 
+	    							jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+	    							sc)
 	    
 	    //save merged data
 	    jobStatus.resourceLocation_CombineData = dataLocCombine
 	    if(jobInfo.outputResource(dataLocCombine)) {
 	    	Logger.info("Dumping combined data")
-		    data.map{s => s._1 + "," + s._2 + "," + s._3}
+		    data.map{record => record.user + "," + record.item + "," + record.rating}
 		        .saveAsTextFile(dataLocCombine) 
 	    }
 	    
     	//2. generate and maintain user list in JobStatus
-	    val users = data.map(_._1).distinct
+	    val users = data.map(_.user).distinct
 	    users.persist
 	    //save users list
 	    jobStatus.resourceLocation_UserList    = dataLocUserList
@@ -75,7 +81,7 @@ object DataProcess {
 	    jobStatus.users = users.collect
 	    
     	//3. generate and maintain item list in JobStatus
-	    val items = data.map(_._2).distinct
+	    val items = data.map(_.item).distinct
 	    items.persist
 	    //save items list
 	    jobStatus.resourceLocation_ItemList    = dataLocItemList
@@ -98,22 +104,12 @@ object DataProcess {
 		//get spark context
 		val sc  = jobInfo.sc
 		
-		//read all data mentioned in test dates 
-		val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + 
-		                    jobInfo.testDates.head
-		var data = sc.textFile(fileName).map { line =>
-		    val fields = line.split('\t')
-		    Rating(fields(0), fields(1), fields(2).toDouble)
-		}
-		
-		for (testDate <- jobInfo.testDates.tail) {
-			val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + testDate
-			data = data.union(sc.textFile(fileName).map { line =>
-                                val fields = line.split('\t')
-                                Rating(fields(0), fields(1), fields(2).toDouble)
-			                  })
-		}
-		
+		//read all data mentioned in test dates l date
+		//get RDD of data of each individua
+		val data = getDataFromDates(jobInfo.testDates, 
+	    							jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+	    							sc)
+				
 		data.persist
 		jobInfo.jobStatus.testWatchTime = Some(data)
 	}
