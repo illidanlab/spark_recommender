@@ -118,7 +118,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      */
     def run():Unit= {
     	val logger = Logger.logger 
-    	
+
     	//Preparing processing data. 
     	//In this step the user/item lists are available in the JobStatus. 
     	logger.info("**preparing processing data")
@@ -150,7 +150,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	
     	//testing recommendation performance on testing dates.
     	DataProcess.prepareTest(this)
-    	//performTestNEvaluation
+    	performTestNEvaluation()
     }
     
     
@@ -161,6 +161,10 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     def performTestNEvaluation() {
     	
     	jobStatus.testWatchTime foreach { testData =>
+    		
+    		//size of test data
+    		Logger.info("Size of test data: " + testData.count)
+    		
             //evaluate models on test data
             //go through all regression models
             jobStatus.resourceLocation_RegressModel.keys foreach { k =>
@@ -194,9 +198,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
                 	metric match {
                       case metricSE:RecJobMetricSE => {
                                val score = metricSE.run(predValue.map{x => (x._3, x._4)})
-                               Logger.logger.info(s"Evaluated $model $test $metric = $score")
+                               Logger.info(s"Evaluated $model $test $metric = $score")
                             }
-                      case _ => Logger.logger.warn(s"$metric not known metric")
+                      case _ => Logger.warn(s"$metric not known metric")
                     }
                 }
            }

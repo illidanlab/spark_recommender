@@ -11,7 +11,7 @@ import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.Pipeline
-
+import com.samsung.vddil.recsys.job.Rating
 
 object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 	
@@ -48,7 +48,6 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 	}  
   
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
-		Logger.logger.error("%s has not been implmented.".format(getClass.getName()))
 		
 		//get spark context
 		val sc = jobInfo.sc
@@ -92,18 +91,12 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		val userGenreFeatures = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
 			   .map {line =>
 			     	val fields = line.split(',')
-			     	val user = fields(0)
-			   		val item = fields(1)
-			   		val watchTime = fields(2).toInt
-			   		(user, item, watchTime)
+			     	Rating(fields(0), fields(1), fields(2).toDouble)
 			    }
-			   .filter(x => itemGenreFeatures.contains(x._2) ) //filter out items whose genre information is not available
-			   .map { x =>
+			   .filter(rating => itemGenreFeatures.contains(rating.item) ) //filter out items whose genre information is not available
+			   .map { rating =>
 			   			//user,item, watchTime
-			   			val user = x._1
-			   			val item = x._2
-			   			val watchTime = x._3
-			   			(user, (itemGenreFeatures(item), watchTime)) // get the feature vector of genre of item
+			   			(rating.user, (itemGenreFeatures(rating.item), rating.rating.toInt)) // get the feature vector of genre of item
 			   	}
 			   .groupByKey() //group by user id
 			   .map {x => x._1 + "," + aggByItemGenres(x._2).mkString(",")} //get weighted feature vector

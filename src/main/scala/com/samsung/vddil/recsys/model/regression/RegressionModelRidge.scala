@@ -69,7 +69,7 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         modelStruct.performance(ModelStruct.PerformanceTrainMSE) = trainMSE
         modelStruct.performance(ModelStruct.PerformanceTestMSE)  = testMSE
         
-        Logger.info("trainMSE = " + trainMSE + "testMSE = " + testMSE)
+        Logger.info("trainMSE = " + trainMSE + " testMSE = " + testMSE)
         Logger.info("trainData: " + trainData.count + " testData: "
                                + testData.count + " valData: " + valData.count)
         modelStruct.saveModel(sc)
