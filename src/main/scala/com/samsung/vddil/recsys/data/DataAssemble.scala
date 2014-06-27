@@ -12,8 +12,10 @@ import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.FeatureStruct
-import com.samsung.vddil.recsys.feature.FeatureStruct
-import com.samsung.vddil.recsys.feature.FeatureStruct
+
+
+case class AggDataWFeatures(location: String, userFeatureOrder: List[String],
+		                        itemFeatureOrder: List[String])
 
 object DataAssemble {
 	
@@ -37,7 +39,7 @@ object DataAssemble {
                 val features = fields.slice(1, fields.length).mkString(",")
                 (id, features)
                 }
-              .filter(x => idSet.contains(x._1)) //id matches specified id
+              .filter(x => idSet.contains(x._1)) //id matches specified id in set
         
         //add remaining features
 		for (usedFeature <- usedFeaturesList.tail) {
@@ -48,7 +50,7 @@ object DataAssemble {
                 		                                val features = fields.slice(1, fields.length).mkString(",")
                 		                                (id, features)
                                 			    }
-                                			    .filter(x => idSet.contains(x._1)) //id matches specified id
+                                			    .filter(x => idSet.contains(x._1)) //id matches specified id in set
                                     		).map {x =>
                 				                (x._1, x._2._1 + "," + x._2._2)
                 			                }
@@ -166,7 +168,7 @@ object DataAssemble {
 										"/" + resourceStr  + "_all"
 										
 			//check if it is necessary to output the resource
-			if (jobInfo.outputResource(assembleFileName)){
+			if (jobInfo.outputResource(assembleFileName)) {
 				//2. perform an intersection on selected user features, generate <intersectUF>
 			    val userIntersectIds = getIntersectIds(usedUserFeature, 
 			    		        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
@@ -222,10 +224,12 @@ object DataAssemble {
 				 
 				// join features and store in assembleFileName
 				aggData.saveAsTextFile(assembleFileName)
+			
+				//7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
+				jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
+                    AggDataWFeatures(assembleFileName, userFeatureOrder, itemFeatureOrder)
 			}
 			
-			//7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
-			jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) = assembleFileName 
 		}
 		 
 	    return resourceStr

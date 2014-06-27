@@ -16,4 +16,14 @@ object ContinuousPrediction {
                                                  }
         diffSum/count
 	}	
+	
+	
+	/*
+     * compute mean square error
+     */
+    def computeRMSE(labelAndPreds:RDD[(Double, Double)]): Double = {
+        val mse = computeMSE(labelAndPreds)
+        math.sqrt(mse)
+    }
+    
 }

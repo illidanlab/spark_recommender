@@ -49,7 +49,7 @@ object DataSplitting {
 	    		//Generate resources. 
 	    	
 		    	//get the data file
-		    	val assembleContinuousDataFile = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr)
+		    	val assembleContinuousDataFile = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr).location
 		    	
 		    	//get spark context
 		    	val sc = jobInfo.sc

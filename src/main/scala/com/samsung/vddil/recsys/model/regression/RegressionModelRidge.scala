@@ -48,17 +48,17 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         val trainData = parseData(trDataFilename, sc)
         val testData = parseData(teDataFilename, sc)
         val valData = parseData(vaDataFilename, sc)
-
+        
         //build model for each parameter combination
         val bestModel = getBestModelByValidation(
                                                 RidgeRegressionWithSGD.train, trainData, 
                                                 valData, regParams, stepSizes, 
                                                 numIterations)
         
-        
         //save best model found above
         val modelStruct:LinearRegressionModelStruct 
             = new LinearRegressionModelStruct(IdenPrefix, resourceIden, 
+            		                            dataResourceStr,
                                                 modelFileName, modelParams, 
                                                 bestModel.get)
         
@@ -70,7 +70,8 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         modelStruct.performance(ModelStruct.PerformanceTestMSE)  = testMSE
         
         Logger.info("trainMSE = " + trainMSE + "testMSE = " + testMSE)
-        
+        Logger.info("trainData: " + trainData.count + " testData: "
+                               + testData.count + " valData: " + valData.count)
         modelStruct.saveModel(sc)
         
         // 5. Generate and return a ModelResource that includes all resources. 
