@@ -156,9 +156,7 @@ object DataAssemble {
 		//  it is possible this combination has been used (and thus generated) by other classifiers. 
 		//  in that case directly return resourceStr. 
 		if (! jobInfo.jobStatus.resourceLocation_AggregateData_Continuous.isDefinedAt(resourceStr)) {
-		     //TODO: enable resource check after figuring out a way to save feature ordering
-			 //&& jobInfo.outputResource(assembleFileName)) { //check if it is necessary to output the resource
-			
+		    //TODO: save feature ordering in file system
 			//2. perform an intersection on selected user features, generate <intersectUF>
 		    val userIntersectIds = getIntersectIds(usedUserFeature, 
 		    		        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
@@ -211,9 +209,11 @@ object DataAssemble {
 			                          	  //+ z._2._1._3
 			                           }
 			
+          if (jobInfo.outputResource(assembleFileName)) {
 			// join features and store in assembleFileName
 			aggData.saveAsTextFile(assembleFileName)
-			
+          }
+          
 			//7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
             jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
                     AggDataWFeatures(assembleFileName, userFeatureOrder, itemFeatureOrder)
