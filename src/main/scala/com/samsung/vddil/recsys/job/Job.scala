@@ -73,12 +73,9 @@ object Job{
 	  logger.info("Loading XML file: " + filename)
 	  
 	  var jobList:List[Job] = List() 
-	  
+	 
 	  var xml:Option[scala.xml.Elem] = None
-	  
-	  
-	  
-	  val jobfile:File = new File(filename)
+	  val jobfile:File = new File(getClass().getResource(filename).getPath())
 	  
 	  // If the job file exists, we parse it and look for all job entries, and 
 	  // populate these entries into classes. 
