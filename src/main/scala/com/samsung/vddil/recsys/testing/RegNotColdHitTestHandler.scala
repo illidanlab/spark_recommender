@@ -84,14 +84,12 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                 
         //for each user get all possible user item features
         val userItemFeat = concateUserWAllItemFeat(userFeaturesRDD, itemFeaturesRDD)
-        
-		
-		//for each user in test get prediction on all train items
+
+        //for each user in test get prediction on all train items
 		val userItemPred = userItemFeat.map{ x =>
 			                                //(user, (item, prediction))
                                 	        (x._1, x._2, model.model.predict(x._3) ) 
-                                       }.filter (_._3 > 0) //filter only +ve predicted watchtime/rating
-                                        .map(x => Rating(x._1, x._2, x._3.toDouble))
+                                       }.map(x => Rating(x._1, x._2, x._3.toDouble))
         
         //get top N predicted items for user
         val topPredictedItems = getTopAllNNewItems(userItemPred, trainUserItemsSet, N)
@@ -99,9 +97,8 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
 		//for each user in test, get his actual Top-N overall viewed items
         val topTestItems = getTopAllNNewItems(testData, trainUserItemsSet, N)
 
-	
-       //join predicted and test ranking by user key
-       val topPredNTestItems = topPredictedItems.join(topTestItems)
+        //join predicted and test ranking by user key
+        val topPredNTestItems = topPredictedItems.join(topTestItems)
        
        //RDD[(user, ((topPredictedAll, topPredictedNew), (topTestAll, topTestNew)))]
        topPredNTestItems.map(x => HitSet(x._1, //user

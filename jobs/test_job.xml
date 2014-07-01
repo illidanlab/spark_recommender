@@ -84,6 +84,13 @@
                   <key>val</key>
               </param>
           </metric>
+          <metric>
+              <type>hr</type>
+              <name>HitRate</name>
+              <param>
+                  <key>val</key>
+              </param>
+          </metric>
 		</metrics>
 		<ensembles>
 			<ensemble>

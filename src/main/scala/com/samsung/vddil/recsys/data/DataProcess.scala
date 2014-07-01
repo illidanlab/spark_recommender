@@ -20,7 +20,7 @@ object DataProcess {
   
 	def getDataFromDates(dates:Array[String], 
 							pathPrefix: String,
-							sc: SparkContext):RDD[Rating] = {
+							sc: SparkContext):Option[RDD[Rating]] = {
 		
 		//read all data mentioned in test dates l date
 		//get RDD of data of each individua
@@ -33,7 +33,10 @@ object DataProcess {
 								  }
 		
 		//combine RDDs to get the full data
-		arrRatingsRDD.reduce((a,b) => a.union(b))
+		arrRatingsRDD.length match {
+			case 0 => None
+			case _ => Some(arrRatingsRDD.reduce((a,b) => a.union(b)))
+		}
 	}
   
   
@@ -57,43 +60,46 @@ object DataProcess {
 	    
 	    //1. aggregate the dates and generate sparse matrix in JobStatus
 	    //read
-	    val data = getDataFromDates(jobInfo.trainDates, 
+	    val trainData = getDataFromDates(jobInfo.trainDates, 
 	    							jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
 	    							sc)
 	    
-	    //save merged data
-	    jobStatus.resourceLocation_CombineData = dataLocCombine
-	    if(jobInfo.outputResource(dataLocCombine)) {
-	    	Logger.info("Dumping combined data")
-		    data.map{record => record.user + "," + record.item + "," + record.rating}
-		        .saveAsTextFile(dataLocCombine) 
-	    }
+    	trainData foreach { data =>
+			//save merged data
+            jobStatus.resourceLocation_CombineData = dataLocCombine
+            if(jobInfo.outputResource(dataLocCombine)) {
+                Logger.info("Dumping combined data")
+                data.map{record => record.user + "," + record.item + "," + record.rating}
+                    .saveAsTextFile(dataLocCombine) 
+            }
+            
+            //2. generate and maintain user list in JobStatus
+            val users = data.map(_.user).distinct
+            users.persist
+            //save users list
+            jobStatus.resourceLocation_UserList    = dataLocUserList
+            if(jobInfo.outputResource(dataLocUserList)){
+               Logger.info("Dumping user list")
+               users.saveAsTextFile(dataLocUserList)
+            }  
+            jobStatus.users = users.collect
+            
+            //3. generate and maintain item list in JobStatus
+            val items = data.map(_.item).distinct
+            items.persist
+            //save items list
+            jobStatus.resourceLocation_ItemList    = dataLocItemList
+            if(jobInfo.outputResource(dataLocItemList)){
+                Logger.info("Dumping item list")
+                items.saveAsTextFile(dataLocItemList)
+            } 
+            jobStatus.items = items.collect
+            
+            //unpersist the persisted objects
+            users.unpersist(false)
+            items.unpersist(false)
+		}
 	    
-    	//2. generate and maintain user list in JobStatus
-	    val users = data.map(_.user).distinct
-	    users.persist
-	    //save users list
-	    jobStatus.resourceLocation_UserList    = dataLocUserList
-	    if(jobInfo.outputResource(dataLocUserList)){
-	       Logger.info("Dumping user list")
-	       users.saveAsTextFile(dataLocUserList)
-	    }  
-	    jobStatus.users = users.collect
-	    
-    	//3. generate and maintain item list in JobStatus
-	    val items = data.map(_.item).distinct
-	    items.persist
-	    //save items list
-	    jobStatus.resourceLocation_ItemList    = dataLocItemList
-	    if(jobInfo.outputResource(dataLocItemList)){
-	    	Logger.info("Dumping item list")
-	    	items.saveAsTextFile(dataLocItemList)
-	    } 
-	    jobStatus.items = items.collect
-	    
-	    //unpersist the persisted objects
-	    users.unpersist(false)
-	    items.unpersist(false)
 	}
 	
 	
@@ -110,8 +116,11 @@ object DataProcess {
 	    							jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
 	    							sc)
 				
-		data.persist
-		jobInfo.jobStatus.testWatchTime = Some(data)
+		jobInfo.jobStatus.testWatchTime = data
+		
+		jobInfo.jobStatus.testWatchTime foreach {data =>
+		    data.persist
+		} 
 	}
 	
 	

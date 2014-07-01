@@ -719,7 +719,7 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 			                linearModel:LinearRegressionModelStruct) = {
 		if (!hitTestHandlerRes.isDefined) {
 			hitTestHandlerRes = Some(RegNotColdHitTestHandler.performTest(jobInfo, 
-					testName, testParams, linearModel))
+					                    testName, testParams, linearModel))
 		}
 	}
 	
