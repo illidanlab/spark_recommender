@@ -63,6 +63,7 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
         //conv to label points
         val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
         
+        //NOTE: user-item pair in test can apeear more than once
         val testLabelNPred = testLabelPoints.map { point =>
         	                        (point._1, //user
         	                         point._2, //item

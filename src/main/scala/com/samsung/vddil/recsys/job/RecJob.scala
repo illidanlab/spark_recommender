@@ -32,9 +32,7 @@ import com.samsung.vddil.recsys.model._
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 
-import com.samsung.vddil.recsys.testing.TestingHandler
-import com.samsung.vddil.recsys.testing.LinearRegNotColdTestHandler
-
+import com.samsung.vddil.recsys.testing._
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -172,36 +170,18 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             //TODO
             //go through all classification models
             jobStatus.resourceLocation_ClassifyModel.keys foreach { k =>
-                evaluateModel(jobStatus.resourceLocation_RegressModel(k))
             }//for all classification model
         }
     }
     
   
+    
     /*
      * perform all the test on the passed model and generate score metrics
      */
     def evaluateModel(model: ModelStruct) {
     	//apply all the tests on passed model
-        for (test <- testList) {
-            
-            //prediction results after applying test
-            val pred = test.run(this, model)
-            
-            //perform evaluation if we got predictions above
-            pred foreach { predValue =>  
-                //perform evaluation on predicted value
-                metricList.map {metric => 
-                	metric match {
-                      case metricSE:RecJobMetricSE => {
-                               val score = metricSE.run(predValue.map{x => (x._3, x._4)})
-                               Logger.info(s"Evaluated $model $test $metric = $score")
-                            }
-                      case _ => Logger.warn(s"$metric not known metric")
-                    }
-                }
-           }
-        } //end all test
+    	testList.map{_.run(this, model, metricList)}
     }
     
     
@@ -454,7 +434,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
                 for (param <- metricParam) {
                 	val paraPairList = param.child
                                             .map(line => (line.label, line.text))
-                                            .filter(_._1 != "#PCDATA") //TODO: why ?
+                                            .filter(_._1 != "#PCDATA")
                     for (paraPair <- paraPairList) {
                         paramList += (paraPair._1 -> paraPair._2)
                     }                      
@@ -464,6 +444,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         	    metricType match {
         	    	case JobTag.RecJobMetricType_MSE => metricList = metricList :+ RecJobMetricMSE(metricName, paramList)
         	    	case JobTag.RecJobMetricType_RMSE => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
+        	    	case JobTag.RecJobMetricType_HR => metricList = metricList :+ RecJobMetricHR(metricName, paramList)
         	    	case _ => Logger.logger.warn("Metric type $metricType not found or ignored.")
         	    }
         	}
@@ -496,7 +477,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     			for (param <- testParam) {
     			    val paraPairList = param.child
     			                            .map(line => (line.label, line.text))
-    			                            .filter(_._1 != "#PCDATA") //TODO: why ?
+    			                            .filter(_._1 != "#PCDATA")
     			    for (paraPair <- paraPairList) {
     			    	paramList += (paraPair._1 -> paraPair._2)
     			    }
@@ -627,6 +608,27 @@ trait RecJobMetricSE extends RecJobMetric {
 	def run(labelNPred: RDD[(Double, Double)]): Double
 }
 
+
+case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, String])
+    extends RecJobMetric {
+	//will calculate average hit rate across passed user hits for all items
+    // and new items 
+    def run(hitSets:RDD[HitSet]):(Double, Double) = {
+    	println(hitSets.count)
+        //TODO:  case when there was no new item in test 
+        val hitScores = hitSets.map {hitSet =>
+            val allHRInters = (hitSet.topNPredAllItem.toSet & 
+                                   hitSet.topNTestAllItems.toSet).size.toDouble
+            val newHRInters = (hitSet.topNPredNewItems.toSet & 
+                                   hitSet.topNTestNewItems.toSet).size.toDouble
+            (allHRInters/hitSet.N, newHRInters/hitSet.N, 1)
+        }.reduce((a,b) => (a._1+b._1, a._2+b._2, a._3+b._3))
+        val numUsers = hitScores._3
+        val avgHitRate = (hitScores._1/numUsers, hitScores._2/numUsers)
+        avgHitRate
+    }
+}
+
 case class RecJobMetricMSE(metricName: String, metricParams: HashMap[String, String])
     extends RecJobMetricSE {
 	def run(labelNPred: RDD[(Double, Double)]): Double = {
@@ -652,30 +654,77 @@ sealed trait RecJobTest {
 	/*
      * run model on test data and return RDD of (user, item, actual label, predicted label)
      */
-	def run(jobInfo: RecJob, model:ModelStruct): Option[RDD[(String, String, Double, Double)]]
-	
+	def run(jobInfo: RecJob, model:ModelStruct, metricList:Array[RecJobMetric])
 	
 }
+
+
 
 
 //Non-coldstart
 case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String]) 
     extends RecJobTest {
+	
+	var testHandlerRes:Option[RDD[(String, String, Double, Double)]] = None
+	var hitTestHandlerRes:Option[RDD[HitSet]] = None
+	
 	/*
 	 * run model on test data and return RDD of (user, item, actual label, predicted label)
 	 */
-	def run(jobInfo: RecJob, model:ModelStruct): Option[RDD[(String, String, Double, Double)]] = {
+	def run(jobInfo: RecJob, model:ModelStruct, metricList:Array[RecJobMetric]) = {
 		
-		//TODO: add more models
 		model match {
 			//get predicted labels
-			case linearModel:LinearRegressionModelStruct => 
-				Some(LinearRegNotColdTestHandler.performTest(jobInfo, testName, 
-						                                testParams, linearModel))
+			case linearModel:LinearRegressionModelStruct => {
+			    metricList.map { metric =>
+			    	metric match {
+			    		case metricSE:RecJobMetricSE => {
+			    			linearModelSEEval(jobInfo, linearModel)
+			    			testHandlerRes foreach { testVal =>
+		    				     val score = metricSE.run(testVal.map{x => (x._3, x._4)})
+		    				     //TODO: add test type
+		    				     Logger.info(s"Evaluated $model Not Coldstart $metric = $score")
+			    				
+			    			}
+			    		}
+			    		
+			    		case metricHR:RecJobMetricHR => {
+			    			linearModelHREval(jobInfo, linearModel)
+			    			hitTestHandlerRes foreach { testVal =>
+			    				val scores  = metricHR.run(testVal)
+			    				//TODO: add test type
+                                 Logger.info(s"Evaluated $model Not Coldstart  $metric = $scores")
+			    			}
+			    		}
+			    		
+			    		case _ => Logger.warn(s"$metric not known metric")
+			    	}
+			    }
+			}
 			case _ => None
 		}
 	}
+	
+	
+	def linearModelSEEval(jobInfo: RecJob, 
+			                linearModel:LinearRegressionModelStruct) = {
+		if (!testHandlerRes.isDefined) {
+            testHandlerRes = Some(LinearRegNotColdTestHandler.performTest(jobInfo, 
+            		                          testName, testParams, linearModel))
+        }
+	}
+	
+	
+	def linearModelHREval(jobInfo: RecJob, 
+			                linearModel:LinearRegressionModelStruct) = {
+		if (!hitTestHandlerRes.isDefined) {
+			hitTestHandlerRes = Some(RegNotColdHitTestHandler.performTest(jobInfo, 
+					testName, testParams, linearModel))
+		}
+	}
+	
 }
+
 
 
 /*

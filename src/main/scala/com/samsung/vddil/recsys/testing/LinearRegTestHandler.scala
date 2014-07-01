@@ -7,7 +7,7 @@ import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.job.Rating
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.linalg.{Vectors, Vector}
 
 
 trait LinearRegTestHandler {
@@ -57,6 +57,28 @@ trait LinearRegTestHandler {
             //(U, I, RDD[LabeledPoint])
             (parts(0), parts(1), LabeledPoint(rating, Vectors.dense(features)))
        }
+    }
+    
+    
+    //generate all possible user item pairs with feature vectors
+    def concateUserWAllItemFeat(userFeaturesRDD:RDD[(String, String)],
+                                itemFeaturesRDD:RDD[(String, String)])
+                                : RDD[(String, String, Vector)]= {
+        val userItemFeatures = userFeaturesRDD.cartesian(itemFeaturesRDD) //((U,UF)(I,IF))
+                                              .map { x =>
+                                                  (x._1._1, x._2._1, x._1._2, x._2._2)
+                                              } // (U, I, UF, IF)
+        val userItemFeatVector = userItemFeatures.map {x => 
+        	    val user = x._1
+        	    val item = x._2
+        	    //join user and item features
+        	    val features = x._3.split(',') ++ x._4.split(',')
+        	    val featureVec = Vectors.dense(features.map{_.toDouble})
+        	    //U, I, Feature vector
+        	    (user, item, featureVec)
+        }
+        
+        userItemFeatVector
     }
     
     
