@@ -27,7 +27,7 @@ object TestObj {
 		  logger.warn("No config file specified. Used default job file: " + cfgFileStr)
 		}
 		
-		Pipeline.config(cfgFileStr)
+		Pipeline.config()
 		
 		// only proceed to jobs if pipeline is properly configured. 
 		if (Pipeline.instance.isDefined){
