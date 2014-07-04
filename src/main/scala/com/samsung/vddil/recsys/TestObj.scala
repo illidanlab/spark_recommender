@@ -33,7 +33,7 @@ object TestObj {
 		if (Pipeline.instance.isDefined){
 		
 			//Read job file
-			var jobFileStr:String = "/jobs/test_job.xml" 
+			var jobFileStr:String = "test_job.xml" 
 			if (args.size > 0){
 			  jobFileStr = args(0)
 			  logger.info("Job file specified: " + jobFileStr)
@@ -42,7 +42,8 @@ object TestObj {
 			}
 			
 			//Process job file
-			val jobList : List[Job] = Job.readFromXMLFile(jobFileStr)
+			val jobList : List[Job] = Job.readFromXMLFile(jobFileStr,
+                                                    Pipeline.instance.get.sc)
 			
 			for (job:Job <- jobList){
 			   logger.info("=== Running job: " + job + " ===")

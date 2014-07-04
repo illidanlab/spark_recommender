@@ -169,8 +169,6 @@ object DataAssemble {
                                                         usedItemFeature, 
                                                         jobInfo.jobStatus.resourceLocation_ItemFeature, 
                                                         sc)
-        itemFeaturesRDD.persist
-        itemFeaturesRDD.count
          
         //2. perform an intersection on selected user features, generate <intersectUF>
         val userIntersectIds = getIntersectIds(usedUserFeature, 
@@ -181,38 +179,36 @@ object DataAssemble {
                                                 usedUserFeature, 
                                                 jobInfo.jobStatus.resourceLocation_UserFeature, 
                                                 sc)
-        userFeaturesRDD.persist
-        userFeaturesRDD.count
         
         //5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
         //   and generate <intersectTuple>
         //filtering such that we have only user-item pairs such that for both features have been found
         val allData = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
-                           .map{lines => 
-                                val fields = lines.split(',')
-                                //user, item, watchtime
-                                (fields(0), (fields(1), fields(2).toDouble))
-                           }//contains both user and item in set
+                        .map{lines => 
+                            val fields = lines.split(',')
+                            //user, item, watchtime
+                            (fields(0), (fields(1), fields(2).toDouble))
+                        }//contains both user and item in set
         
         val filterByUser = allData.join(userIntersectIds.map(x=>(x,1)))
-        				   .map {x => //(user, ((item, watchtime),1))
-        				     (x._2._1._1, (x._1, x._2._1._2)) //(item, (user, watchtime))
-        				   }
+                                  .map {x => //(user, ((item, watchtime),1))
+                                     (x._2._1._1, (x._1, x._2._1._2)) //(item, (user, watchtime))
+                                   }
         				   
         val filterByUserItem = filterByUser.join(itemIntersectIds.map(x => (x,1)))
-				   							.map { x => //(item, ((user, watchtime),1))
-				   								(x._2._1._1, x._1, x._2._1._2) //(user, item, watchtime)
-    				   						}
+                                           .map { x => //(item, ((user, watchtime),1))
+                                              (x._2._1._1, x._1, x._2._1._2) //(user, item, watchtime)
+                                            }
    
       
         //6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
         //join with user features
         val joinedUserFeature = filterByUserItem.map{x => (x._1, (x._2, x._3))} 
                                             	.join(userFeaturesRDD) // (user, ((item, rating), UF)) 
-		                                        .map {y =>
-		                                                //(item, (user, UF, rating))
-		                                                (y._2._1._1, (y._1, y._2._2, y._2._1._2)) 
-		                                        }
+                                              .map {y =>
+                                                      //(item, (user, UF, rating))
+                                                      (y._2._1._1, (y._1, y._2._2, y._2._1._2)) 
+                                              }
         //join with item features
         val joinedUserItemFeatures = joinedUserFeature.join(itemFeaturesRDD) //(item, ((user, UF, rating), IF))
                                                     .map {z =>
