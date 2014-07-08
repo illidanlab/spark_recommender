@@ -9,6 +9,8 @@ import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 
+import org.apache.spark.HashPartitioner
+
 /**
  * This process splits an assembled data into training, testing and validation, and store 
  * the splittings in the data structure.  
@@ -53,7 +55,10 @@ object DataSplitting {
 		    	
 		    	//get spark context
 		    	val sc = jobInfo.sc
-		    	
+          val numExecutors = sc.getConf.getOption("spark.executor.instances")
+          val numExecCores = sc.getConf.getOption("spark.executor.cores")
+          val numPartitions = 2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt
+          
 		    	//randomize the passed data
 		    	val randData = sc.textFile(assembleContinuousDataFile).map { line =>
 		    		//generate a random id for splitting 
@@ -65,7 +70,7 @@ object DataSplitting {
 		    		//divide it by 10 to make it lie between 0 to 1, 
 		    		//to make it comparable to split percentages
 		    		(randId.toDouble / 10, line)
-		    	}
+		    	}.partitionBy(new HashPartitioner(numPartitions))
 		    	
 		    	//persist the randomize data for faster split generation
 		    	randData.persist
@@ -75,17 +80,20 @@ object DataSplitting {
 		    	//get the train data, i.e all random id < trainPc
 		    	val trainData = randData.filter(_._1 < trainingPerc)
 		    	                        .map(_._2) //remove the random id get only the data
-		    	
+		    	                        .coalesce((numPartitions.toDouble*trainingPerc).toInt)
+
 		    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
 		    	val testData = randData.filter(x => x._1 >= trainingPerc 
 		    	                                && x._1 < (trainingPerc + testingPerc))
-		    			               .map(_._2) //remove the random id get only the data
-		        
+		    			                   .map(_._2) //remove the random id get only the data
+		                             .coalesce((numPartitions.toDouble*testingPerc).toInt)
+
 		        //get the validation data i.e. all randomId > (trainPc+testPc)
 		    	val valData = randData.filter(x => x._1 >= (trainingPerc + testingPerc))
 		    	                      .map(_._2) //remove the random id get only the data
-		    	
-		        //save data into files
+		    	                      .coalesce((numPartitions.toDouble*validationPerc).toInt)
+
+          //save data into files
 		    	if (jobInfo.outputResource(trDataFilename)) trainData.saveAsTextFile(trDataFilename)
 		    	if (jobInfo.outputResource(teDataFilename)) testData.saveAsTextFile(teDataFilename)
 		    	if (jobInfo.outputResource(vaDataFilename)) valData.saveAsTextFile(vaDataFilename)
