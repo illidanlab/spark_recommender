@@ -73,7 +73,7 @@ object Pipeline {
 		}else{
        try{
          //new SparkContext(sparkContext_master, sparkContext_jobName)
-         val sc = new SparkContext(new SparkConf())
+         val sc = new SparkContext(new SparkConf().set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError"))
          val fs = FileSystem.get(sc.hadoopConfiguration)
          
          Instance = Some(new Pipeline(sc, fs))
