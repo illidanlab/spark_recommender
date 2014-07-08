@@ -13,6 +13,8 @@ import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.FeatureStruct
 
+import org.apache.spark.RangePartitioner
+import org.apache.spark.HashPartitioner
 
 case class AggDataWFeatures(location: String, userFeatureOrder: List[String],
                             itemFeatureOrder: List[String])
@@ -162,10 +164,10 @@ object DataAssemble {
         //TODO: save feature ordering in file system
         //3. perform an intersection on selected item features, generate <intersectIF>
         val itemIntersectIds = getIntersectIds(usedItemFeature, 
-                                                   jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+                                               jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
                             
         //parse eligible features and extract only those with ids present in itemIntersectIds
-        val (itemFeaturesRDD, itemFeatureOrder) =  getCombinedFeatures(itemIntersectIds, 
+        var (itemFeaturesRDD, itemFeatureOrder) =  getCombinedFeatures(itemIntersectIds, 
                                                         usedItemFeature, 
                                                         jobInfo.jobStatus.resourceLocation_ItemFeature, 
                                                         sc)
@@ -175,11 +177,24 @@ object DataAssemble {
                     jobInfo.jobStatus.resourceLocation_UserFeature, sc)
     
         //parse eligible features and extract only those with ids present in userIntersectIds
-        val (userFeaturesRDD, userFeatureOrder) =  getCombinedFeatures(userIntersectIds, 
-                                                usedUserFeature, 
-                                                jobInfo.jobStatus.resourceLocation_UserFeature, 
-                                                sc)
-        
+        var (userFeaturesRDD, userFeatureOrder) =  getCombinedFeatures(userIntersectIds, 
+                                                        usedUserFeature, 
+                                                        jobInfo.jobStatus.resourceLocation_UserFeature, 
+                                                        sc)
+          
+
+        //below is the code to forget the lineage by saving and loading from
+        //object file  can be helful while debugging
+        /*
+        val itemRDDPath = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/rec_spark_wsp/itemFeatRDD" 
+        itemFeaturesRDD.saveAsObjectFile(itemRDDPath)
+        itemFeaturesRDD = sc.objectFile(itemRDDPath)
+        val userRDDPath = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/rec_spark_wsp/userFeatRDD" 
+        userFeaturesRDD.saveAsObjectFile(userRDDPath)
+        userFeaturesRDD = sc.objectFile(userRDDPath)
+        */
+
+
         //5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
         //   and generate <intersectTuple>
         //filtering such that we have only user-item pairs such that for both features have been found
@@ -190,46 +205,54 @@ object DataAssemble {
                             (fields(0), (fields(1), fields(2).toDouble))
                         }//contains both user and item in set
         
+
         val filterByUser = allData.join(userIntersectIds.map(x=>(x,1)))
                                   .map {x => //(user, ((item, watchtime),1))
                                      (x._2._1._1, (x._1, x._2._1._2)) //(item, (user, watchtime))
                                    }
+        //filterByUser.persist
         				   
         val filterByUserItem = filterByUser.join(itemIntersectIds.map(x => (x,1)))
                                            .map { x => //(item, ((user, watchtime),1))
                                               (x._2._1._1, x._1, x._2._1._2) //(user, item, watchtime)
                                             }
-   
-      
-        //6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
-        //join with user features
-        val joinedUserFeature = filterByUserItem.map{x => (x._1, (x._2, x._3))} 
-                                            	.join(userFeaturesRDD) // (user, ((item, rating), UF)) 
-                                              .map {y =>
-                                                      //(item, (user, UF, rating))
-                                                      (y._2._1._1, (y._1, y._2._2, y._2._1._2)) 
-                                              }
-        //join with item features
-        val joinedUserItemFeatures = joinedUserFeature.join(itemFeaturesRDD) //(item, ((user, UF, rating), IF))
-                                                    .map {z =>
-                                                      //user, item, UF, IF, rating
-                                                      z._2._1._1 + "," + z._1 + "," + 
-                                                          z._2._1._2 + "," + z._2._2 + 
-                                                          "," + z._2._1._3
-                                                      //UF, IF, rating
-                                                      //z._2._1._2 + "," + z._2._2 + "," 
-                                                      //+ z._2._1._3
-                                                    } 
-        val aggData = joinedUserItemFeatures
-        //if (jobInfo.outputResource(assembleFileName)) {
-        // join features and store in assembleFileName
-          aggData.saveAsTextFile(assembleFileName)
-        //}
+        //filterByUserItem.persist
         
+        //6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
+        //join with item features first as no. of items is small
+        val joinedItemFeatures = filterByUserItem.map{x => (x._2, (x._1, x._3))}
+                                        .join(itemFeaturesRDD) //(item, ((user, rating), IF))
+                                        .map{y =>    
+                                                  //(user, (item, IF, rating))
+                                                  (y._2._1._1, (y._1, y._2._2, y._2._1._2))
+                                        }
+       
+        val numExecutors = sc.getConf.getOption("spark.executor.instances")
+        val numExecCores = sc.getConf.getOption("spark.executor.cores")
+        val numPartitions = 2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt
+        //can use both range partitoner or hashpartitioner to efficiently partition by user
+        //val partedByUJoinedItemFeat = joinedItemFeatures.partitionBy(new HashPartitioner(numPartitions))
+        val partedByUJoinedItemFeat = joinedItemFeatures.partitionBy(new RangePartitioner(numPartitions, 
+                                                                                          joinedItemFeatures)) 
 
-        userFeaturesRDD.unpersist(false)
-        itemFeaturesRDD.unpersist(false)
+        //join with user features
+        val joinedUserItemFeatures = partedByUJoinedItemFeat.join(userFeaturesRDD) //(user, ((item, IF, rating), UF))
+                                                            .map {x=>
+                                                              //(user, item, UF, IF, rating)
+                                                              x._1 + "," +
+                                                              x._2._1._1 + "," +
+                                                              x._2._2 + "," +
+                                                              x._2._1._2 + "," +
+                                                              x._2._1._3
+                                                            }
 
+        //join with item features
+        val aggData = joinedUserItemFeatures
+        if (jobInfo.outputResource(assembleFileName)) {
+          // join features and store in assembleFileName
+          aggData.saveAsTextFile(assembleFileName)
+        }
+        
         //7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
         jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
                     AggDataWFeatures(assembleFileName, userFeatureOrder, itemFeatureOrder)
