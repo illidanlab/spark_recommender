@@ -68,13 +68,15 @@ trait Job {
 
 object Job{
 
-  //return input stream from hdfs
-  def inputStreamHDFS(hadoopConf:Configuration, filePath:String): InputStream = {
-    val fileSystem = FileSystem.get(hadoopConf)
-    val path = new Path(filePath)
-    fileSystem.open(path)
-  }
-
+	//return input stream from hdfs
+	def inputStreamHDFS(hadoopConf:Configuration, filePath:String): Option[InputStream] = {
+	   val fileSystem = FileSystem.get(hadoopConf)
+	   val path = new Path(filePath)
+	   if (fileSystem.exists(path))
+		   Some(fileSystem.open(path))
+	   else
+	       None
+	}
 
 	/*
 	 * Read jobs from a job file. 
@@ -85,18 +87,19 @@ object Job{
 	  
 	  var jobList:List[Job] = List() 
 	  var xml:Option[scala.xml.Elem] = None
-    val hadoopConf = sc.hadoopConfiguration
+      val hadoopConf = sc.hadoopConfiguration
 
-    //reading job file from hdfs 
-    val jobfileIn:InputStream = inputStreamHDFS(hadoopConf, filename)
+      //reading job file from hdfs 
+      val jobfileIn:Option[InputStream] = inputStreamHDFS(hadoopConf, filename)
 	  
 	  // If the job file exists, we parse it and look for all job entries, and 
 	  // populate these entries into classes. 
-	  if (null != jobfileIn) {
+	  if (jobfileIn.isDefined) {
 	    logger.info("Job file found in file system: " + filename)
-	    xml = Some(XML.load(jobfileIn))
+	    xml = Some(XML.load(jobfileIn.get))
 	  }else{
-      val resLoc = "/jobs/test_job.xml"
+		//val resLoc = "/jobs/test_job.xml"
+	    val resLoc = "/jobs/"+filename
 	    logger.info("Job file not found in file system, try loading resource: [%s]".format(resLoc) )
 	    //if file is not found we try to see if we can use one in resource folder.
 	    try{

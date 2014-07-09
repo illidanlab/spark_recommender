@@ -6,6 +6,7 @@ import org.apache.hadoop.fs.FileSystem
 import java.io.File
 import scala.xml.XML
 import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkException
 
 /**
  * This is the pipeline class, which includes pipeline configurations such as Spark Context and 
@@ -71,15 +72,30 @@ object Pipeline {
 		if(Instance.isDefined){
 		    Logger.error("The pipeline is already configured. ")
 		}else{
-       try{
-         //new SparkContext(sparkContext_master, sparkContext_jobName)
-         val sc = new SparkContext(new SparkConf().set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError"))
-         val fs = FileSystem.get(sc.hadoopConfiguration)
-         
-         Instance = Some(new Pipeline(sc, fs))
-       }catch{
-         case _:Throwable => Logger.error("Failed to build SparkContext!")
-       }
+	       try{
+	         
+	    	 var sc:Option[SparkContext] = None
+	         
+	         try{
+	        	 sc = Some(new SparkContext(new SparkConf().set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")))
+	         }catch{
+	           case _:SparkException =>
+	             Logger.warn("Failed to build SparkContext from Spark submit! Trying to build a local one from config file.")
+	             sc = Some(new SparkContext("local[4]", "local_test"))
+	         }
+	         
+	         if (sc.isDefined){
+		         val fs = FileSystem.get(sc.get.hadoopConfiguration)
+		         
+		         Instance = Some(new Pipeline(sc.get, fs))
+	         }
+	       }catch{
+	         case spEx:SparkException =>
+	           	
+	         case th:Throwable => 
+	         	Logger.error("Failed to build SparkContext!")
+	         	th.printStackTrace()
+	       }
 		}
 	}
 
