@@ -34,43 +34,42 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 		                        .collect
 		                        .toSet
 		
-        val testItems = testData.map{ _.item}
-                                .distinct
-                                .collect
-                                .toSet
-		                   
+    val testItems = testData.map{ _.item}
+                            .distinct
+                            .collect
+                            .toSet
+                   
 		//get feature orderings
-        val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                            .userFeatureOrder
-        
-        val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                            .itemFeatureOrder
+    val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
+                                        .userFeatureOrder
+    
+    val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
+                                        .itemFeatureOrder
 
-        //get required user item features     
-         
-		val userFeaturesRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
-				            jobInfo.jobStatus.resourceLocation_UserFeature, sc)
-			
-		val itemFeaturesRDD = getOrderedFeatures(testItems, itemFeatureOrder, 
+    //get required user item features     
+    val userFeaturesRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
+                    jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      
+    val itemFeaturesRDD = getOrderedFeatures(testItems, itemFeatureOrder, 
                             jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
         
-        //get user item features
-        //NOTE: this will also do filtering of test data in case feature not found 
-        //owing to coverage criteria of training data
-        val userItemFeatWRating = concatUserTestFeatures(userFeaturesRDD, itemFeaturesRDD, testData)
-		
-        //get prediction on test data
-        //conv to label points
-        val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
-        
-        //NOTE: user-item pair in test can apeear more than once
-        val testLabelNPred = testLabelPoints.map { point =>
-        	                        (point._1, //user
-        	                         point._2, //item
-                                	  point._3.label, //actual label
-                                	 model.model.predict(point._3.features))
-                                } 
-        testLabelNPred
+    //get user item features
+    //NOTE: this will also do filtering of test data in case feature not found 
+    //owing to coverage criteria of training data
+    val userItemFeatWRating = concatUserTestFeatures(userFeaturesRDD, itemFeaturesRDD, testData, sc)
+
+    //get prediction on test data
+    //conv to label points
+    val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
+    
+    //NOTE: user-item pair in test can apeear more than once
+    val testLabelNPred = testLabelPoints.map { point =>
+                              (point._1, //user
+                               point._2, //item
+                                point._3.label, //actual label
+                               model.model.predict(point._3.features))
+                            } 
+    testLabelNPred
         
 	}
 	

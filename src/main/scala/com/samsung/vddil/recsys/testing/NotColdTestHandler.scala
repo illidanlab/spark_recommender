@@ -15,7 +15,13 @@ trait NotColdTestHandler {
 			                    sc:SparkContext): RDD[Rating] = {
 		val userSet = jobStatus.users.toSet
 		val itemSet = jobStatus.items.toSet
-		testData.filter(rating => userSet(rating.user) && itemSet(rating.item))
+    
+    //broadcast these sets to worker nodes
+	  val bUSet = sc.broadcast(userSet)
+    val bISet = sc.broadcast(itemSet)
+    
+    testData.filter(rating => 
+                    bUSet.value(rating.user) && bISet.value(rating.item))
 	}
 	
 	

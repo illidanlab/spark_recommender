@@ -8,7 +8,7 @@ import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.job.Rating
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
-
+import org.apache.spark.RangePartitioner 
 
 trait LinearRegTestHandler {
 
@@ -16,7 +16,12 @@ trait LinearRegTestHandler {
     def getOrderedFeatures(idSet: Set[String], featureOrder: List[String], 
     		                    featureResourceMap: HashMap[String, FeatureStruct],
     		                    sc:SparkContext): RDD[(String, String)] = {
-    	//initialize list of RDD of format (id,features)
+        
+        //broadcast idSet to workers
+        val bIdSet = sc.broadcast(idSet)
+
+
+    	  //initialize list of RDD of format (id,features)
         var idFeatures:List[RDD[(String, String)]]  = List.empty
         var featureJoin = sc.textFile(featureResourceMap(featureOrder.head).featureFileName)
                             .map{ line =>
@@ -25,9 +30,9 @@ trait LinearRegTestHandler {
                                   val features = fields.slice(1, fields.length).mkString(",")
                                   (id, features)
                              }
-                            .filter(x => idSet.contains(x._1)) //id matches specified id in set
+                            .filter(x => bIdSet.value.contains(x._1)) //id matches specified id in set
         
-         //add remaining features
+        //add remaining features
         for (usedFeature <- featureOrder.tail) {
         	featureJoin  = featureJoin.join( sc.textFile(featureResourceMap(usedFeature).featureFileName)
                                                 .map { line =>
@@ -36,7 +41,7 @@ trait LinearRegTestHandler {
                                                         val features = fields.slice(1, fields.length).mkString(",")
                                                         (id, features)
                                                 }
-                                                .filter(x => idSet.contains(x._1)) //id matches specified id in set
+                                                .filter(x => bIdSet.value.contains(x._1)) //id matches specified id in set
                                             ).map {x =>
                                                 (x._1, x._2._1 + "," + x._2._2)
                                             }
@@ -86,27 +91,30 @@ trait LinearRegTestHandler {
     //user, item, UF, IF, rating
     def concatUserTestFeatures(userFeaturesRDD:RDD[(String, String)],
     		                    itemFeaturesRDD:RDD[(String, String)],
-    		                    testData:RDD[Rating]) : RDD[String] = {
-    	val userItemFeatureWRating  = testData.map {x => 
-    		        (x.user, (x.item, x.rating))
-    		    }
-                .join(userFeaturesRDD) // (user, ((item, rating), UF)) 
-                .map {y =>
-                      //(item, (user, UF, rating))
-                      (y._2._1._1, (y._1, y._2._2, y._2._1._2)) 
-                }
-                .join(itemFeaturesRDD) //(item, ((user, UF, rating), IF))
-                .map {z =>
-                        //user, item, UF, IF, rating
-                        z._2._1._1 + "," + z._1 + "," + 
-                        z._2._1._2 + "," + z._2._2 + 
-                        "," + z._2._1._3
-                        //UF, IF, rating
-                        //z._2._1._2 + "," + z._2._2 + "," 
-                        //+ z._2._1._3
-                }
-        
-        userItemFeatureWRating  
+    		                    testData:RDD[Rating], sc:SparkContext) : RDD[String] = {
+
+      val numExecutors = sc.getConf.getOption("spark.executor.instances")
+      val numExecCores = sc.getConf.getOption("spark.executor.cores")
+      val numPartitions = 2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt 
+      val joinedItemFeatures = testData.map{x =>
+                          (x.item, (x.user, x.rating))
+                        }.join(itemFeaturesRDD)  // (item, ((user, rating), IF))
+                         .map{y =>
+                          //(user, (item, IF, rating))
+                          (y._2._1._1, (y._1, y._2._2, y._2._1._2))
+                        }
+      val partedJoinedItemFeat = joinedItemFeatures.partitionBy(
+                                        new RangePartitioner(numPartitions, joinedItemFeatures))
+      val userItemFeatWRating = partedJoinedItemFeat.join(userFeaturesRDD) //(user, ((item, IF, rating), UF))
+                                                    .map {x=>
+                                                      //(user, item, UF, IF, rating)
+                                                      x._1 + "," +
+                                                      x._2._1._1 + "," +
+                                                      x._2._2 + "," +
+                                                      x._2._1._2 + "," +
+                                                      x._2._1._3
+                                                    }                        
+      userItemFeatWRating  
     }
     
     
