@@ -9,3 +9,5 @@ C:/logs/notify-subscription.log
 .cache 2
 
 .cache
+
+*.sublime-workspace
