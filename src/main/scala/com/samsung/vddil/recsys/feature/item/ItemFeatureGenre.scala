@@ -11,7 +11,7 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
-
+import com.samsung.vddil.recsys.linalg.Vectors
 
 object ItemFeatureGenre  extends FeatureProcessingUnit{
   
@@ -110,11 +110,21 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         //generate feature vector for each items    
         val itemGenreInds = itemGenreList.groupByKey().map { x =>
           var itemId = x._1
-          var featureVec = Array.fill[Byte](numGenres)(0) //initialize all to 0
+          
+          ////save to dense vector
+          //var featureVec = Array.fill[Byte](numGenres)(0) //initialize all to 0
+          //for (genre <- x._2) {
+          //    featureVec(genre2Ind(genre)) = 1
+          //}
+          //itemId + "," + featureVec.mkString(",")
+          
+          //save to sparse vector
+          var featureVecPair = Seq[(Int, Double)]()
           for (genre <- x._2) {
-              featureVec(genre2Ind(genre)) = 1
+        	  featureVecPair = featureVecPair :+ (genre2Ind(genre), 1.0)
           }
-          itemId + "," + featureVec.mkString(",")
+          val featureVec = Vectors.sparse(numGenres, featureVecPair)
+          (itemId, featureVec)
         }
         
         Logger.info("created item genre feature vectors")
@@ -122,7 +132,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         //save item features as textfile
         if (jobInfo.outputResource(featureFileName)){
         	Logger.logger.info("Dumping feature resource: " + featureFileName)
-        	itemGenreInds.saveAsTextFile(featureFileName)
+        	//itemGenreInds.saveAsTextFile(featureFileName)
+        	itemGenreInds.saveAsObjectFile(featureFileName) //directly use object + serialization. 
         }
         
         //save genre mapping to indexes
