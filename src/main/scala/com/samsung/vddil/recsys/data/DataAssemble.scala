@@ -19,6 +19,11 @@ import org.apache.spark.HashPartitioner
 case class AggDataWFeatures(location: String, userFeatureOrder: List[String],
                             itemFeatureOrder: List[String])
 
+/**
+ * This version is no longer used and no longer maintained. 
+ * Use com.samsung.vddil.recsys.data.DataAssembleObj. 
+ * 
+ */                            
 object DataAssemble {
   
   /**

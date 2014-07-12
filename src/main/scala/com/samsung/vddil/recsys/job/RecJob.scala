@@ -139,14 +139,15 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	    	this.modelList.foreach{
 	    	     modelUnit => {
 	    	         logger.info("*buildling model" + modelUnit.toString())
-	    	         modelUnit.run(this)
+	    	         //modelUnit.run(this)
 	    	     }
 	    	}
     	}
     	
     	//testing recommendation performance on testing dates.
-    	DataProcess.prepareTest(this)
-    	performTestNEvaluation()
+    	
+    	//DataProcess.prepareTest(this)
+    	//performTestNEvaluation()
     }
     
     
