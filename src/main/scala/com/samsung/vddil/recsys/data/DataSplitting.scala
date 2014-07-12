@@ -10,6 +10,7 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 
 import org.apache.spark.HashPartitioner
+import org.apache.spark.RangePartitioner 
 
 /**
  * This process splits an assembled data into training, testing and validation, and store 
@@ -70,36 +71,39 @@ object DataSplitting {
 		    		//divide it by 10 to make it lie between 0 to 1, 
 		    		//to make it comparable to split percentages
 		    		(randId.toDouble / 10, line)
-		    	}.partitionBy(new HashPartitioner(numPartitions))
+		    	}
 		    	
+          val partedRandData = randData//.partitionBy(new RangePartitioner(numPartitions/4, randData)) 
+
 		    	//persist the randomize data for faster split generation
-		    	randData.persist
+		    	partedRandData.persist
 		    	
+          Logger.info("Number of partitions: " +
+            partedRandData.partitions.length)
+
+
 		    	//split the data based on specified percentage
 		    	
 		    	//get the train data, i.e all random id < trainPc
-		    	val trainData = randData.filter(_._1 < trainingPerc)
+		    	val trainData = partedRandData.filter(_._1 < trainingPerc)
 		    	                        .map(_._2) //remove the random id get only the data
-		    	                        .coalesce((numPartitions.toDouble*trainingPerc).toInt)
 
 		    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
-		    	val testData = randData.filter(x => x._1 >= trainingPerc 
+		    	val testData = partedRandData.filter(x => x._1 >= trainingPerc 
 		    	                                && x._1 < (trainingPerc + testingPerc))
 		    			                   .map(_._2) //remove the random id get only the data
-		                             .coalesce((numPartitions.toDouble*testingPerc).toInt)
 
 		        //get the validation data i.e. all randomId > (trainPc+testPc)
-		    	val valData = randData.filter(x => x._1 >= (trainingPerc + testingPerc))
+		    	val valData = partedRandData.filter(x => x._1 >= (trainingPerc + testingPerc))
 		    	                      .map(_._2) //remove the random id get only the data
-		    	                      .coalesce((numPartitions.toDouble*validationPerc).toInt)
-
+          
           //save data into files
 		    	if (jobInfo.outputResource(trDataFilename)) trainData.saveAsTextFile(trDataFilename)
 		    	if (jobInfo.outputResource(teDataFilename)) testData.saveAsTextFile(teDataFilename)
 		    	if (jobInfo.outputResource(vaDataFilename)) valData.saveAsTextFile(vaDataFilename)
 		    	
 		    	//unpersist the persisted data to free up memory associated
-		    	randData.unpersist(false)
+		    	partedRandData.unpersist(false)
 	    	}
 	    	
 	    	//save resource to jobStatus

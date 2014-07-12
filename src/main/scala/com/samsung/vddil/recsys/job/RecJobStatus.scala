@@ -33,14 +33,14 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	
 	val resourceLocation_AggregateData_Continuous_Train:HashMap[String, String] = new HashMap() 
 	val resourceLocation_AggregateData_Continuous_Test:HashMap[String, String]  = new HashMap() 
-    val resourceLocation_AggregateData_Continuous_Valid:HashMap[String, String] = new HashMap() 
+  val resourceLocation_AggregateData_Continuous_Valid:HashMap[String, String] = new HashMap() 
       
-    val resourceLocation_AggregateData_Binary:HashMap[String, String]       = new HashMap() 
+  val resourceLocation_AggregateData_Binary:HashMap[String, String]       = new HashMap() 
 	val resourceLocation_AggregateData_Binary_Train:HashMap[String, String] = new HashMap() 
 	val resourceLocation_AggregateData_Binary_Test:HashMap[String, String]  = new HashMap() 
-    val resourceLocation_AggregateData_Binary_Valid:HashMap[String, String] = new HashMap() 
-	  
-    //Store user/item feature resource
+  val resourceLocation_AggregateData_Binary_Valid:HashMap[String, String] = new HashMap() 
+  
+  //Store user/item feature resource
 	// meta information such as user/item feature map resource are now move to FeatureStruct.
 	val resourceLocation_UserFeature:HashMap[String, FeatureStruct] = new HashMap() 
 	val resourceLocation_ItemFeature:HashMap[String, FeatureStruct] = new HashMap()
@@ -64,8 +64,10 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	 */
 	var users:Array[String] = Array[String]()
 	var items:Array[String] = Array[String]()
-	
-	/*
+	var userIdMap:Option[Map[String, Int]] = None
+  var itemIdMap:Option[Map[String, Int]] = None 
+  
+  /*
 	 * test data in RDD[Rating] form
 	 */
 	var testWatchTime:Option[RDD[Rating]] = None

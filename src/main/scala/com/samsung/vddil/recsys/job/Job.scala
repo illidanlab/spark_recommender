@@ -173,4 +173,4 @@ case class UnknownJobStatus(jobInfo:UnknownJob) extends JobStatus{
 /*
  * more compact class to represent rating than Tuple3[Int, Int, Double]
  */
-case class Rating(user: String, item: String, rating: Double)
+case class Rating(user: Int, item: Int, rating: Double)

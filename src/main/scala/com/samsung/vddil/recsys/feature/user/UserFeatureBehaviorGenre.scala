@@ -82,7 +82,7 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		//read item genre features. item -> feature vector array
 		val itemGenreFeatures = sc.textFile(itemGenreFeatureFile).map{line =>
 		  	val fields = line.split(',')
-		  	val item = fields(0)
+		  	val item = fields(0).toInt
 		  	val genreFeats = fields.slice(1, fields.length).map(s => s.toInt)
 		  	(item, genreFeats)
 		}.collect.toMap
@@ -91,7 +91,7 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 		val userGenreFeatures = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
 			   .map {line =>
 			     	val fields = line.split(',')
-			     	Rating(fields(0), fields(1), fields(2).toDouble)
+			     	Rating(fields(0).toInt, fields(1).toInt, fields(2).toDouble)
 			    }
 			   .filter(rating => itemGenreFeatures.contains(rating.item) ) //filter out items whose genre information is not available
 			   .map { rating =>

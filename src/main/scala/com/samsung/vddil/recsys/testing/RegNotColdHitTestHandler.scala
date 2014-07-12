@@ -9,9 +9,9 @@ import com.samsung.vddil.recsys.job.Rating
 
 
 
-case class HitSet(user: String, topNPredAllItem:Array[String], 
-               topNPredNewItems:Array[String], topNTestAllItems:Array[String],
-               topNTestNewItems:Array[String], N:Int)
+case class HitSet(user: Int, topNPredAllItem:Array[Int], 
+               topNPredNewItems:Array[Int], topNTestAllItems:Array[Int],
+               topNTestNewItems:Array[Int], N:Int)
 
 
 object RegNotColdHitTestHandler extends NotColdTestHandler 
@@ -46,44 +46,47 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     
     
     //get test users
-        val testUsers = testData.map{ _.user}
-                                .distinct
-                                .collect
-                                .toSet
-    
+    val testUsers = testData.map{ _.user.toInt}
+                            .distinct
+                            .collect
+                            .toSet
+
     //get train items
-    val trainItems = jobInfo.jobStatus.items.toSet
+    val trainItems = jobInfo.jobStatus.itemIdMap match {
+                        case Some(map) => map.values.toSet
+                        case None =>   Set[Int]()
+                      }
     
     
     //get feature orderings
-        val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                            .userFeatureOrder
-        
-        val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                            .itemFeatureOrder
+    val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
+                                        .userFeatureOrder
     
-                                            
-        //get required user item features     
-        val userFeaturesRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
-                            jobInfo.jobStatus.resourceLocation_UserFeature, sc)
-            
-        val itemFeaturesRDD = getOrderedFeatures(trainItems, itemFeatureOrder, 
-                            jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+    val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
+                                        .itemFeatureOrder
 
+                                        
+    //get required user item features     
+    val userFeaturesRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
+                        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+        
+    val itemFeaturesRDD = getOrderedFeatures(trainItems, itemFeatureOrder, 
+                        jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+
+                        
+    //for each user get train/past/old items, require to know new items for user
+    //NOTE: This will generate user item set map which can take memory
+    val trainUserItemsSet = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData).map { x =>
+                              val fields = x.split(',')
+                              val user = fields(0).toInt
+                              val item = fields(1).toInt
+                              (user, item)
+                            }.groupByKey().map { x=> 
+                              (x._1, x._2.toSet) //[user, itemsSet]
+                            }.collectAsMap 
                             
-        //for each user get train/past/old items, require to know new items for user
-        //NOTE: This will generate user item set map which can take memory
-        val trainUserItemsSet = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData).map { x =>
-                                  val fields = x.split(',')
-                                  val user = fields(0)
-                                  val item = fields(1)
-                                  (user, item)
-                                }.groupByKey().map { x=> 
-                                  (x._1, x._2.toSet) //[user, itemsSet]
-                                }.collectAsMap 
-                                
-        //for each user get all possible user item features
-        val userItemFeat = concateUserWAllItemFeat(userFeaturesRDD, itemFeaturesRDD)
+    //for each user get all possible user item features
+    val userItemFeat = concateUserWAllItemFeat(userFeaturesRDD, itemFeaturesRDD)
 
         //for each user in test get prediction on all train items
     val userItemPred = userItemFeat.map{ x =>
@@ -111,8 +114,8 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    *will return top-N items both including and excluding passed item set 
    */
   def getTopAllNNewItems(userItemRat:RDD[Rating], 
-                      userItemsSet:scala.collection.Map[String, Set[String]], 
-                      N: Int): RDD[(String, (Array[String], Array[String]))] = {
+                      userItemsSet:scala.collection.Map[Int, Set[Int]], 
+                      N: Int): RDD[(Int, (Array[Int], Array[Int]))] = {
     userItemRat.map{x => (x.user, (x.item, x.rating))}
                 .groupByKey()
                 .map{userItemRat =>

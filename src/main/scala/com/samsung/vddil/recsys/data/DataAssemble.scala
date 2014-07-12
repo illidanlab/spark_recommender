@@ -1,20 +1,19 @@
 package com.samsung.vddil.recsys.data
 
 
-import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.job.Rating
+import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.job.RecJobStatus
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
-import scala.collection.mutable.HashSet
-import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.utils.HashString
-import com.samsung.vddil.recsys.feature.FeatureStruct
-
-import org.apache.spark.RangePartitioner
 import org.apache.spark.HashPartitioner
+import org.apache.spark.RangePartitioner
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
 
 case class AggDataWFeatures(location: String, userFeatureOrder: List[String],
                             itemFeatureOrder: List[String])

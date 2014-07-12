@@ -13,9 +13,9 @@ import org.apache.spark.RangePartitioner
 trait LinearRegTestHandler {
 
     //get features of user or item
-    def getOrderedFeatures(idSet: Set[String], featureOrder: List[String], 
+    def getOrderedFeatures(idSet: Set[Int], featureOrder: List[String], 
     		                    featureResourceMap: HashMap[String, FeatureStruct],
-    		                    sc:SparkContext): RDD[(String, String)] = {
+    		                    sc:SparkContext): RDD[(Int, String)] = {
         
         //broadcast idSet to workers
         val bIdSet = sc.broadcast(idSet)
@@ -26,7 +26,7 @@ trait LinearRegTestHandler {
         var featureJoin = sc.textFile(featureResourceMap(featureOrder.head).featureFileName)
                             .map{ line =>
                                   val fields = line.split(',')
-                                  val id = fields(0)
+                                  val id = fields(0).toInt
                                   val features = fields.slice(1, fields.length).mkString(",")
                                   (id, features)
                              }
@@ -37,7 +37,7 @@ trait LinearRegTestHandler {
         	featureJoin  = featureJoin.join( sc.textFile(featureResourceMap(usedFeature).featureFileName)
                                                 .map { line =>
                                                         val fields = line.split(',')
-                                                        val id = fields(0)
+                                                        val id = fields(0).toInt
                                                         val features = fields.slice(1, fields.length).mkString(",")
                                                         (id, features)
                                                 }
@@ -66,9 +66,9 @@ trait LinearRegTestHandler {
     
     
     //generate all possible user item pairs with feature vectors
-    def concateUserWAllItemFeat(userFeaturesRDD:RDD[(String, String)],
-                                itemFeaturesRDD:RDD[(String, String)])
-                                : RDD[(String, String, Vector)]= {
+    def concateUserWAllItemFeat(userFeaturesRDD:RDD[(Int, String)],
+                                itemFeaturesRDD:RDD[(Int, String)])
+                                : RDD[(Int, Int, Vector)]= {
         val userItemFeatures = userFeaturesRDD.cartesian(itemFeaturesRDD) //((U,UF)(I,IF))
                                               .map { x =>
                                                   (x._1._1, x._2._1, x._1._2, x._2._2)
@@ -89,8 +89,8 @@ trait LinearRegTestHandler {
     
     //get concatenated features with test data
     //user, item, UF, IF, rating
-    def concatUserTestFeatures(userFeaturesRDD:RDD[(String, String)],
-    		                    itemFeaturesRDD:RDD[(String, String)],
+    def concatUserTestFeatures(userFeaturesRDD:RDD[(Int, String)],
+    		                    itemFeaturesRDD:RDD[(Int, String)],
     		                    testData:RDD[Rating], sc:SparkContext) : RDD[String] = {
 
       val numExecutors = sc.getConf.getOption("spark.executor.instances")

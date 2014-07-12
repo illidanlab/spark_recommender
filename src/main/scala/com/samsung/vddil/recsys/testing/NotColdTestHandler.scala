@@ -13,16 +13,23 @@ trait NotColdTestHandler {
 	 */
 	def filterTestRatingData(testData: RDD[Rating], jobStatus: RecJobStatus,
 			                    sc:SparkContext): RDD[Rating] = {
-		val userSet = jobStatus.users.toSet
-		val itemSet = jobStatus.items.toSet
-    
-    //broadcast these sets to worker nodes
-	  val bUSet = sc.broadcast(userSet)
-    val bISet = sc.broadcast(itemSet)
-    
-    testData.filter(rating => 
-                    bUSet.value(rating.user) && bISet.value(rating.item))
-	}
+		var filtTestData = testData
+    jobStatus.userIdMap foreach { userMap =>
+      jobStatus.itemIdMap foreach { itemMap =>
+        val userIdSet = userMap.values.toSet
+        val itemIdSet = itemMap.values.toSet
+        
+        //broadcast these sets to worker nodes
+        val bUSet = sc.broadcast(userIdSet)
+        val bISet = sc.broadcast(itemIdSet)
+        
+        filtTestData = testData.filter(rating => 
+                        bUSet.value(rating.user) && bISet.value(rating.item))
+     
+      }
+    }
+    filtTestData                            
+  }
 	
 	
 }
