@@ -80,6 +80,15 @@ trait Vector extends Serializable {
     */
    def toDense():DenseVector
    
+   /**
+    * Map transformation
+    */
+   def mapValues(f:Double=>Double):Vector
+   
+   /**
+    * copy 
+    */
+   def copy():Vector
 }
 
 
@@ -103,7 +112,14 @@ object Vectors{
    /**
    * Creates a dense vector from a double array.
    */
-   def dense(values:Array[Double]): Vector = new DenseVector(values)
+   def dense(values:Array[Double]): DenseVector = new DenseVector(values)
+   
+   /**
+    * Creates an empty dense vector
+    * 
+    *  @param size vector size. 
+    */
+   def dense(size:Int): DenseVector = new DenseVector(BV.zeros[Double](size).toDenseVector)
    
    /**
    * Creates a sparse vector providing its index array and value array.
@@ -112,7 +128,7 @@ object Vectors{
    * @param indices index array, must be strictly increasing.
    * @param values value array, must have the same length as indices.
    */
-   def sparse(size:Int, indices: Array[Int], values:Array[Double]): Vector = 
+   def sparse(size:Int, indices: Array[Int], values:Array[Double]): SparseVector = 
      	new SparseVector(size, indices, values)
    
    /**
@@ -121,7 +137,7 @@ object Vectors{
    * @param size vector size.
    * @param elements vector elements in (index, value) pairs.
    */
-  def sparse(size: Int, elements: Seq[(Int, Double)]): Vector = {
+  def sparse(size: Int, elements: Seq[(Int, Double)]): SparseVector = {
     require(size > 0)
 
     val (indices, values) = elements.sortBy(_._1).unzip
@@ -135,6 +151,12 @@ object Vectors{
     new SparseVector(size, indices.toArray, values.toArray)
   }
 
+   def sparse(size:Int): SparseVector = {
+      require(size > 0)
+      
+      new SparseVector(size, Array(), Array())
+   }
+   
    /**
     * Create a MLLib vector instance from our RecSys vector instance.
     */
@@ -264,6 +286,14 @@ class DenseVector(val data:BDV[Double]) extends Vector {
   def toDense():DenseVector = {
      new DenseVector(this.data.copy)
   }
+  
+  def mapValues(f:Double => Double): DenseVector = {
+     new DenseVector(this.data.map(f))
+  }
+  
+  def copy():DenseVector = {
+     new DenseVector(this.data.copy)
+  }
 }
 
 /**
@@ -309,5 +339,13 @@ class SparseVector(val data:BSV[Double]) extends Vector{
     
     def toDense():DenseVector = {
        new DenseVector(this.data.toDenseVector)
+    }
+    
+    def mapValues(f: Double => Double):SparseVector = {
+       new SparseVector(this.data.mapActiveValues(f))
+    }
+    
+    def copy():SparseVector = {
+       new SparseVector(this.data.copy)
     }
 }
