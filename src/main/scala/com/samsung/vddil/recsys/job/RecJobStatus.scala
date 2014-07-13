@@ -10,7 +10,7 @@ import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.FeatureStruct
-import com.samsung.vddil.recsys.data.AggDataWFeatures
+import com.samsung.vddil.recsys.data.DataSet
 
 /**
  * A JobStatus implementation for recommendation job. 
@@ -29,7 +29,7 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	var resourceLocation_UserList:String = ""
 	var resourceLocation_ItemList:String = ""
 
-	val resourceLocation_AggregateData_Continuous:HashMap[String, AggDataWFeatures]  = new HashMap() 
+	val resourceLocation_AggregateData_Continuous:HashMap[String, DataSet]  = new HashMap() 
 	
 	val resourceLocation_AggregateData_Continuous_Train:HashMap[String, String] = new HashMap() 
 	val resourceLocation_AggregateData_Continuous_Test:HashMap[String, String]  = new HashMap() 

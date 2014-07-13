@@ -13,26 +13,19 @@ import scala.collection.mutable.HashSet
 import org.apache.spark.rdd.RDD
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.SparkContext
-
 import com.samsung.vddil.recsys.Logger
-
 import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 import com.samsung.vddil.recsys.feature.UserFeatureHandler
 import com.samsung.vddil.recsys.feature.FactFeatureHandler
-
 import com.samsung.vddil.recsys.data.DataProcess
-import com.samsung.vddil.recsys.data.DataAssemble
 import com.samsung.vddil.recsys.data.DataSplitting
-
 import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
-
-
 import com.samsung.vddil.recsys.model._
-
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
-
 import com.samsung.vddil.recsys.testing._
+import com.samsung.vddil.recsys.data.DataAssembleObj
+import com.samsung.vddil.recsys.data.DataSplittingObj
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -139,7 +132,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	    	this.modelList.foreach{
 	    	     modelUnit => {
 	    	         logger.info("*buildling model" + modelUnit.toString())
-	    	         //modelUnit.run(this)
+	    	         modelUnit.run(this)
 	    	     }
 	    	}
     	}
@@ -761,21 +754,21 @@ case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, Str
 		
 		//TODO: parse from XML
 		
-		val dataResourceStr = DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
+		val dataResourceStr = DataAssembleObj.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
 		
 		//2. divide training, testing, validation
 		Logger.logger.info("**divide training/testing/validation")
-		DataSplitting.splitContinuousData(jobInfo, dataResourceStr, 
+		DataSplittingObj.splitContinuousData(jobInfo, dataResourceStr, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio)
 		)
-		
-	    //3. train model on training and tune using validation, and testing.
-		Logger.logger.info("**building and testing models")
-		
-		jobInfo.jobStatus.completedRegressModels(this) = 
-		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
+//		
+//	    //3. train model on training and tune using validation, and testing.
+//		Logger.logger.info("**building and testing models")
+//		
+//		jobInfo.jobStatus.completedRegressModels(this) = 
+//		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
 	}
 }
 
@@ -796,11 +789,11 @@ case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, Str
 	   
 	   //TODO: parse from XML
 	   
-	   val dataResourceStr = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
+	   val dataResourceStr = DataAssembleObj.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
 	   
 	   //2. divide training, testing, validation
 	   Logger.logger.info("**divide training/testing/validation")
-	   DataSplitting.splitBinaryData(jobInfo, dataResourceStr, 
+	   DataSplittingObj.splitBinaryData(jobInfo, dataResourceStr, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio),

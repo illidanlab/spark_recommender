@@ -14,6 +14,7 @@ import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.Pipeline
 
 /**
  * This is the object version of data assemble. During the data assemble, features are
@@ -112,7 +113,9 @@ object DataAssembleObj {
    }
    
    /**
-    * Join features and generate continuous data. The output is the location of the stored file.  
+    * Join features and generate continuous data. The output is the location of the serialized file,
+    * which has the type of (userID:String, itemID:String, features:Vector, rating:Double)  
+    * The data is also stored in <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
     * 
     * @param jobInfo the job information
     * @param minIFCoverage minimum item feature coverage 
@@ -228,9 +231,10 @@ object DataAssembleObj {
                    (userID, (itemID, itemFeature, rating))
               }
                                         
-          val numExecutors = sc.getConf.getOption("spark.executor.instances")
-          val numExecCores = sc.getConf.getOption("spark.executor.cores")
-          val numPartitions = 2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt
+//          val numExecutors = sc.getConf.getOption("spark.executor.instances")
+//          val numExecCores = sc.getConf.getOption("spark.executor.cores")
+//          val numPartitions = 2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt
+          val numPartitions = Pipeline.getPartitionNum
           
           //can use both range partitoner or hashpartitioner to efficiently partition by user
           
@@ -256,15 +260,20 @@ object DataAssembleObj {
         	  // join features and store in assembleFileName
         	  joinedUserItemFeatures.saveAsObjectFile(assembleFileName)
           }
+          val sampleSize = joinedUserItemFeatures.count
           
           jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
                     DataSet(assembleFileName, userFeatureOrder, itemFeatureOrder)
           Logger.info("assembled features: " + assembleFileName)
+          Logger.info("Total data size: " + sampleSize)
       }
       
       resourceStr
    }
-  
+   
+   /**
+    * The identity string of the assemble data structure, which 
+    */
    def assembleContinuousDataIden(
       dataIdentifier:String,
       userFeature:HashSet[String], 

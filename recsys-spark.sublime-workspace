@@ -206,7 +206,7 @@
 			"file": "src/main/scala/com/samsung/vddil/recsys/Pipeline.scala",
 			"settings":
 			{
-				"buffer_size": 2412,
+				"buffer_size": 2876,
 				"line_ending": "Unix"
 			}
 		},
@@ -434,7 +434,7 @@
 	},
 	"find_in_files":
 	{
-		"height": 93.0,
+		"height": 0.0,
 		"where_history":
 		[
 			"readFromXMLFile",
@@ -784,15 +784,15 @@
 					"file": "src/main/scala/com/samsung/vddil/recsys/Pipeline.scala",
 					"settings":
 					{
-						"buffer_size": 2412,
+						"buffer_size": 2876,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								2391,
-								2391
+								0,
+								0
 							]
 						],
 						"settings":
