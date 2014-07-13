@@ -17,7 +17,21 @@ import com.samsung.vddil.recsys.job.Rating
  * Modified by Jiayu: added resource path
  */
 object DataProcess {
-  
+
+
+  /*will replace string id in the RDD (String, (Int, Double))
+   *with int and return RDD[(Int, Int, Double)]
+   */
+  def substituteIntId(idMap:Map[String, Int], 
+                      dataRDD:RDD[(String, (Int,Double))],
+                      sc:SparkContext):RDD[(Int, Int, Double)] = {
+    sc.parallelize(idMap.toList).join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
+      (x._2._1, x._2._2._1, x._2._2._2) //(intId, Int, Double)
+    }
+  }
+
+
+
 	def getDataFromDates(dates:Array[String], 
 							pathPrefix: String,
 							sc: SparkContext):Option[RDD[(String, String, Double)]] = {
@@ -51,7 +65,9 @@ object DataProcess {
 	    val dataLocCombine  = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/combineData_" + dataHashingStr
 	    val dataLocUserList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList_" + dataHashingStr
 	    val dataLocItemList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemList_" + dataHashingStr
-	    
+	    val dataLocUserMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userMap_" + dataHashingStr
+      val dataLocItemMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemMap_" + dataHashingStr
+
 	    val jobStatus:RecJobStatus = jobInfo.jobStatus
 	    
 
@@ -78,35 +94,38 @@ object DataProcess {
             //create mapping from string id to int
             val userIdMap =  (jobStatus.users zip (1 to jobStatus.users.length)).toMap
             jobStatus.userIdMap = Some(userIdMap)
-            
+
             val itemIdMap = (jobStatus.items zip (1 to jobStatus.items.length)).toMap
             jobStatus.itemIdMap = Some(itemIdMap)
 
-            //broadcast these map to worker nodes
-            val bUMap = sc.broadcast(userIdMap)
+            //broadcast only item map as its small to worker nodes
             val bIMap = sc.broadcast(itemIdMap)
 
             //save merged data
             jobStatus.resourceLocation_CombineData = dataLocCombine
             if(jobInfo.outputResource(dataLocCombine)) {
                 Logger.info("Dumping combined data")
-                data.map{record => bUMap.value(record._1) + "," + bIMap.value(record._2) + "," + record._3}
-                    .saveAsTextFile(dataLocCombine) 
+                val replacedItemIds =  data.map{record => 
+                  (record._1, (bIMap.value(record._2), record._3))
+                }
+                val replacesUserIds = substituteIntId(userIdMap,
+                                                      replacedItemIds, sc)    
+                replacesUserIds.saveAsTextFile(dataLocCombine) 
             }
-            
             
             //save users list
             jobStatus.resourceLocation_UserList    = dataLocUserList
             if(jobInfo.outputResource(dataLocUserList)){
                Logger.info("Dumping user list")
                users.saveAsTextFile(dataLocUserList)
-            }       
+            }
 
+            //save user map
+            if (jobInfo.outputResource(dataLocUserMap)) {
+              Logger.info("Dumping user map")
+              sc.parallelize(userIdMap.toList).saveAsTextFile(dataLocUserMap)
+            }
 
-            //save users map
-            //TODO:
-            
-            
             //save items list
             jobStatus.resourceLocation_ItemList    = dataLocItemList
             if(jobInfo.outputResource(dataLocItemList)){
@@ -115,8 +134,10 @@ object DataProcess {
             } 
 
             //save items map
-            //TODO:
-            
+            if (jobInfo.outputResource(dataLocItemMap)) {
+              Logger.info("Dumping item map")
+              sc.parallelize(itemIdMap.toList).saveAsTextFile(dataLocItemMap)
+            }
 
             //unpersist the persisted objects
             users.unpersist(false)
@@ -136,8 +157,7 @@ object DataProcess {
     //get userMap and itemMap
      jobInfo.jobStatus.userIdMap foreach { userMap =>
       jobInfo.jobStatus.itemIdMap foreach { itemMap =>
-        //broadcast user and item map
-        val bUMap = sc.broadcast(userMap)
+        //broadcast item map
         val bIMap = sc.broadcast(itemMap)
 
         //read all data mentioned in test dates l date
@@ -148,13 +168,14 @@ object DataProcess {
         
         //include only users and items seen in training
         testData foreach {data =>
-          val filtData = data.filter{x => 
-                            bUMap.value.contains(x._1) && bIMap.value.contains(x._2)
-                          }.map {x =>
-                            Rating(bUMap.value(x._1), bIMap.value(x._2), x._3)  
-                          }
-          jobInfo.jobStatus.testWatchTime = Some(filtData)
-          
+          val replacedItemIds =  data.map{record => 
+            (record._1, (bIMap.value(record._2), record._3))
+          }
+          val replacedUserIds = substituteIntId(userMap,
+                                                replacedItemIds, sc)    
+          jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
+                                                Rating(x._1, x._2, x._3)
+                                            })
         }
       }  
     }

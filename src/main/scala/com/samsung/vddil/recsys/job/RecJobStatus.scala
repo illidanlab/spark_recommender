@@ -28,6 +28,8 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	var resourceLocation_CombineData:String = ""
 	var resourceLocation_UserList:String = ""
 	var resourceLocation_ItemList:String = ""
+  var resourceLocation_ItemMap = ""
+  var resourceLocation_UserMap = ""
 
 	val resourceLocation_AggregateData_Continuous:HashMap[String, AggDataWFeatures]  = new HashMap() 
 	
