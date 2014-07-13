@@ -115,6 +115,8 @@ object Pipeline {
 	 * Get the default number for hash partitioner 
 	 */
 	def getPartitionNum():Int = {
+	    require(Pipeline.instance.isDefined)
+	    
 	    val numExecutors = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.instances")
         val numExecCores = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
         2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt
@@ -125,6 +127,8 @@ object Pipeline {
 	 * @param partitionNum the number of partitioners for hash partitioner
 	 */
 	def getHashPartitioner(partitionNum:Int = Pipeline.getPartitionNum):HashPartitioner = {
+	    require(Pipeline.instance.isDefined)
+	    
 	    val partitionerName = Pipeline.PartitionHashNum.format(partitionNum)
 	    if(!this.partitioners.isDefinedAt(partitionerName)){
 	        val newPartitioner =  new HashPartitioner(partitionNum)
