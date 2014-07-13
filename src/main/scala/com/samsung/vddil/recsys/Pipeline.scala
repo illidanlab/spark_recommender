@@ -1,12 +1,16 @@
 package com.samsung.vddil.recsys
 
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkConf
-import org.apache.hadoop.fs.FileSystem
 import java.io.File
 import scala.xml.XML
+import scala.collection.mutable.HashMap
+import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkConf
 import org.apache.spark.SparkException
+import org.apache.spark.Partitioner
+import org.apache.spark.HashPartitioner
+
 
 /**
  * This is the pipeline class, which includes pipeline configurations such as Spark Context and 
@@ -19,6 +23,14 @@ class Pipeline private (val sc:SparkContext, val fs:FileSystem){
  
 object Pipeline {
 	private var Instance:Option[Pipeline] = None
+	
+	/**
+	 * Store a list of partitioner for reuser purpose. 
+	 */
+	private var partitioners:HashMap[String, Partitioner] = new HashMap() 
+	
+	val PartitionHashDefault = "defaultHashPartitioner"
+	val PartitionHashNum = "HashPartitioner%d"
 	
 	def instance = Instance
 	
@@ -98,5 +110,26 @@ object Pipeline {
 	       }
 		}
 	}
+	
+	/**
+	 * Get the default number for hash partitioner 
+	 */
+	def getPartitionNum():Int = {
+	    val numExecutors = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.instances")
+        val numExecCores = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
+        2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt
+	}
 
+	
+	/**
+	 * @param partitionNum the number of partitioners for hash partitioner
+	 */
+	def getHashPartitioner(partitionNum:Int = Pipeline.getPartitionNum):HashPartitioner = {
+	    val partitionerName = Pipeline.PartitionHashNum.format(partitionNum)
+	    if(!this.partitioners.isDefinedAt(partitionerName)){
+	        val newPartitioner =  new HashPartitioner(partitionNum)
+	        this.partitioners(partitionerName) = newPartitioner 
+	    }
+	    this.partitioners(partitionerName).asInstanceOf[HashPartitioner]
+	}
 } 
