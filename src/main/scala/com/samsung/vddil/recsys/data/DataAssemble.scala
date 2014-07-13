@@ -16,8 +16,7 @@ import com.samsung.vddil.recsys.feature.FeatureStruct
 import org.apache.spark.RangePartitioner
 import org.apache.spark.HashPartitioner
 
-case class AggDataWFeatures(location: String, userFeatureOrder: List[String],
-                            itemFeatureOrder: List[String])
+
 
 /**
  * This version is no longer used and no longer maintained. 
@@ -176,7 +175,7 @@ object DataAssemble {
                                                         usedItemFeature, 
                                                         jobInfo.jobStatus.resourceLocation_ItemFeature, 
                                                         sc)
-         
+                                                     
         //2. perform an intersection on selected user features, generate <intersectUF>
         val userIntersectIds = getIntersectIds(usedUserFeature, 
                     jobInfo.jobStatus.resourceLocation_UserFeature, sc)
@@ -187,7 +186,7 @@ object DataAssemble {
                                                         jobInfo.jobStatus.resourceLocation_UserFeature, 
                                                         sc)
           
-
+        
         //below is the code to forget the lineage by saving and loading from
         //object file  can be helful while debugging
         /*
@@ -260,7 +259,7 @@ object DataAssemble {
         
         //7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
         jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
-                    AggDataWFeatures(assembleFileName, userFeatureOrder, itemFeatureOrder)
+                    DataSet(assembleFileName, userFeatureOrder, itemFeatureOrder)
         Logger.info("assembled features: " + assembleFileName)
     }
      
