@@ -10,6 +10,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.SparkException
 import org.apache.spark.Partitioner
 import org.apache.spark.HashPartitioner
+import org.apache.spark.RangePartitioner
 
 
 /**
@@ -18,16 +19,17 @@ import org.apache.spark.HashPartitioner
  * and it is unique.  
  */
 class Pipeline private (val sc:SparkContext, val fs:FileSystem){
-	
+	val hashPartitioners:HashMap[String, HashPartitioner] = new HashMap()
+	//val rangePartitioners:HashMap[String, RangePartitioner] = new HashMap()
 }
  
 object Pipeline {
 	private var Instance:Option[Pipeline] = None
 	
 	/**
-	 * Store a list of partitioner for reuser purpose. 
+	 * Store a list of partitioner for reuse purpose. 
 	 */
-	private var partitioners:HashMap[String, Partitioner] = new HashMap() 
+
 	
 	val PartitionHashDefault = "defaultHashPartitioner"
 	val PartitionHashNum = "HashPartitioner%d"
@@ -130,10 +132,10 @@ object Pipeline {
 	    require(Pipeline.instance.isDefined)
 	    
 	    val partitionerName = Pipeline.PartitionHashNum.format(partitionNum)
-	    if(!this.partitioners.isDefinedAt(partitionerName)){
+	    if(!Instance.get.hashPartitioners.isDefinedAt(partitionerName)){
 	        val newPartitioner =  new HashPartitioner(partitionNum)
-	        this.partitioners(partitionerName) = newPartitioner 
+	        Instance.get.hashPartitioners(partitionerName) = newPartitioner 
 	    }
-	    this.partitioners(partitionerName).asInstanceOf[HashPartitioner]
+	    Instance.get.hashPartitioners(partitionerName)
 	}
 } 
