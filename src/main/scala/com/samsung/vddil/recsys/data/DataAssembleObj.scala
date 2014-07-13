@@ -15,8 +15,11 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.linalg.Vector
 
-/*
- * This is the object version of data assemble 
+/**
+ * This is the object version of data assemble. During the data assemble, features are
+ * stored in the data structure of com.samsung.vddil.recsys.linalg.Vector
+ * 
+ * @author jiayu.zhou
  */
 object DataAssembleObj {
    
@@ -40,18 +43,23 @@ object DataAssembleObj {
        val idSetRDD = idSet.map(x => (x,1))
        
        //join all features RDD
-       ///
-       var featureJoin = sc.objectFile[(String, Vector)](featureResourceMap(usedFeaturesList.head).featureFileName).
-       					 join(idSetRDD).map{
-    	   					//x._1 => id, x._2._1 => feature vector, x._2._2 => 1
-    	   					x=> (x._1, x._2._1)
-       					 }
+       ///the first join. 
+       var featureJoin = sc.objectFile[(String, Vector)](
+               featureResourceMap(usedFeaturesList.head).featureFileName
+               ).join(idSetRDD
+               ).map{x=>  // (ID, (feature, 1))
+                   val ID = x._1 // could be both user ID and item ID
+                   val feature = x._2._1
+                   (ID, feature)
+       		   }
        ///remaining
 	   for (usedFeature <- usedFeaturesList.tail){
 		   featureJoin = featureJoin.join(
 				sc.objectFile[(String, Vector)](featureResourceMap(usedFeature).featureFileName)
-		   ).map{ x=>
-		      (x._1, x._2._1 ++ x._2._2) //TODO: do we need to make sure this is a sparse vector? 
+		   ).map{ x=> // (ID, feature1, feature2)
+		      val ID = x._1
+		      val concatenateFeature = x._2._1 ++ x._2._2 
+		      (ID, concatenateFeature) //TODO: do we need to make sure this is a sparse vector? 
 		   }
 	   }
 	   (featureJoin, usedFeaturesList)
@@ -106,11 +114,14 @@ object DataAssembleObj {
    /**
     * Join features and generate continuous data. The output is the location of the stored file.  
     * 
-    * @param jobInfo 
-    * @param minIFCoverage 
-    * @param minUFCoverage 
+    * @param jobInfo the job information
+    * @param minIFCoverage minimum item feature coverage 
+    * @param minUFCoverage minimum user feature coverage
     */
    def assembleContinuousData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double ):String = {
+      require(minIFCoverage >= 0 && minIFCoverage <= 1)
+      require(minUFCoverage >= 0 && minUFCoverage <= 1)
+      
       //1. inspect all available features
       //   drop features have low coverage (which significant reduces our training due to missing)
      
@@ -187,15 +198,21 @@ object DataAssembleObj {
                             (fields(0), (fields(1), fields(2).toDouble))
                         }//contains both user and item in set
           
-          val filterByUser = allData.join(userIntersectIds.map(x=>(x,1)))
-                                  .map {x => //(user, ((item, watchtime),1))
-                                     (x._2._1._1, (x._1, x._2._1._2)) //(item, (user, watchtime))
-                                   }
+          val filterByUser = allData.join(userIntersectIds.map(x=>(x,1))
+                  ).map {x => //(user, ((item, watchtime),1))
+                      val itemID    = x._2._1._1
+                      val userID    = x._1
+                      val watchTime = x._2._1._2
+                      (itemID, (userID, watchTime)) 
+                  }
                                   
-          val filterByUserItem = filterByUser.join(itemIntersectIds.map(x => (x,1)))
-                                  .map { x => //(item, ((user, watchtime),1))
-                                     (x._2._1._1, x._1, x._2._1._2) //(user, item, watchtime)
-                                   }                        
+          val filterByUserItem = filterByUser.join(itemIntersectIds.map(x => (x,1))
+                  ).map { x => //(item, ((user, watchtime),1))
+                      val userID    = x._2._1._1
+                      val itemID    = x._1
+                      val watchTime = x._2._1._2
+                      (userID, itemID, watchTime) 
+                  }                        
                                                         
           //6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
           //join with item features (join item first as # of items is small)
