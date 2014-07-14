@@ -172,9 +172,10 @@ object DataProcess {
 
     //include only users and items seen in training
     testData foreach {data =>
-      val replacedItemIds =  data.map{record => 
-        (record._1, (bIMap.value(record._2), record._3))
-      }
+      val replacedItemIds =  data.filter(x => bIMap.value.contains(x._2)
+                                  ).map{record =>
+                      (record._1, (bIMap.value(record._2), record._3))
+                    }
       val replacedUserIds = substituteIntId(userMap,
                                             replacedItemIds, sc)    
       jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 

@@ -29,25 +29,26 @@ trait LinearRegTestHandler {
     def getOrderedFeatures(idSet: Set[Int], featureOrder: List[String], 
     		                    featureResourceMap: HashMap[String, FeatureStruct],
     		                    sc:SparkContext): RDD[(Int, Vector)] = {
-        //broadcast idSet to workers
-        val bIdSet = sc.broadcast(idSet)
+      
+      //create parallel RDDs of ids to be used in join
+      val idRDDs = sc.parallelize(idSet.toList).map((_,1))
 
     	//initialize list of RDD of format (id,features)
         var idFeatures:List[RDD[(Int, Vector)]]  = List.empty
         var featureJoin = sc.objectFile[(Int, Vector)](
                 featureResourceMap(featureOrder.head).featureFileName
-                ).filter(x => bIdSet.value.contains(x._1)) //id matches specified id in set
+                ).join(idRDDs).map(x => (x._1, x._2._1)) //(id, features)
 
         //add remaining features
         for (usedFeature <- featureOrder.tail) {
         	featureJoin  = featureJoin.join(
-        	        sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName
-        	                ).filter(x => bIdSet.value.contains(x._1)) //id matches specified id in set
-        	        ).map{x => // (ID, (prevFeatureVector, newFeatureVector))
-        	            val ID = x._1
-        	            val feature:Vector = x._2._1 ++ x._2._2
-        	            (ID, feature)
-        	        }
+                            sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName
+                                    ).join(idRDDs).map(x => (x._1, x._2._1)) //(id, features) 
+                          ).map{x => // (ID, (prevFeatureVector, newFeatureVector))
+                              val ID = x._1
+                              val feature:Vector = x._2._1 ++ x._2._2
+                              (ID, feature)
+                          }
         }
         featureJoin
     }

@@ -76,7 +76,7 @@ object DataSplitting {
 				    		//divide it by 10 to make it lie between 0 to 1, 
 				    		//to make it comparable to split percentages
 				    		(randId.toDouble / 10, tuple)
-		    	}.partitionBy(new HashPartitioner(numPartitions))
+		    	}
 		    	//now the RDD becomes (Double (Int, Int, Vector, Double))
 
 		    	
@@ -92,22 +92,19 @@ object DataSplitting {
 		    	
 		    	//get the train data, i.e all random id < trainPc
 		    	val trainData = partedRandData.filter(_._1 < trainingPerc)
-		    	                        .map(_._2) //remove the random id get only the data
-		    	                        .coalesce((numPartitions.toDouble*trainingPerc).toInt)
-		    	val trainSize = trainData.count
+                                        .values //remove the random id get only the data
+          val trainSize = trainData.count
 		    	
 		    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
 		    	val testData = partedRandData.filter(x => x._1 >= trainingPerc 
 		    	                                && x._1 < (trainingPerc + testingPerc))
-		    			                   .map(_._2) //remove the random id get only the data
-		    			                   .coalesce((numPartitions.toDouble*testingPerc).toInt)
-		        val testSize = testData.count
+                                       .values //remove the random id get only the data
+          val testSize = testData.count
 		        
 		        //get the validation data i.e. all randomId > (trainPc+testPc)
 		    	val valData = partedRandData.filter(x => x._1 >= (trainingPerc + testingPerc))
-		    	                      .map(_._2) //remove the random id get only the data
-		    	                      .coalesce((numPartitions.toDouble*validationPerc).toInt)
-		    	val validSize = valData.count
+                                      .values //remove the random id get only the data
+          val validSize = valData.count
 		    	
 		    	
 		    	//save data into files
