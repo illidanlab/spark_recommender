@@ -43,10 +43,11 @@ object RegressionModelLasso extends ModelProcessingUnit with RegLinearModel {
 		val sc = jobInfo.sc
 		
 		//parse the data to get Label and feature information in LabeledPoint form
-		val trainData = parseData(trDataFilename, sc)
-		val testData = parseData(teDataFilename, sc)
-		val valData = parseData(vaDataFilename, sc)
+		val trainData = parseDataObj(trDataFilename, sc)
+		val testData = parseDataObj(teDataFilename, sc)
+		val valData = parseDataObj(vaDataFilename, sc)
 
+		
 		//build model for each parameter combination
 		var bestParams:Option[(Double,Double,Double)] = None
 		var bestValMSE:Option[Double] = None

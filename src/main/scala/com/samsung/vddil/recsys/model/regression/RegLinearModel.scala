@@ -13,6 +13,7 @@ import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
 import com.samsung.vddil.recsys.Logger
 import org.apache.spark.mllib.regression.GeneralizedLinearModel
 import org.apache.spark.mllib.regression.GeneralizedLinearAlgorithm
+import com.samsung.vddil.recsys.linalg.Vector
 
 trait RegLinearModel  {
 	
@@ -41,6 +42,15 @@ trait RegLinearModel  {
             val features = parts.slice(2, parts.length -1).map(_.toDouble)
             LabeledPoint(rating, Vectors.dense(features))
        }
+    }
+    
+    def parseDataObj(dataFileName: String, sc: SparkContext):RDD[LabeledPoint] = {
+        //(userID:String, itemID:String, features:Vector, rating:Double)
+        sc.objectFile[(String, String, Vector, Double)](dataFileName).map{tuple =>
+            val rating:Double = tuple._4
+            val feature:Vector = tuple._3
+            LabeledPoint(rating, feature.toMLLib)
+        }
     }
     
     

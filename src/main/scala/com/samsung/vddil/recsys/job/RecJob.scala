@@ -763,12 +763,12 @@ case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, Str
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio)
 		)
-//		
-//	    //3. train model on training and tune using validation, and testing.
-//		Logger.logger.info("**building and testing models")
-//		
-//		jobInfo.jobStatus.completedRegressModels(this) = 
-//		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
+		
+	    //3. train model on training and tune using validation, and testing.
+		Logger.logger.info("**building and testing models")
+		
+		jobInfo.jobStatus.completedRegressModels(this) = 
+		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
 	}
 }
 
