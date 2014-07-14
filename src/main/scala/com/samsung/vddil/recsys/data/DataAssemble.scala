@@ -38,11 +38,11 @@ object DataAssemble {
    * @param sc SparkContext
    */
    def getCombinedFeatures(
-		   idSet: RDD[String], 
+		   idSet: RDD[Int], 
 		   usedFeatures: HashSet[String], 
            featureResourceMap: HashMap[String, FeatureStruct], 
            sc: SparkContext
-       ): (RDD[(String, Vector)], List[String]) = 
+       ): (RDD[(Int, Vector)], List[String]) = 
    {
        val usedFeaturesList = usedFeatures.toList
        
@@ -50,7 +50,7 @@ object DataAssemble {
        
        //join all features RDD
        ///the first join. 
-       var featureJoin = sc.objectFile[(String, Vector)](
+       var featureJoin = sc.objectFile[(Int, Vector)](
                featureResourceMap(usedFeaturesList.head).featureFileName
                ).join(idSetRDD
                ).map{x=>  // (ID, (feature, 1))
@@ -61,7 +61,7 @@ object DataAssemble {
        ///remaining
 	   for (usedFeature <- usedFeaturesList.tail){
 		   featureJoin = featureJoin.join(
-				sc.objectFile[(String, Vector)](featureResourceMap(usedFeature).featureFileName)
+				sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName)
 		   ).map{ x=> // (ID, feature1, feature2)
 		      val ID = x._1
 		      val concatenateFeature = x._2._1 ++ x._2._2 
@@ -80,10 +80,10 @@ object DataAssemble {
    */
   def getIntersectIds(usedFeatures: HashSet[String], 
             featureResourceMap: HashMap[String, FeatureStruct], 
-            sc: SparkContext):  RDD[String] = {
+            sc: SparkContext):  RDD[Int] = {
       
       val intersectIds = usedFeatures.map{feature =>
-        sc.objectFile[(String, Vector)](featureResourceMap(feature).featureFileName)
+        sc.objectFile[(Int, Vector)](featureResourceMap(feature).featureFileName)
           .map(_._1) //the first field is always id
       }.reduce((idSetA, idSetB) => idSetA.intersection(idSetB)) // reduce to get intersection of all sets
           
@@ -107,7 +107,7 @@ object DataAssemble {
         featureResourceMap foreach {
             case (k, v) =>
                 {
-                    val numFeatures = sc.objectFile[(String, Vector)](v.featureFileName).count
+                    val numFeatures = sc.objectFile[(Int, Vector)](v.featureFileName).count
                     if ( (numFeatures.toDouble/total)  > minCoverage) {
                       //coverage satisfy by feature add it to used set
                         usedFeatures += k
@@ -203,7 +203,7 @@ object DataAssemble {
                         .map{lines => 
                             val fields = lines.split(',')
                             //user, item, watchtime
-                            (fields(0), (fields(1), fields(2).toDouble))
+                            (fields(0).toInt, (fields(1).toInt, fields(2).toDouble))
                         }//contains both user and item in set
           
           val filterByUser = allData.join(userIntersectIds.map(x=>(x,1))
@@ -229,8 +229,8 @@ object DataAssemble {
                   (x._2, (x._1, x._3))
               }.join(itemFeaturesRDD 
               ).map{y => //(item, ((user, rating), IF))
-                   val userID:String = y._2._1._1
-                   val itemID:String = y._1
+                   val userID:Int = y._2._1._1
+                   val itemID:Int = y._1
                    val itemFeature:Vector = y._2._2
                    val rating:Double = y._2._1._2
                    (userID, (itemID, itemFeature, rating))

@@ -106,7 +106,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         }  
        
         Logger.info("created itemGenres list")
-            
+        
+        val itemIdMap = jobInfo.jobStatus.itemIdMap
         //generate feature vector for each items    
         val itemGenreInds = itemGenreList.groupByKey().map { x =>
           var itemId = x._1
@@ -124,7 +125,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         	  featureVecPair = featureVecPair :+ (genre2Ind(genre), 1.0)
           }
           val featureVec = Vectors.sparse(numGenres, featureVecPair)
-          (itemId, featureVec)
+          (itemIdMap(itemId), featureVec)
         }
         
         Logger.info("created item genre feature vectors")
@@ -132,7 +133,6 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         //save item features as textfile
         if (jobInfo.outputResource(featureFileName)){
         	Logger.logger.info("Dumping feature resource: " + featureFileName)
-        	//itemGenreInds.saveAsTextFile(featureFileName)
         	itemGenreInds.saveAsObjectFile(featureFileName) //directly use object + serialization. 
         }
         

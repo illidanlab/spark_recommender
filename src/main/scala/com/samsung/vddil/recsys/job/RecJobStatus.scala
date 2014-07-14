@@ -66,8 +66,8 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	 */
 	var users:Array[String] = Array[String]()
 	var items:Array[String] = Array[String]()
-	var userIdMap:Option[Map[String, Int]] = None
-	var itemIdMap:Option[Map[String, Int]] = None 
+	var userIdMap:Map[String, Int] = Map()
+	var itemIdMap:Map[String, Int] = Map()
   
 	/*
 	 * test data in RDD[Rating] form

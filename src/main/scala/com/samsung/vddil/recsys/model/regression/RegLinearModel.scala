@@ -45,7 +45,7 @@ trait RegLinearModel  {
     
     def parseDataObj(dataFileName: String, sc: SparkContext):RDD[LabeledPoint] = {
         //(userID:String, itemID:String, features:Vector, rating:Double)
-        sc.objectFile[(String, String, Vector, Double)](dataFileName).map{tuple =>
+        sc.objectFile[(Int, Int, Vector, Double)](dataFileName).map{tuple =>
             val rating:Double = tuple._4
             val feature:Vector = tuple._3
             LabeledPoint(rating, feature.toMLLib)

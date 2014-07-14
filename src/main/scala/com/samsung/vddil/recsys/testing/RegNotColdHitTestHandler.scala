@@ -52,11 +52,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                             .toSet
 
     //get train items
-    val trainItems = jobInfo.jobStatus.itemIdMap match {
-                        case Some(map) => map.values.toSet
-                        case None =>   Set[Int]()
-                      }
-    
+    val trainItems = jobInfo.jobStatus.itemIdMap.values.toSet
     
     //get feature orderings
     val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
@@ -64,7 +60,6 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     
     val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
                                         .itemFeatureOrder
-
                                         
     //get required user item features     
     val userFeaturesRDD = getOrderedFeatures(testUsers, userFeatureOrder, 

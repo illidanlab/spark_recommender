@@ -93,10 +93,10 @@ object DataProcess {
             
             //create mapping from string id to int
             val userIdMap =  (jobStatus.users zip (1 to jobStatus.users.length)).toMap
-            jobStatus.userIdMap = Some(userIdMap)
+            jobStatus.userIdMap = userIdMap
 
             val itemIdMap = (jobStatus.items zip (1 to jobStatus.items.length)).toMap
-            jobStatus.itemIdMap = Some(itemIdMap)
+            jobStatus.itemIdMap = itemIdMap
 
             //broadcast only item map as its small to worker nodes
             val bIMap = sc.broadcast(itemIdMap)
@@ -151,38 +151,36 @@ object DataProcess {
 	 * read the data from test dates into RDD form
 	 */
 	def prepareTest(jobInfo: RecJob)  = {
-	 
-	 //get spark context
-	 val sc  = jobInfo.sc
-		
-     //get userMap and itemMap
-     jobInfo.jobStatus.userIdMap foreach { userMap =>
-      jobInfo.jobStatus.itemIdMap foreach { itemMap =>
-        //broadcast item map
-        val bIMap = sc.broadcast(itemMap)
 
-        //read all data mentioned in test dates l date
-        //get RDD of data of each individua
-        val testData = getDataFromDates(jobInfo.testDates, 
-                        jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
-                        sc)
-        
-        //include only users and items seen in training
-        testData foreach {data =>
-          val replacedItemIds =  data.map{record => 
-            (record._1, (bIMap.value(record._2), record._3))
-          }
-          val replacedUserIds = substituteIntId(userMap,
-                                                replacedItemIds, sc)    
-          jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
-                                                Rating(x._1, x._2, x._3)
-                                            })
-        }
-      }  
+    //get spark context
+	  val sc  = jobInfo.sc
+
+    //get userMap and itemMap
+    val userMap = jobInfo.jobStatus.userIdMap 
+    val itemMap = jobInfo.jobStatus.itemIdMap   
+    
+    //broadcast item map
+    val bIMap = sc.broadcast(itemMap)
+
+    //read all data mentioned in test dates l date
+    //get RDD of data of each individua
+    val testData = getDataFromDates(jobInfo.testDates, 
+                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+                    sc)
+
+    //include only users and items seen in training
+    testData foreach {data =>
+      val replacedItemIds =  data.map{record => 
+        (record._1, (bIMap.value(record._2), record._3))
+      }
+      val replacedUserIds = substituteIntId(userMap,
+                                            replacedItemIds, sc)    
+      jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
+                                            Rating(x._1, x._2, x._3)
+                                        })
     }
 
   }
-
 
 	
 }
