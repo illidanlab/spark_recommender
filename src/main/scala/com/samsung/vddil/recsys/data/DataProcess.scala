@@ -109,7 +109,9 @@ object DataProcess {
                   (record._1, (bIMap.value(record._2), record._3))
                 }
                 val replacesUserIds = substituteIntId(userIdMap,
-                                                      replacedItemIds, sc)    
+                                        replacedItemIds, sc).map {x =>
+                                          x._1 + "," + x._2 + "," + x._3
+                                        }
                 replacesUserIds.saveAsTextFile(dataLocCombine) 
             }
             
