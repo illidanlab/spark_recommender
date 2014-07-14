@@ -17,7 +17,7 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 	def performTest(jobInfo:RecJob, testName: String, 
 			            testParams: HashMap[String, String],
 			            model: LinearRegressionModelStruct
-			             ): RDD[(String, String, Double, Double)] = {
+			             ): RDD[(Int, Int, Double, Double)] = {
 	    //get test data
 		var testData = jobInfo.jobStatus.testWatchTime.get
 		
@@ -48,11 +48,11 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 	
 	    //get required user item features     
 	     
-		val userFeaturesRDD:RDD[(String, Vector)] = 
+		val userFeaturesRDD:RDD[(Int, Vector)] = 
 		    	getOrderedFeatures(testUsers, userFeatureOrder, 
 				            		  jobInfo.jobStatus.resourceLocation_UserFeature, sc)
 			
-		val itemFeaturesRDD:RDD[(String, Vector)] = 
+		val itemFeaturesRDD:RDD[(Int, Vector)] = 
 		    	getOrderedFeatures(testItems, itemFeatureOrder, 
 	                        		  jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
 

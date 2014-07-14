@@ -1,20 +1,20 @@
 package com.samsung.vddil.recsys.data
 
-import scala.collection.mutable.HashSet
-import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.FeatureStruct
+import com.samsung.vddil.recsys.job.Rating
+import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.job.RecJobStatus
+import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.utils.HashString
+import org.apache.spark.HashPartitioner
+import org.apache.spark.RangePartitioner
+import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
-import org.apache.spark.RangePartitioner
-import org.apache.spark.HashPartitioner
-import com.samsung.vddil.recsys.job.RecJob
-import com.samsung.vddil.recsys.job.Rating
-import com.samsung.vddil.recsys.job.RecJobStatus
-import com.samsung.vddil.recsys.Logger
-import com.samsung.vddil.recsys.utils.HashString
-import com.samsung.vddil.recsys.feature.FeatureStruct
-import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.Pipeline
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
 
 /**
  * This is the object version of data assemble. During the data assemble, features are
@@ -22,6 +22,11 @@ import com.samsung.vddil.recsys.Pipeline
  * 
  * @author jiayu.zhou
  */
+
+
+case class AggDataWFeatures(location: String, userFeatureOrder: List[String],
+                            itemFeatureOrder: List[String])
+
 object DataAssemble {
    
    /**
@@ -231,15 +236,12 @@ object DataAssemble {
                    (userID, (itemID, itemFeature, rating))
               }
                                         
-//          val numExecutors = sc.getConf.getOption("spark.executor.instances")
-//          val numExecCores = sc.getConf.getOption("spark.executor.cores")
-//          val numPartitions = 2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt
-          val numPartitions = Pipeline.getPartitionNum
           
           //can use both range partitoner or hashpartitioner to efficiently partition by user
-          
-          val partedByUJoinedItemFeat = joinedItemFeatures.partitionBy(new RangePartitioner(numPartitions, 
-                                                                                          joinedItemFeatures)) 
+          val numPartitions = Pipeline.getPartitionNum
+          val partedByUJoinedItemFeat = joinedItemFeatures.partitionBy(
+                                          new RangePartitioner(numPartitions, 
+                                                              joinedItemFeatures)) 
 
           //join with user features
           val joinedUserItemFeatures = 

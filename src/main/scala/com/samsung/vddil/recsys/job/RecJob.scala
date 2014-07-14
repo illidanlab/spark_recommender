@@ -7,24 +7,27 @@
 
 package com.samsung.vddil.recsys.job
 
-import scala.xml._
+import com.samsung.vddil.recsys.Logger
+import org.apache.hadoop.fs.FileSystem
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
-import org.apache.spark.rdd.RDD
-import org.apache.hadoop.fs.FileSystem
-import org.apache.spark.SparkContext
-import com.samsung.vddil.recsys.Logger
+import scala.xml._
+
+import com.samsung.vddil.recsys.data.DataAssemble
+import com.samsung.vddil.recsys.data.DataProcess
+import com.samsung.vddil.recsys.data.DataProcess
+import com.samsung.vddil.recsys.data.DataSplitting
+import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
+import com.samsung.vddil.recsys.feature.FactFeatureHandler
 import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 import com.samsung.vddil.recsys.feature.UserFeatureHandler
-import com.samsung.vddil.recsys.feature.FactFeatureHandler
-import com.samsung.vddil.recsys.data.DataProcess
-import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
+import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model._
 import com.samsung.vddil.recsys.Pipeline
-import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.testing._
-import com.samsung.vddil.recsys.data.DataAssemble
-import com.samsung.vddil.recsys.data.DataSplitting
+import com.samsung.vddil.recsys.utils.HashString
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -658,7 +661,7 @@ sealed trait RecJobTest {
 case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String]) 
     extends RecJobTest {
 	
-	var testHandlerRes:Option[RDD[(String, String, Double, Double)]] = None
+	var testHandlerRes:Option[RDD[(Int, Int, Double, Double)]] = None
 	var hitTestHandlerRes:Option[RDD[HitSet]] = None
 	
 	/*

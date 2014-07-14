@@ -1,19 +1,18 @@
 package com.samsung.vddil.recsys.model.regression
 
-import org.apache.spark.mllib.regression.LabeledPoint
+import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
+import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.model.ModelUtil
+
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.regression.GeneralizedLinearAlgorithm
 import org.apache.spark.mllib.regression.GeneralizedLinearModel
+import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.rdd.RDD
-import com.samsung.vddil.recsys.model.ModelUtil
-import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
-import com.samsung.vddil.recsys.Logger
-import org.apache.spark.mllib.regression.GeneralizedLinearModel
-import org.apache.spark.mllib.regression.GeneralizedLinearAlgorithm
-import com.samsung.vddil.recsys.linalg.Vector
 
 trait RegLinearModel  {
 	

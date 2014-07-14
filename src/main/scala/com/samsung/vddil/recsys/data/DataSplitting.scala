@@ -2,14 +2,15 @@ package com.samsung.vddil.recsys.data
 
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.job.RecJobStatus
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
+import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import org.apache.spark.HashPartitioner
-import com.samsung.vddil.recsys.linalg.Vector
+import org.apache.spark.RangePartitioner 
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
 
 /**
  * The object version of data splitting, which splits an object version assembled data into 
@@ -65,42 +66,45 @@ object DataSplitting {
 		    	val partitioner = Pipeline.getHashPartitioner()
 		    	
 		    	//randomize the passed data
-		    	val randData = sc.objectFile[(String, String, Vector, Double)](assembleContinuousDataFile
+		    	val randData = sc.objectFile[(Int, Int, Vector, Double)](assembleContinuousDataFile
 		    	        ).map { tuple =>
 				    		//generate a random id for splitting 
-				    		//First, get a random string, in current case get the first 
+				    		//First, get a random int, in current case get the first 
 				    		//field of this data
-				    		val randStr = tuple._1
 				    		//generate a number between 0 to 9 by dividing last character by 10
-				    		var randId = randStr(randStr.length-1).toInt % 10
+				    		var randId = tuple._1 % 10
 				    		//divide it by 10 to make it lie between 0 to 1, 
 				    		//to make it comparable to split percentages
 				    		(randId.toDouble / 10, tuple)
 		    	}.partitionBy(new HashPartitioner(numPartitions))
-		    	//now the RDD becomes (Double (String, String, Vector, Double))
+		    	//now the RDD becomes (Double (Int, Int, Vector, Double))
+
 		    	
+          val partedRandData = randData//.partitionBy(new RangePartitioner(numPartitions/4, randData)) 
+
 		    	//persist the randomize data for faster split generation
-		    	randData.persist
+		    	partedRandData.persist
 		    	
+		    	Logger.info("Number of partitions: " + partedRandData.partitions.length)
+
+
 		    	//split the data based on specified percentage
 		    	
 		    	//get the train data, i.e all random id < trainPc
-		    	val trainData = randData.filter(_._1 < trainingPerc)
+		    	val trainData = partedRandData.filter(_._1 < trainingPerc)
 		    	                        .map(_._2) //remove the random id get only the data
 		    	                        .coalesce((numPartitions.toDouble*trainingPerc).toInt)
 		    	val trainSize = trainData.count
 		    	
-		    	
 		    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
-		    	val testData = randData.filter(x => x._1 >= trainingPerc 
+		    	val testData = partedRandData.filter(x => x._1 >= trainingPerc 
 		    	                                && x._1 < (trainingPerc + testingPerc))
 		    			                   .map(_._2) //remove the random id get only the data
-		                             .coalesce((numPartitions.toDouble*testingPerc).toInt)
+		    			                   .coalesce((numPartitions.toDouble*testingPerc).toInt)
 		        val testSize = testData.count
 		        
-		        
 		        //get the validation data i.e. all randomId > (trainPc+testPc)
-		    	val valData = randData.filter(x => x._1 >= (trainingPerc + testingPerc))
+		    	val valData = partedRandData.filter(x => x._1 >= (trainingPerc + testingPerc))
 		    	                      .map(_._2) //remove the random id get only the data
 		    	                      .coalesce((numPartitions.toDouble*validationPerc).toInt)
 		    	val validSize = valData.count
@@ -113,7 +117,6 @@ object DataSplitting {
 		    	
 		    	//unpersist the persisted data to free up memory associated
 		    	randData.unpersist(false)
-		    	
 		    	Logger.info("Training sample size: " + trainSize)
 		    	Logger.info("Testing sample size: " + testSize )
 		    	Logger.info("Validation sample size: " + validSize)

@@ -1,18 +1,18 @@
 package com.samsung.vddil.recsys.feature.user
 
-import scala.collection.mutable.HashMap
 import org.apache.spark.SparkContext._
+import scala.collection.mutable.HashMap
 
-import com.samsung.vddil.recsys.Logger
-import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.feature.item.ItemFeatureGenre
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
-import com.samsung.vddil.recsys.utils.HashString
-import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.job.Rating
+import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.{Vector,Vectors,SparseVector}
+import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.utils.HashString
 
 
 object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
@@ -107,57 +107,35 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
 			}			 
 		}
 		
-		if (!itemGenreFeatureFile.isDefined){
-		   throw new Exception("ERROR: Dependent item feature not ready")
-		   //TODO: if not found we need to generate it!
+		itemGenreFeatureFile match {
+		    case None => throw new Exception("ERROR: Dependent item feature not ready")
+           //TODO: if not found we need to generate it!
+		    case Some(fileName) => {
+		        //read item genre features. item -> feature vector array
+		        val itemGenreFeatures = sc.objectFile[(Int, Vector)](fileName).collect.toMap
+		        //get all merged data
+                //userGenreFeatures := RDD[(String, Vector)]
+                val userGenreFeatures = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
+                       .map {line =>
+                            val fields = line.split(',')
+                            Rating(fields(0).toInt, fields(1).toInt, fields(2).toDouble)
+                        }
+                       .filter(rating => itemGenreFeatures.contains(rating.item) ) //filter out items whose genre information is not available
+                       .map { rating =>
+                                //user,item, watchTime
+                                (rating.user, (itemGenreFeatures(rating.item), rating.rating)) // get the feature vector of genre of item
+                        }
+                       .groupByKey() //group by user id
+                       .map {x => (x._1 , aggByItemGenres(x._2))} //get weighted feature vector 
+                       
+                //save user features in text file
+                if(jobInfo.outputResource(featureFileName)) {
+                    Logger.logger.info("Dumping feature resource: " + featureFileName)
+                    userGenreFeatures.saveAsObjectFile(featureFileName)
+                }
+		    }
 		}
-		
-//		//read item genre features. item -> feature vector array
-//		val itemGenreFeatures = sc.textFile(itemGenreFeatureFile.get).map{line =>
-//		  	val fields = line.split(',')
-//		  	val item = fields(0)
-//		  	val genreFeats = fields.slice(1, fields.length).map(s => s.toInt)
-//		  	(item, genreFeats)
-//		}.collect.toMap
-		
-		//read item genre features. item -> feature vector array
-		val itemGenreFeatures = sc.objectFile[(String, Vector)](itemGenreFeatureFile.get).collect.toMap
-		
-//		//get all merged data
-//		val userGenreFeatures = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
-//			   .map {line =>
-//			     	val fields = line.split(',')
-//			     	Rating(fields(0), fields(1), fields(2).toDouble)
-//			    }
-//			   .filter(rating => itemGenreFeatures.contains(rating.item) ) //filter out items whose genre information is not available
-//			   .map { rating =>
-//			   			//user,item, watchTime
-//			   			(rating.user, (itemGenreFeatures(rating.item), rating.rating.toInt)) // get the feature vector of genre of item
-//			   	}
-//			   .groupByKey() //group by user id
-//			   .map {x => x._1 + "," + aggByItemGenres(x._2).mkString(",")} //get weighted feature vector
-
-		//get all merged data
-		//userGenreFeatures := RDD[(String, Vector)]
-		val userGenreFeatures = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
-			   .map {line =>
-			     	val fields = line.split(',')
-			     	Rating(fields(0), fields(1), fields(2).toDouble)
-			    }
-			   .filter(rating => itemGenreFeatures.contains(rating.item) ) //filter out items whose genre information is not available
-			   .map { rating =>
-			   			//user,item, watchTime
-			   			(rating.user, (itemGenreFeatures(rating.item), rating.rating)) // get the feature vector of genre of item
-			   	}
-			   .groupByKey() //group by user id
-			   .map {x => (x._1 , aggByItemGenres(x._2))} //get weighted feature vector		
-		
-		//save user features in text file
-		if(jobInfo.outputResource(featureFileName)){
-			Logger.logger.info("Dumping feature resource: " + featureFileName)
-			//userGenreFeatures.saveAsTextFile(featureFileName)
-			userGenreFeatures.saveAsObjectFile(featureFileName)
-		}
+			
         
 	    // 4. Generate and return a FeatureResource that includes all resources.
         val featureStruct:UserFeatureStruct = 
