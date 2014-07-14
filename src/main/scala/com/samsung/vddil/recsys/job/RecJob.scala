@@ -18,14 +18,13 @@ import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 import com.samsung.vddil.recsys.feature.UserFeatureHandler
 import com.samsung.vddil.recsys.feature.FactFeatureHandler
 import com.samsung.vddil.recsys.data.DataProcess
-import com.samsung.vddil.recsys.data.DataSplitting
 import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
 import com.samsung.vddil.recsys.model._
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.testing._
-import com.samsung.vddil.recsys.data.DataAssembleObj
-import com.samsung.vddil.recsys.data.DataSplittingObj
+import com.samsung.vddil.recsys.data.DataAssemble
+import com.samsung.vddil.recsys.data.DataSplitting
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -754,11 +753,11 @@ case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, Str
 		
 		//TODO: parse from XML
 		
-		val dataResourceStr = DataAssembleObj.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
+		val dataResourceStr = DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
 		
 		//2. divide training, testing, validation
 		Logger.logger.info("**divide training/testing/validation")
-		DataSplittingObj.splitContinuousData(jobInfo, dataResourceStr, 
+		DataSplitting.splitContinuousData(jobInfo, dataResourceStr, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio)
@@ -789,11 +788,11 @@ case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, Str
 	   
 	   //TODO: parse from XML
 	   
-	   val dataResourceStr = DataAssembleObj.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
+	   val dataResourceStr = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
 	   
 	   //2. divide training, testing, validation
 	   Logger.logger.info("**divide training/testing/validation")
-	   DataSplittingObj.splitBinaryData(jobInfo, dataResourceStr, 
+	   DataSplitting.splitBinaryData(jobInfo, dataResourceStr, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio),
