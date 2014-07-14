@@ -2,22 +2,22 @@ package com.samsung.vddil.recsys.testing
 
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashMap
-
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
+import com.samsung.vddil.recsys.linalg.Vector
 
 object LinearRegNotColdTestHandler extends NotColdTestHandler 
                                     with LinearRegTestHandler{
 	
 	
-	/*
-	 * perform predictions on test data nd return result as
+	/**
+	 * perform predictions on test data and return result as
 	 * (user, item, actual rating, predicted rating)
 	 */
 	def performTest(jobInfo:RecJob, testName: String, 
 			            testParams: HashMap[String, String],
 			            model: LinearRegressionModelStruct
-			             ): RDD[(String,String,Double, Double)] = {
+			             ): RDD[(String, String, Double, Double)] = {
 	    //get test data
 		var testData = jobInfo.jobStatus.testWatchTime.get
 		
@@ -48,11 +48,13 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 
         //get required user item features     
          
-		val userFeaturesRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
-				            jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+		val userFeaturesRDD:RDD[(String, Vector)] = 
+		    	getOrderedFeatures(testUsers, userFeatureOrder, 
+				            		  jobInfo.jobStatus.resourceLocation_UserFeature, sc)
 			
-		val itemFeaturesRDD = getOrderedFeatures(testItems, itemFeatureOrder, 
-                            jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+		val itemFeaturesRDD:RDD[(String, Vector)] = 
+		    	getOrderedFeatures(testItems, itemFeatureOrder, 
+                            		  jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
         
         //get user item features
         //NOTE: this will also do filtering of test data in case feature not found 
@@ -63,7 +65,7 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
         //conv to label points
         val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
         
-        //NOTE: user-item pair in test can apeear more than once
+        //NOTE: user-item pair in test can appear more than once
         val testLabelNPred = testLabelPoints.map { point =>
         	                        (point._1, //user
         	                         point._2, //item

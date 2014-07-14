@@ -139,8 +139,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	
     	//testing recommendation performance on testing dates.
     	
-    	//DataProcess.prepareTest(this)
-    	//performTestNEvaluation()
+    	DataProcess.prepareTest(this)
+    	performTestNEvaluation()
     }
     
     
