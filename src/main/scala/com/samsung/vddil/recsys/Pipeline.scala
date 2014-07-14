@@ -12,6 +12,8 @@ import org.apache.spark.Partitioner
 import org.apache.spark.HashPartitioner
 import org.apache.spark.RangePartitioner
 
+import com.esotericsoftware.kryo.Kryo
+import org.apache.spark.serializer.KryoRegistrator
 
 /**
  * This is the pipeline class, which includes pipeline configurations such as Spark Context and 
@@ -21,9 +23,15 @@ import org.apache.spark.RangePartitioner
 class Pipeline private (val sc:SparkContext, val fs:FileSystem){
 	val hashPartitioners:HashMap[String, HashPartitioner] = new HashMap()
 	//val rangePartitioners:HashMap[String, RangePartitioner] = new HashMap()
+	
+
+
 }
  
 object Pipeline {
+    
+    
+    
 	private var Instance:Option[Pipeline] = None
 	
 	/**
@@ -90,12 +98,19 @@ object Pipeline {
 	         
 	    	 var sc:Option[SparkContext] = None
 	         
+	    	 val conf = new SparkConf()
+	    	 conf.set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")
+	    	 conf.set("spark.serializer",                 "org.apache.spark.serializer.KryoSerializer")
+	    	 conf.set("spark.kryo.registrator",           "com.samsung.vddil.recsys.SerializationRegistrator")
+ 
 	         try{
-	        	 sc = Some(new SparkContext(new SparkConf().set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")))
+	             //construct spark context using SparkSubmit configurations.  
+	        	 sc = Some(new SparkContext(conf))
 	         }catch{
 	           case _:SparkException =>
 	             Logger.warn("Failed to build SparkContext from Spark submit! Trying to build a local one from config file.")
-	             sc = Some(new SparkContext("local[4]", "local_test"))
+	             //construct spark context based on local 
+	             sc = Some(new SparkContext(conf.setMaster("local[4]").setAppName("local_test")))
 	         }
 	         
 	         if (sc.isDefined){
@@ -138,4 +153,21 @@ object Pipeline {
 	    }
 	    Instance.get.hashPartitioners(partitionerName)
 	}
+	
+
 } 
+
+/**
+ * Registration of Kryo serialization
+ * 
+ * Currently only the following classes are registered 
+ * 
+ * com.samsung.vddil.recsys.linalg.{Vector, SparseVector, DenseVector}
+ */
+class SerializationRegistrator extends KryoRegistrator{
+    override def registerClasses(kyro: Kryo){
+        kyro.register(classOf[com.samsung.vddil.recsys.linalg.Vector])
+        kyro.register(classOf[com.samsung.vddil.recsys.linalg.SparseVector])
+        kyro.register(classOf[com.samsung.vddil.recsys.linalg.DenseVector])
+    }
+}
