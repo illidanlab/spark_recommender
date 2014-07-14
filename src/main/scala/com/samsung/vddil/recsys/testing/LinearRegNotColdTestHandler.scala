@@ -34,28 +34,28 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 		                        .collect
 		                        .toSet
 		
-        val testItems = testData.map{ _.item}
-                                .distinct
-                                .collect
-                                .toSet
-		                   
+	    val testItems = testData.map{ _.item}
+	                            .distinct
+	                            .collect
+	                            .toSet
+                   
 		//get feature orderings
-        val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                            .userFeatureOrder
-        
-        val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                            .itemFeatureOrder
-
-        //get required user item features     
-         
+	    val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
+	                                        .userFeatureOrder
+	    
+	    val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
+	                                        .itemFeatureOrder
+	
+	    //get required user item features     
+	     
 		val userFeaturesRDD:RDD[(String, Vector)] = 
 		    	getOrderedFeatures(testUsers, userFeatureOrder, 
 				            		  jobInfo.jobStatus.resourceLocation_UserFeature, sc)
 			
 		val itemFeaturesRDD:RDD[(String, Vector)] = 
 		    	getOrderedFeatures(testItems, itemFeatureOrder, 
-                            		  jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
-        
+	                        		  jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+
         //get user item features
         //NOTE: this will also do filtering of test data in case feature not found 
         //owing to coverage criteria of training data
