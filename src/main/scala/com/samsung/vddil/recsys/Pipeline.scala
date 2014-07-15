@@ -1,20 +1,22 @@
 package com.samsung.vddil.recsys
 
+import com.esotericsoftware.kryo.Kryo
 import java.io.File
-import scala.xml.XML
-import scala.collection.mutable.HashMap
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkException
-import org.apache.spark.Partitioner
+import org.apache.log4j.PropertyConfigurator
 import org.apache.spark.HashPartitioner
+import org.apache.spark.Partitioner
 import org.apache.spark.RangePartitioner
-
-import com.esotericsoftware.kryo.Kryo
 import org.apache.spark.serializer.KryoRegistrator
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkException
+import scala.collection.mutable.HashMap
+import scala.xml.XML
 
+import com.samsung.vddil.recsys._
+import com.samsung.vddil.recsys.job._
 /**
  * This is the pipeline class, which includes pipeline configurations such as Spark Context and 
  * Hadoop file system and etc. A XML file is used to instantiate an object of pipeline class, 
@@ -23,9 +25,6 @@ import org.apache.spark.serializer.KryoRegistrator
 class Pipeline private (val sc:SparkContext, val fs:FileSystem){
 	val hashPartitioners:HashMap[String, HashPartitioner] = new HashMap()
 	//val rangePartitioners:HashMap[String, RangePartitioner] = new HashMap()
-	
-
-
 }
  
 object Pipeline {
@@ -154,6 +153,52 @@ object Pipeline {
 	    Instance.get.hashPartitioners(partitionerName)
 	}
 	
+  
+  def main(args: Array[String]): Unit = {
+		PropertyConfigurator.configure("log4j.properties")
+		
+		val logger = Logger.logger
+		
+		//Read config file
+		var cfgFileStr:String = "local_cfg.xml"
+		if (args.size > 1){
+		   cfgFileStr = args(1)
+		   logger.info("Config file specified: " + cfgFileStr)
+		}else{
+		  logger.warn("No config file specified. Used default job file: " + cfgFileStr)
+		}
+		
+		config()
+		
+		// only proceed to jobs if pipeline is properly configured. 
+		if (instance.isDefined){
+		
+			//Read job file
+			var jobFileStr:String = "test_job.xml" 
+			if (args.size > 0){
+			  jobFileStr = args(0)
+			  logger.info("Job file specified: " + jobFileStr)
+			}else{
+			  logger.warn("No job file specified. Used default job file: " + jobFileStr)
+			}
+			
+			//Process job file
+			val jobList : List[Job] = Job.readFromXMLFile(jobFileStr,
+                                                    instance.get.sc)
+			
+			for (job:Job <- jobList){
+			   logger.info("=== Running job: " + job + " ===")
+			   job.run()
+			   job.getStatus().showStatus()
+			   logger.info("=== Job Done: " + job + " ===")
+			}
+			
+			logger.info("All jobs are completed.")
+		}else{
+			logger.info("Pipeline exited as configuration fails.")
+		}
+		
+  } 
 
 } 
 
