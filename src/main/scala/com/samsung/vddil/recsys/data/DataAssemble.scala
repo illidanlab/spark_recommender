@@ -5,7 +5,6 @@ import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.job.RecJobStatus
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import org.apache.spark.HashPartitioner
@@ -15,6 +14,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
+import com.samsung.vddil.recsys.utils.Logger
 
 /**
  * This is the object version of data assemble. During the data assemble, features are

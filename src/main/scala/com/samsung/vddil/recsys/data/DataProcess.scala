@@ -9,8 +9,8 @@ import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.utils.HashString
 import org.apache.hadoop.fs.Path
 import com.samsung.vddil.recsys.Pipeline
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.job.Rating
+import com.samsung.vddil.recsys.utils.Logger
 
 /**
  * 

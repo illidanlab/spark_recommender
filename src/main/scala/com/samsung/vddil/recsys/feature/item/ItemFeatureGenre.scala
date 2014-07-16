@@ -3,7 +3,6 @@ package com.samsung.vddil.recsys.feature.item
 import scala.collection.mutable.HashMap
 import org.apache.spark.rdd._
 import org.apache.spark.SparkContext._
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
@@ -12,6 +11,7 @@ import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.linalg.Vectors
+import com.samsung.vddil.recsys.utils.Logger
 
 object ItemFeatureGenre  extends FeatureProcessingUnit{
   

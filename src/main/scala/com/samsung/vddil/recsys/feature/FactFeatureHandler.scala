@@ -1,11 +1,11 @@
 package com.samsung.vddil.recsys.feature
 
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.fact.FactFeatureNMF
 import com.samsung.vddil.recsys.feature.fact.FactFeaturePMF
 import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.utils.Logger
 
 /*
  * This is the main entrance of the factorization feature processing.

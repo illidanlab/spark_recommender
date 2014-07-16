@@ -7,14 +7,12 @@
 
 package com.samsung.vddil.recsys.job
 
-import com.samsung.vddil.recsys.Logger
 import org.apache.hadoop.fs.FileSystem
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
 import scala.xml._
-
 import com.samsung.vddil.recsys.data.DataAssemble
 import com.samsung.vddil.recsys.data.DataProcess
 import com.samsung.vddil.recsys.data.DataProcess
@@ -23,11 +21,11 @@ import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
 import com.samsung.vddil.recsys.feature.FactFeatureHandler
 import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 import com.samsung.vddil.recsys.feature.UserFeatureHandler
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model._
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.testing._
 import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.utils.Logger
 
 object RecJob{
 	val ResourceLoc_RoviHQ     = "roviHq"
@@ -84,8 +82,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	//initialization 
     val jobType = JobType.Recommendation
     
-    Logger.logger.info("Parsing job ["+ jobName + "]")
-    Logger.logger.info("        job desc:"+ jobDesc)
+    Logger.info("Parsing job ["+ jobName + "]")
+    Logger.info("        job desc:"+ jobDesc)
     val sc:SparkContext = Pipeline.instance.get.sc
     val fs:FileSystem   = Pipeline.instance.get.fs
     val overwriteResource = false
@@ -102,7 +100,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     
     val jobStatus:RecJobStatus = new RecJobStatus(this)
     
-    Logger.logger.info("Job Parse done => " + this.toString)
+    Logger.info("Job Parse done => " + this.toString)
     
     /*
      * The main workflow of a recommender system job. 
@@ -112,16 +110,16 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 
     	//Preparing processing data. 
     	//In this step the user/item lists are available in the JobStatus. 
-    	logger.info("**preparing processing data")
+    	Logger.info("**preparing processing data")
     	DataProcess.prepareTrain(this)
     	
-    	logger.info("**preparing features")
+    	Logger.info("**preparing features")
     	
     	//preparing features
     	//   for each feature, we generate the resource  
     	this.featureList.foreach{
     		featureUnit =>{
-    		    logger.info("*preparing features" + featureUnit.toString())
+    		    Logger.info("*preparing features" + featureUnit.toString())
     		    featureUnit.run(this)
     		    //status: update Job status
     		}
@@ -130,10 +128,10 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	//learning models
     	if (this.modelList.length > 0){
     		  
-    		logger.info("**learning models")
+    		Logger.info("**learning models")
 	    	this.modelList.foreach{
 	    	     modelUnit => {
-	    	         logger.info("*buildling model" + modelUnit.toString())
+	    	         Logger.info("*buildling model" + modelUnit.toString())
 	    	         modelUnit.run(this)
 	    	     }
 	    	}
@@ -223,7 +221,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        if( nodeList.size > 0 && (nodeList(0) \JobTag.RecJobSparkContextMaster ).size > 0){
     	   sparkContext_master = (nodeList(0) \JobTag.RecJobSparkContextMaster).text 
        }else{
-           Logger.logger.warn("SparkContext specification not found, will try using local.")
+           Logger.warn("SparkContext specification not found, will try using local.")
        }
           
        if( nodeList.size > 0 && (nodeList(0) \JobTag.RecJobSparkContextJobName).size > 0){
@@ -233,7 +231,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        try{
           return Some(new SparkContext(sparkContext_master, sparkContext_jobName))
        }catch{
-         case _:Throwable => Logger.logger.error("Failed to build SparkContext!") 
+         case _:Throwable => Logger.error("Failed to build SparkContext!") 
        }
        
        None
@@ -260,7 +258,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	       }catch{ case _:Throwable => None}
     	   }
        }else{
-          Logger.logger.warn("Data splitting is not specified for job [%s]".format(jobName))
+          Logger.warn("Data splitting is not specified for job [%s]".format(jobName))
        }
        
        //use default if users have not specified we use default. 
@@ -284,7 +282,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        
        var nodeList = jobNode \ JobTag.RecJobResourceLocation
        if (nodeList.size == 0){
-          Logger.logger.error("Resource locations are not given. ")
+          Logger.error("Resource locations are not given. ")
           return resourceLoc
        }
        
@@ -303,11 +301,11 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/model"
        }
        
-       Logger.logger.info("Resource WATCHTIME:   " + resourceLoc(RecJob.ResourceLoc_WatchTime))
-       Logger.logger.info("Resource ROVI:        " + resourceLoc(RecJob.ResourceLoc_RoviHQ))
-       Logger.logger.info("Resource Job Data:    " + resourceLoc(RecJob.ResourceLoc_JobData))
-       Logger.logger.info("Resource Job Feature: " + resourceLoc(RecJob.ResourceLoc_JobFeature))
-       Logger.logger.info("Resource Job Model:   " + resourceLoc(RecJob.ResourceLoc_JobModel))
+       Logger.info("Resource WATCHTIME:   " + resourceLoc(RecJob.ResourceLoc_WatchTime))
+       Logger.info("Resource ROVI:        " + resourceLoc(RecJob.ResourceLoc_RoviHQ))
+       Logger.info("Resource Job Data:    " + resourceLoc(RecJob.ResourceLoc_JobData))
+       Logger.info("Resource Job Feature: " + resourceLoc(RecJob.ResourceLoc_JobFeature))
+       Logger.info("Resource Job Model:   " + resourceLoc(RecJob.ResourceLoc_JobModel))
        resourceLoc
     } 
     
@@ -321,13 +319,13 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      
       var nodeList = jobNode \ JobTag.RecJobTrainDateList
       if (nodeList.size == 0){
-        Logger.logger.warn("No training dates given!")
+        Logger.warn("No training dates given!")
         return dateList.toArray
       }
       
       dateList = (nodeList(0) \ JobTag.RecJobTrainDateUnit).map(_.text)
       
-      Logger.logger.info("Training dates: " + dateList.toArray.deep.toString 
+      Logger.info("Training dates: " + dateList.toArray.deep.toString 
           + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
       return dateList.toArray
     }
@@ -342,13 +340,13 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      
       var nodeList = jobNode \ JobTag.RecJobTestDateList
       if (nodeList.size == 0){
-        Logger.logger.warn("No training dates given!")
+        Logger.warn("No training dates given!")
         return dateList.toArray
       }
       
       dateList = (nodeList(0) \ JobTag.RecJobTestDateUnit).map(_.text)
       
-      Logger.logger.info("Testing dates: " + dateList.toArray.deep.toString 
+      Logger.info("Testing dates: " + dateList.toArray.deep.toString 
           + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
       return dateList.toArray
     }
@@ -363,7 +361,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
       
       var nodeList = jobNode \ JobTag.RecJobFeatureList 
       if (nodeList.size == 0){
-        Logger.logger.warn("No features found!")
+        Logger.warn("No features found!")
         return featList
       } 
       
@@ -398,10 +396,10 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
           case JobTag.RecJobFeatureType_Item => featList = featList :+ RecJobItemFeature(featureName, paramList)
           case JobTag.RecJobFeatureType_User => featList = featList :+ RecJobUserFeature(featureName, paramList)
           case JobTag.RecJobFeatureType_Fact => featList = featList :+ RecJobFactFeature(featureName, paramList)
-          case _ => Logger.logger.warn("Feature type %s not found and discarded.".format(featureType))
+          case _ => Logger.warn("Feature type %s not found and discarded.".format(featureType))
         }
         
-        Logger.logger.info("Feature found "+ featureType+ ":"+ featureName + ":" + paramList)
+        Logger.info("Feature found "+ featureType+ ":"+ featureName + ":" + paramList)
       }
       
       featList
@@ -415,7 +413,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	var metricList:Array[RecJobMetric] = Array()
     	var nodeList = jobNode \ JobTag.RecJobMetricList
     	if (nodeList.size == 0) {
-            Logger.logger.warn("No metrics found!")
+            Logger.warn("No metrics found!")
             metricList
         } else {
         	nodeList = nodeList(0) \ JobTag.RecJobMetricUnit
@@ -441,7 +439,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         	    	case JobTag.RecJobMetricType_MSE => metricList = metricList :+ RecJobMetricMSE(metricName, paramList)
         	    	case JobTag.RecJobMetricType_RMSE => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
         	    	case JobTag.RecJobMetricType_HR => metricList = metricList :+ RecJobMetricHR(metricName, paramList)
-        	    	case _ => Logger.logger.warn("Metric type $metricType not found or ignored.")
+        	    	case _ => Logger.warn("Metric type $metricType not found or ignored.")
         	    }
         	}
         }
@@ -457,7 +455,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	var testList:Array[RecJobTest] = Array()
     	var nodeList = jobNode \ JobTag.RecJobTestList
     	if (nodeList.size == 0){
-    	    Logger.logger.warn("No tests found!")
+    	    Logger.warn("No tests found!")
     	    testList
     	} else {
     		nodeList = nodeList(0) \ JobTag.RecJobTestUnit
@@ -482,7 +480,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     			//create tests by type
     			testType match {
     				case JobTag.RecJobTestType_NotCold => testList = testList :+ RecJobTestNoCold(testName, paramList)
-    				case _ => Logger.logger.warn("Test type $testType not found or ignored.")
+    				case _ => Logger.warn("Test type $testType not found or ignored.")
     			}
     			
     			
@@ -501,7 +499,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
       
       var nodeList = jobNode \ JobTag.RecJobModelList
       if (nodeList.size == 0){
-        Logger.logger.warn("No models found!")
+        Logger.warn("No models found!")
         return modelList
       }
       
@@ -531,7 +529,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
          modelType match{
            case JobTag.RecJobModelType_Regress => modelList = modelList :+ RecJobScoreRegModel(modelName, paramList)
            case JobTag.RecJobModelType_Classify => modelList = modelList :+ RecJobBinClassModel(modelName, paramList)
-           case _ => Logger.logger.warn("Model type $modelType not found and ignored.")
+           case _ => Logger.warn("Model type $modelType not found and ignored.")
          }
       }
       
@@ -749,7 +747,7 @@ object RecJobModel{
 case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, String]) extends RecJobModel{
 	def run(jobInfo: RecJob):Unit = {
 	    //1. prepare data with continuous labels (X, y). 
-		Logger.logger.info("**assembling data")
+		Logger.info("**assembling data")
     	
 		var minIFCoverage = RecJobModel.defaultMinItemFeatureCoverage
 		var minUFCoverage = RecJobModel.defaultMinUserFeatureCoverage
@@ -759,7 +757,7 @@ case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, Str
 		val dataResourceStr = DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
 		
 		//2. divide training, testing, validation
-		Logger.logger.info("**divide training/testing/validation")
+		Logger.info("**divide training/testing/validation")
 		DataSplitting.splitContinuousData(jobInfo, dataResourceStr, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
@@ -767,7 +765,7 @@ case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, Str
 		)
 		
 	    //3. train model on training and tune using validation, and testing.
-		Logger.logger.info("**building and testing models")
+		Logger.info("**building and testing models")
 		
 		jobInfo.jobStatus.completedRegressModels(this) = 
 		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
@@ -782,7 +780,7 @@ case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, Str
 case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, String]) extends RecJobModel{
 	def run(jobInfo: RecJob):Unit = {
 	    //1. prepare data with binary labels (X, y)
-	   Logger.logger.info("**assembling binary data")  
+	   Logger.info("**assembling binary data")  
 	   
 	   var minIFCoverage = RecJobModel.defaultMinItemFeatureCoverage
 	   var minUFCoverage = RecJobModel.defaultMinUserFeatureCoverage
@@ -794,7 +792,7 @@ case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, Str
 	   val dataResourceStr = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
 	   
 	   //2. divide training, testing, validation
-	   Logger.logger.info("**divide training/testing/validation")
+	   Logger.info("**divide training/testing/validation")
 	   DataSplitting.splitBinaryData(jobInfo, dataResourceStr, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
@@ -803,7 +801,7 @@ case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, Str
 		)
 	   
 	   //3. train model on training and tune using validation, and testing.
-	   Logger.logger.info("**building and testing models")
+	   Logger.info("**building and testing models")
 	   
 	   jobInfo.jobStatus.completedClassifyModels(this) = 
 	       ClassificationModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo)

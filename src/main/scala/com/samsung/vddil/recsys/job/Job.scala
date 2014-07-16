@@ -4,16 +4,18 @@
 package com.samsung.vddil.recsys.job
 
 import java.io.File
-import java.io.InputStream 
+import java.io.InputStream
 import scala.xml._
-
 import com.samsung.vddil.recsys._
-
 import org.apache.spark.SparkContext
 import org.apache.hadoop.conf._
 import org.apache.hadoop.fs._
 
-/*
+import com.samsung.vddil.recsys.utils.Logger
+
+
+
+/**
  * Define a set of job types 
  */
 object JobType extends Enumeration {
@@ -22,8 +24,7 @@ object JobType extends Enumeration {
      	val HelloWorld = Value(JobTag.JobType_HelloWorld)
      	val Unknown = Value
 }
-
-import JobType._ 
+import JobType._
 
 /** 
  * The trait of Job class. The Job serves as a data structure of jobs 

@@ -1,9 +1,9 @@
 package com.samsung.vddil.recsys.model
 
-import com.samsung.vddil.recsys.Logger
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.model.regression.RegressionModelRidge
+import com.samsung.vddil.recsys.utils.Logger
 
 object RegressionModelHandler extends ModelHandler {
 	//predefined values for model name
@@ -12,13 +12,13 @@ object RegressionModelHandler extends ModelHandler {
 	
 	def buildModel(modelName:String, modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob): Boolean = {
 	    
-		Logger.logger.info("Processing regression model [%s:%s]".format(modelName, modelParams))
+		Logger.info("Processing regression model [%s:%s]".format(modelName, modelParams))
 	  
 	    var resource:ModelResource = ModelResource.fail
 		modelName match{
 		  case RegModelRidge => resource = RegressionModelRidge.learnModel(modelParams, dataResourceStr, jobInfo)
 		  //case RegModelLasso => resource = ModelResource.fail
-		  case _ => Logger.logger.warn("Unknown regression model name [%s]".format(modelName))
+		  case _ => Logger.warn("Unknown regression model name [%s]".format(modelName))
 		}
 	  
 		//For the successful ones, push resource information to jobInfo.jobStatus

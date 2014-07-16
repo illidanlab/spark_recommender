@@ -4,13 +4,12 @@ package com.samsung.vddil.recsys.job
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
 import org.apache.spark.rdd.RDD
-
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.data.DataSet
+import com.samsung.vddil.recsys.utils.Logger
 
 /**
  * A JobStatus implementation for recommendation job. 

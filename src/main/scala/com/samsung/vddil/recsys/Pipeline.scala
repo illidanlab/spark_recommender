@@ -13,9 +13,9 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkException
 import scala.collection.mutable.HashMap
 import scala.xml.XML
-
 import com.samsung.vddil.recsys._
 import com.samsung.vddil.recsys.job._
+import com.samsung.vddil.recsys.utils.Logger
 
 /**
  * This is the pipeline class, which includes pipeline configurations such as Spark Context and 
@@ -28,7 +28,12 @@ import com.samsung.vddil.recsys.job._
 class Pipeline private (val sc:SparkContext, val fs:FileSystem){
 	val hashPartitioners:HashMap[String, HashPartitioner] = new HashMap()
 }
- 
+
+/**
+ * A set of methods used in the pipeline, such as file system operations, spark context 
+ * management (partitioner). These functions depend on an initialized Pipeline singleton 
+ * object, and thus the `config` function should always be firstly invoked. 
+ */
 object Pipeline {
     
     /** The Singleton instance of Pipeline */
@@ -105,9 +110,12 @@ object Pipeline {
 	/**
 	 * Creates the singleton object Pipeline.Instance.
 	 * 
-	 * Initialize the instance of [[com.apache.spark.SparkContext]]. Some of the SparkConf options 
+	 * Initialize the instance of `com.apache.spark.SparkContext`. Some of the SparkConf options 
 	 * should be passed in by outside files (such as JVM options). However, currently there is a 
 	 * bug in Spark, and therefore the configuration is hard coded. 
+	 * 
+	 * [[http://spark.apache.org/docs/latest/configuration.html Here]] is a reference to the 
+	 * available configuration for Spark. 
 	 * 
 	 */
 	def config( ) = {
