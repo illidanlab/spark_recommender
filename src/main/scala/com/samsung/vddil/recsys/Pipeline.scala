@@ -13,8 +13,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkException
 import scala.collection.mutable.HashMap
 import scala.xml.XML
-import com.samsung.vddil.recsys._
-import com.samsung.vddil.recsys.job._
+import com.samsung.vddil.recsys.job.Job
 import com.samsung.vddil.recsys.utils.Logger
 
 /**
@@ -78,6 +77,9 @@ object Pipeline {
 	 * This function first check if the resource location exists or not. If the file does not 
 	 * exist, then the function returns true. If the file exists, depending on if we want to 
 	 * overwrite it or not. Either returns false or remove the file and returns true.   
+	 * 
+	 * It is recommend that each job maintains a wrapped version to put 
+	 * the `overwrite` variable in closure. An example is [[com.samsung.vddil.recsys.job.RecJob.outputResource]]
 	 * 
 	 * @param resourceLoc the full location of the resource (local or HDFS).
 	 * @param overwrite if the resource should be overwrite. 
