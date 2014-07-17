@@ -873,3 +873,12 @@ case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, Str
        
 	}
 }
+
+/** 
+ *  a compact class to represent rating
+ *  
+ *   @param user the mapped index of user
+ *   @param item the mapped index of item
+ *   @param rating the value of rating 
+ */
+case class Rating(user: Int, item: Int, rating: Double)

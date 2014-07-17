@@ -11,27 +11,34 @@ import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.data.DataSet
 import com.samsung.vddil.recsys.utils.Logger
 
-/**
- * A JobStatus implementation for recommendation job. 
+/** 
+ * Stores the location of different types of resources (prepared data, features, models). 
  * 
+ * @param jobInfo the recommendation job associated with this status. 
  */
 case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
-	// Use the RecJob to initialize the RecJobStatus
-	// so we know what are things that we want to keep track.
-	
+    
 	/*
-	 * Here we store the location of the resources (prepared data, features, models). 
+	 * Data processing resources   
 	 */ 
-	//val resourceLocation:HashMap[Any, String] = new HashMap() // a general place.
-  
 	var resourceLocation_CombineData:String = ""
 	var resourceLocation_UserList:String = ""
 	var resourceLocation_ItemList:String = ""
 	var resourceLocation_ItemMap = ""
 	var resourceLocation_UserMap = ""
-
-	val resourceLocation_AggregateData_Continuous:HashMap[String, DataSet]  = new HashMap() 
 	
+	/*
+	 * Persisted spark lists
+	 */
+	var users:Array[String] = Array[String]()
+	var items:Array[String] = Array[String]()
+	var userIdMap:Map[String, Int] = Map()
+	var itemIdMap:Map[String, Int] = Map()
+	
+	/*
+	 * Data assembling resources   
+	 */ 
+	val resourceLocation_AggregateData_Continuous:HashMap[String, DataSet]  = new HashMap() 
 	val resourceLocation_AggregateData_Continuous_Train:HashMap[String, String] = new HashMap() 
 	val resourceLocation_AggregateData_Continuous_Test:HashMap[String, String]  = new HashMap() 
 	val resourceLocation_AggregateData_Continuous_Valid:HashMap[String, String] = new HashMap() 
@@ -41,33 +48,27 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	val resourceLocation_AggregateData_Binary_Test:HashMap[String, String]  = new HashMap() 
 	val resourceLocation_AggregateData_Binary_Valid:HashMap[String, String] = new HashMap() 
   
-	//Store user/item feature resource
-	// meta information such as user/item feature map resource are now move to FeatureStruct.
+	/* 
+	 * Feature extraction resources
+	 */
 	val resourceLocation_UserFeature:HashMap[String, FeatureStruct] = new HashMap() 
 	val resourceLocation_ItemFeature:HashMap[String, FeatureStruct] = new HashMap()
 	
-	//Store classification/regression models
+	/*
+	 * Model resources 
+	 */
 	val resourceLocation_ClassifyModel:HashMap[String, ModelStruct] = new HashMap()
 	val resourceLocation_RegressModel:HashMap[String, ModelStruct]  = new HashMap()
 	
 	/*
-	 *  As set of flags showing completed components. 
+	 * Completed components. 
 	 */
 	val completedItemFeatures:HashSet[RecJobItemFeature] = new HashSet()
 	val completedUserFeatures:HashSet[RecJobUserFeature] = new HashSet()
 	val completedFactFeatures:HashSet[RecJobFactFeature] = new HashSet()
 	val completedRegressModels:HashSet[RecJobModel] = new HashSet()
 	val completedClassifyModels:HashSet[RecJobModel] = new HashSet()
-	
-	
-	/*
-	 * store persisted spark lists
-	 */
-	var users:Array[String] = Array[String]()
-	var items:Array[String] = Array[String]()
-	var userIdMap:Map[String, Int] = Map()
-	var itemIdMap:Map[String, Int] = Map()
-  
+
 	/*
 	 * test data in RDD[Rating] form
 	 */
@@ -85,8 +86,3 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
     	Logger.logger.info("Completed Classification Models " + completedClassifyModels)
     }
 } 
-
-object RecJobStatus{
-    
-  
-}

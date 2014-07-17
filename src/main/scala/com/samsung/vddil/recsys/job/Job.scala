@@ -1,6 +1,3 @@
-/**
- * This file includes the basic definition of a job. 
- */
 package com.samsung.vddil.recsys.job
 
 import java.io.File
@@ -10,7 +7,6 @@ import com.samsung.vddil.recsys._
 import org.apache.spark.SparkContext
 import org.apache.hadoop.conf._
 import org.apache.hadoop.fs._
-
 import com.samsung.vddil.recsys.utils.Logger
 
 
@@ -30,46 +26,42 @@ import JobType._
  * The trait of Job class. The Job serves as a data structure of jobs 
  * to be executed in the recommendation pipeline and define how the job
  * should be carried out. 
- * 
- * @author jiayu.zhou
  *
  */
 trait Job {
-	/*
-	 * The name of the job and will be used as a part of the file name.
-	 */
+	/** The name of the job and will be used as a part of the file name. */
 	def jobName:String
 	
-	/*
-	 * The description of the job. 
-	 */
+	/** The description of the job.  */
 	def jobDesc:String
 	
-	/*
-	 * The type of the job. 
-	 */
+	/** The type of the job.  */
 	def jobType:JobType
 	
-	/*
-	 * This is the main entrance of the run method. 
-	 */
+	/** Carries out the job execution. */
 	def run():Unit
 	
-	/*
-	 * Get the current job status. 
-	 */
+	/** Gets the current job status. */
 	def getStatus():JobStatus
 	
-	/*
-	 * Generate job XML from current information to be written in file. 
-	 */
+	/** Generates job XML from current information to be written in file. */
 	def generateXML():Option[scala.xml.Elem]
 }
 
-
+/**
+ * Static functions used in job parsing and file handling. 
+ */
 object Job{
 
-	//return input stream from hdfs
+	/**
+	 * Returns the input stream from Hadoop file system, which is used for 
+	 * reading files from Hadoop. 
+	 * 
+	 * @param hadoopConf the configuration of Hadoop 
+	 * @param filePath the path of the file
+	 * 
+	 * @return input stream from HDFS
+	 */
 	def inputStreamHDFS(hadoopConf:Configuration, filePath:String): Option[InputStream] = {
 	   val fileSystem = FileSystem.get(hadoopConf)
 	   val path = new Path(filePath)
@@ -79,8 +71,16 @@ object Job{
 	       None
 	}
 
-	/*
+	/**
 	 * Read jobs from a job file. 
+	 * 
+	 * The method firstly tries to read the file from HDFS. If failed, then it will 
+	 * will try to find the file in resource folder. 
+	 * 
+	 * @param filename the name of the XML file
+	 * @param sc SparkContext
+	 * 
+	 * @return a list of jobs to be executed
 	 */
 	def readFromXMLFile(filename:String, sc:SparkContext):List[Job] = {
 	  val logger = Logger
@@ -90,7 +90,7 @@ object Job{
 	  var xml:Option[scala.xml.Elem] = None
       val hadoopConf = sc.hadoopConfiguration
 
-      //reading job file from hdfs 
+      //reading job file from HDFS 
       val jobfileIn:Option[InputStream] = inputStreamHDFS(hadoopConf, filename)
 	  
 	  // If the job file exists, we parse it and look for all job entries, and 
@@ -99,7 +99,6 @@ object Job{
 	    logger.info("Job file found in file system: " + filename)
 	    xml = Some(XML.load(jobfileIn.get))
 	  }else{
-		//val resLoc = "/jobs/test_job.xml"
 	    val resLoc = "/jobs/"+filename
 	    logger.info("Job file not found in file system, try loading resource: [%s]".format(resLoc) )
 	    //if file is not found we try to see if we can use one in resource folder.
@@ -123,25 +122,29 @@ object Job{
 	        val jobDescStr:String = (node \ JobTag.JobDesc).text
 	        
 	        var jobEntry:Job = jobTypeStr match{
-	          case JobTag.JobType_Recommendation => RecJob(jobNameStr, jobDescStr, node) 
-	          case JobTag.JobType_HelloWorld     => HelloWorldJob(jobNameStr, jobDescStr, node)
-	          case _ => UnknownJob(jobNameStr, jobDescStr, node)
+	            //register Job types. 
+	            case JobTag.JobType_Recommendation => RecJob(jobNameStr, jobDescStr, node) 
+	            case JobTag.JobType_HelloWorld     => HelloWorldJob(jobNameStr, jobDescStr, node)
+	            case _ => UnknownJob(jobNameStr, jobDescStr, node)
 	        } 
 	           
 	        jobList = jobList ::: List(jobEntry)
 	    }
 
-	    logger.info("There are ["+ jobList.length + "] Jobs found. ")
-	    
+	    logger.info("There are ["+ jobList.length + "] Jobs found. ")	    
 	  }
-	  
 	  
 	  jobList
 	}
 }
 
-/*
- * Unknown Job. This is a dummy implementation show how things could work. 
+/**
+ * Creates an unknown Job. 
+ * 
+ * The unknown Job is created when the pipeline can not identify other types of 
+ * registered job types. 
+ * 
+ * This is also a dummy implementation show how to create a job. 
  */
 case class UnknownJob (jobName:String, jobDesc:String, jobNode:Node) extends Job{
     val jobType = JobType.Unknown
@@ -164,6 +167,9 @@ case class UnknownJob (jobName:String, jobDesc:String, jobNode:Node) extends Job
     }
 }
 
+/**
+ * Creates the job status for an unknown job. 
+ */
 case class UnknownJobStatus(jobInfo:UnknownJob) extends JobStatus{
 	def allCompleted():Boolean = {
        true
@@ -174,7 +180,4 @@ case class UnknownJobStatus(jobInfo:UnknownJob) extends JobStatus{
     }
 }
 
-/*
- * more compact class to represent rating than Tuple3[Int, Int, Double]
- */
-case class Rating(user: Int, item: Int, rating: Double)
+

@@ -5,7 +5,6 @@ package com.samsung.vddil.recsys.job
  * 
  * These tags are used to parse XML file into Scala data structures. 
  * 
- *  @author jiayu.zhou 
  */
 object JobTag {
   

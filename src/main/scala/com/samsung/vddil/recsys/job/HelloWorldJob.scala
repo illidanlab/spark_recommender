@@ -8,8 +8,8 @@ import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.Logger
 
-/*
- * This is an example showing how to implement a job. 
+/**
+ * This is an example showing how to implement a (simple) job. 
  */
 case class HelloWorldJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     val jobType = JobType.HelloWorld
