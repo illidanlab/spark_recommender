@@ -8,7 +8,7 @@ import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.FeatureStruct
-import com.samsung.vddil.recsys.data.DataSet
+import com.samsung.vddil.recsys.data.AssembledDataSet
 import com.samsung.vddil.recsys.utils.Logger
 
 /** 
@@ -38,7 +38,7 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	/*
 	 * Data assembling resources   
 	 */ 
-	val resourceLocation_AggregateData_Continuous:HashMap[String, DataSet]  = new HashMap() 
+	val resourceLocation_AggregateData_Continuous:HashMap[String, AssembledDataSet]  = new HashMap() 
 	val resourceLocation_AggregateData_Continuous_Train:HashMap[String, String] = new HashMap() 
 	val resourceLocation_AggregateData_Continuous_Test:HashMap[String, String]  = new HashMap() 
 	val resourceLocation_AggregateData_Continuous_Valid:HashMap[String, String] = new HashMap() 
