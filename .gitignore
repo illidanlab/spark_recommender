@@ -11,3 +11,7 @@ C:/logs/notify-subscription.log
 .cache
 
 *.sublime-workspace
+
+*.sublime-workspace
+
+recsys-spark.sublime-workspace
