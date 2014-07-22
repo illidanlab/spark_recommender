@@ -5,8 +5,8 @@ import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.SparseVector
 import com.samsung.vddil.recsys.linalg.Vectors
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.rdd._
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
@@ -21,8 +21,6 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
   val ItemDescInd = 4
 
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
-		
-    Logger.logger.error("%s has not been implmented.".format(getClass.getName()))
     
     //get spark context
     val sc = jobInfo.sc

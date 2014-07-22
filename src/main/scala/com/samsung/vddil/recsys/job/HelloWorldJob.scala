@@ -5,11 +5,11 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import scala.xml._
 import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.utils.Logger
 
-/*
- * This is an example showing how to implement a job. 
+/**
+ * This is an example showing how to implement a (simple) job. 
  */
 case class HelloWorldJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     val jobType = JobType.HelloWorld
@@ -73,7 +73,7 @@ case class HelloWorldJobStatus(jobInfo:HelloWorldJob) extends JobStatus{
     }
     
     def showStatus():Unit = {
-    	Logger.logger.info("The status of current job [completed? %s]".format(allCompleted().toString))
+    	Logger.info("The status of current job [completed? %s]".format(allCompleted().toString))
     }
 }
 

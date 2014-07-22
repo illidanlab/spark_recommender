@@ -7,46 +7,51 @@ import org.apache.hadoop.fs.Path
 import org.apache.log4j.PropertyConfigurator
 import org.apache.spark.HashPartitioner
 import org.apache.spark.Partitioner
-import org.apache.spark.RangePartitioner
 import org.apache.spark.serializer.KryoRegistrator
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkException
 import scala.collection.mutable.HashMap
 import scala.xml.XML
+import com.samsung.vddil.recsys.job.Job
+import com.samsung.vddil.recsys.utils.Logger
 
-import com.samsung.vddil.recsys._
-import com.samsung.vddil.recsys.job._
 /**
  * This is the pipeline class, which includes pipeline configurations such as Spark Context and 
  * Hadoop file system and etc. A XML file is used to instantiate an object of pipeline class, 
- * and it is unique.  
+ * and it is unique. 
+ * 
+ * The Pipeline is singleton. Use Pipeline.config to initialize the instance, 
+ * and use Pipeline.instance.get to access the pipeline instance.
  */
 class Pipeline private (val sc:SparkContext, val fs:FileSystem){
 	val hashPartitioners:HashMap[String, HashPartitioner] = new HashMap()
-	//val rangePartitioners:HashMap[String, RangePartitioner] = new HashMap()
 }
- 
+
+/**
+ * A set of methods used in the pipeline, such as file system operations, spark context 
+ * management (partitioner). These functions depend on an initialized Pipeline singleton 
+ * object, and thus the `config` function should always be firstly invoked. 
+ */
 object Pipeline {
     
-    
-    
+    /** The Singleton instance of Pipeline */
 	private var Instance:Option[Pipeline] = None
 	
-	/**
-	 * Store a list of partitioner for reuse purpose. 
-	 */
-
-	
+	/** Store a list of partitioner for reuse purpose. */
 	val PartitionHashDefault = "defaultHashPartitioner"
 	val PartitionHashNum = "HashPartitioner%d"
 	
+	/** Access point of the singleton instance of Pipeline */
 	def instance = Instance
 	
 	/**
-	 * Check if all locations in the Array exist. Return false if not all of them 
+	 * Checks if all locations in the Array exist. Returns false if not all of them 
 	 * exist. This function is typically used to specify if all locations exist so 
 	 * an entire block can be skipped. 
+	 * 
+	 * @param locArray an array of local or HDFS locations
+	 * @return if all local or HDFS locations in locArray exist
 	 */
 	def exists(locArray:Array[String]):Boolean = {
 		if (!Instance.isDefined){
@@ -62,6 +67,24 @@ object Pipeline {
 		true
 	}
 	
+	/**
+	 * Returns if the resource (to be output in resourceLoc) is ready to be output. 
+	 * 
+	 * This function is mandatory whenever outputting a resource (combined data, features, 
+	 * models). The default Spark behavior is: try to save the file no matter if current 
+	 * file exists or not. And when the file exists, it throws an exception.  
+	 * 
+	 * This function first check if the resource location exists or not. If the file does not 
+	 * exist, then the function returns true. If the file exists, depending on if we want to 
+	 * overwrite it or not. Either returns false or remove the file and returns true.   
+	 * 
+	 * It is recommend that each job maintains a wrapped version to put 
+	 * the `overwrite` variable in closure. An example is [[com.samsung.vddil.recsys.job.RecJob.outputResource]]
+	 * 
+	 * @param resourceLoc the full location of the resource (local or HDFS).
+	 * @param overwrite if the resource should be overwrite. 
+	 * @return if the resource should be output by RDD.saveTextFile or RDD.saveObject 
+	 */
 	def outputResource(resourceLoc:String, overwrite:Boolean):Boolean = {
 	    //proceed if Pipeline instance is ready. 
 		if (!Instance.isDefined){
@@ -87,7 +110,15 @@ object Pipeline {
 	}
 	
 	/**
-	 * This function create the singleton object Pipeline.Instance. 
+	 * Creates the singleton object Pipeline.Instance.
+	 * 
+	 * Initialize the instance of `com.apache.spark.SparkContext`. Some of the SparkConf options 
+	 * should be passed in by outside files (such as JVM options). However, currently there is a 
+	 * bug in Spark, and therefore the configuration is hard coded. 
+	 * 
+	 * [[http://spark.apache.org/docs/latest/configuration.html Here]] is a reference to the 
+	 * available configuration for Spark. 
+	 * 
 	 */
 	def config( ) = {
 		if(Instance.isDefined){
@@ -128,7 +159,13 @@ object Pipeline {
 	}
 	
 	/**
-	 * Get the default number for hash partitioner 
+	 * Returns the default partitioner number for hash/range partitioner
+	 * 
+	 * The number is currently given by 
+	 *     2 * number of executors * number of executor cores.
+	 * In local machine, this number is given by 32
+	 * 
+	 * @return the partition number used for hash/range partitioner. 
 	 */
 	def getPartitionNum():Int = {
 	    require(Pipeline.instance.isDefined)
@@ -142,7 +179,9 @@ object Pipeline {
 
 	
 	/**
-	 * @param partitionNum the number of partitioners for hash partitioner
+	 * Returns a cached hash partitioner given a specific partition number 
+	 * 
+	 * @param partitionNum the partitioner number for hash partitioner
 	 */
 	def getHashPartitioner(partitionNum:Int = Pipeline.getPartitionNum):HashPartitioner = {
 	    require(Pipeline.instance.isDefined)
@@ -154,22 +193,14 @@ object Pipeline {
 	    }
 	    Instance.get.hashPartitioners(partitionerName)
 	}
-
-  
-  def main(args: Array[String]): Unit = {
+	
+    /**
+     * The main entrance of the recommender system
+     */
+    def main(args: Array[String]): Unit = {
 		PropertyConfigurator.configure("log4j.properties")
 		
-		val logger = Logger.logger
-		
-		//Read config file
-		var cfgFileStr:String = "local_cfg.xml"
-		if (args.size > 1){
-		   cfgFileStr = args(1)
-		   logger.info("Config file specified: " + cfgFileStr)
-		}else{
-		  logger.warn("No config file specified. Used default job file: " + cfgFileStr)
-		}
-		
+		// configure and create SparkContext
 		config()
 		
 		// only proceed to jobs if pipeline is properly configured. 
@@ -179,28 +210,29 @@ object Pipeline {
 			var jobFileStr:String = "test_job.xml" 
 			if (args.size > 0){
 			  jobFileStr = args(0)
-			  logger.info("Job file specified: " + jobFileStr)
+			  Logger.info("Job file specified: " + jobFileStr)
 			}else{
-			  logger.warn("No job file specified. Used default job file: " + jobFileStr)
+			  Logger.warn("No job file specified. Used default job file: " + jobFileStr)
 			}
 			
-			//Process job file
-			val jobList : List[Job] = Job.readFromXMLFile(jobFileStr,
-                                                    instance.get.sc)
-			
+			val jobList : List[Job] = 
+			    Job.readFromXMLFile(jobFileStr, instance.get.sc)
+			    
+			//Process jobs one by one
+		    Logger.info("There are " + jobList.size + " jobs read from job file.")
 			for (job:Job <- jobList){
-			   logger.info("=== Running job: " + job + " ===")
+			   Logger.info("=== Running job: " + job + " ===")
 			   job.run()
 			   job.getStatus().showStatus()
-			   logger.info("=== Job Done: " + job + " ===")
+			   Logger.info("=== Job Done: " + job + " ===")
 			}
 			
-			logger.info("All jobs are completed.")
+			Logger.info("All jobs are completed.")
 		}else{
-			logger.info("Pipeline exited as configuration fails.")
+			Logger.info("Pipeline exited as configuration fails.")
 		}
 		
-  } 
+    } 
 
 } 
 
@@ -208,8 +240,10 @@ object Pipeline {
  * Registration of Kryo serialization
  * 
  * Currently only the following classes are registered 
+ * [[com.samsung.vddil.recsys.linalg.Vector]]
+ * [[com.samsung.vddil.recsys.linalg.SparseVector]]
+ * [[com.samsung.vddil.recsys.linalg.DenseVector]]
  * 
- * com.samsung.vddil.recsys.linalg.{Vector, SparseVector, DenseVector}
  */
 class SerializationRegistrator extends KryoRegistrator{
     override def registerClasses(kyro: Kryo){

@@ -1,4 +1,0 @@
-<cfgList xmlns:recsys="Samsung Recsys">
-	<sparkContext>
-		<master>local[4]</master>
-	</sparkContext></cfgList>

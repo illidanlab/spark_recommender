@@ -8,13 +8,12 @@ import org.apache.spark.mllib.regression.RidgeRegressionModel
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-
 import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.model.ModelResource
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model.ModelProcessingUnit
 import com.samsung.vddil.recsys.model.ModelStruct
+import com.samsung.vddil.recsys.utils.Logger
 
 object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
 	

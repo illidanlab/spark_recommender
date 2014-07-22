@@ -13,3 +13,7 @@ C:/logs/notify-subscription.log
 *.sublime-workspace
 
 *.swp
+
+*.sublime-workspace
+
+recsys-spark.sublime-workspace

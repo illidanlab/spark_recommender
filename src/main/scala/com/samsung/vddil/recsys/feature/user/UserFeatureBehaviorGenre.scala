@@ -2,7 +2,6 @@ package com.samsung.vddil.recsys.feature.user
 
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
-
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.feature.item.ItemFeatureGenre
@@ -10,9 +9,9 @@ import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.{Vector,Vectors,SparseVector}
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.utils.Logger
 
 
 object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
@@ -130,7 +129,7 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit{
                        
                 //save user features in text file
                 if(jobInfo.outputResource(featureFileName)) {
-                    Logger.logger.info("Dumping feature resource: " + featureFileName)
+                    Logger.info("Dumping feature resource: " + featureFileName)
                     userGenreFeatures.saveAsObjectFile(featureFileName)
                 }
 		    }

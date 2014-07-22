@@ -2,10 +2,7 @@ package com.samsung.vddil.recsys.model.regression
 
 import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.Logger
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model.ModelUtil
-
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.GeneralizedLinearAlgorithm
 import org.apache.spark.mllib.regression.GeneralizedLinearModel
@@ -13,6 +10,7 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.utils.Logger
 
 trait RegLinearModel  {
 	

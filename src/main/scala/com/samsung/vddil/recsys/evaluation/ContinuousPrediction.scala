@@ -1,7 +1,7 @@
 package com.samsung.vddil.recsys.evaluation
 
-import com.samsung.vddil.recsys.Logger
 import org.apache.spark.rdd.RDD
+import com.samsung.vddil.recsys.utils.Logger
 
 object ContinuousPrediction {
 	/*

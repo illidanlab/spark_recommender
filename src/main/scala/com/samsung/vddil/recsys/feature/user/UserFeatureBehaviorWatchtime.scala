@@ -1,18 +1,18 @@
 package com.samsung.vddil.recsys.feature.user
 
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.utils.Logger
 
 /*
  * User Feature: Watch time features. 
  */
 object UserFeatureBehaviorWatchtime extends FeatureProcessingUnit {
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
-		Logger.logger.error("%s has not been implmented.".format(getClass.getName()))
+		Logger.error("%s has not been implmented.".format(getClass.getName()))
 		
 		// 1. Complete default parameters
 		

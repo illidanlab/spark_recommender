@@ -9,33 +9,56 @@ import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.utils.HashString
 import org.apache.hadoop.fs.Path
 import com.samsung.vddil.recsys.Pipeline
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.job.Rating
+import com.samsung.vddil.recsys.utils.Logger
 
 /**
- * 
- * Modified by Jiayu: added resource path
+ * Provides functions to aggregate data. The main functions are [[DataProcess.prepareTrain]] 
+ * and [[DataProcess.prepareTest]], which provides training and testing.  
  */
 object DataProcess {
 
 
-  /*will replace string id in the RDD (String, (Int, Double))
-   *with int and return RDD[(Int, Int, Double)]
-   */
-  def substituteIntId(idMap:Map[String, Int], 
+    /**
+     * Replaces String-type ID to Integer. 
+     * 
+     * Replaces String-type ID in the RDD[(String, (Int, Double))]
+     * with a given String-Integer and returns RDD[(Int, Int, Double)]
+     * 
+     * @param idMap the String-Integer map
+     * @param dataRDD the data RDD of the form (String, (Int, Double)) 
+     * @param sc the SparkContext
+     */
+    def substituteIntId(idMap:Map[String, Int], 
                       dataRDD:RDD[(String, (Int,Double))],
                       sc:SparkContext):RDD[(Int, Int, Double)] = {
-    sc.parallelize(idMap.toList).join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
-      (x._2._1, x._2._2._1, x._2._2._2) //(intId, Int, Double)
+        sc.parallelize(idMap.toList).join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
+            val intID:Int = x._2._1 
+            val otherField = x._2._2._1
+            val value:Double = x._2._2._2
+            (intID, otherField, value) 
+        }
     }
-  }
 
 
-
+    /**
+     * Returns the combined data, given the physical location of data repository and a set of dates.
+     * 
+     * For each date, the function access the data as 
+     * 
+     * {{{
+     * val oneDay:String = dates(0)
+     * val fileLoc:String = "pathPrefix/oneDay/"
+     * }}}
+     * 
+     * @param dates a list of dates, from which the data is required. 
+     * @param pathPrefix the physical location of the data repository 
+     * 
+     * @return the combined data
+     */
 	def getDataFromDates(dates:Array[String], 
 							pathPrefix: String,
 							sc: SparkContext):Option[RDD[(String, String, Double)]] = {
-		
 		//read all data mentioned in test dates l date
 		//get RDD of data of each individua
 		val arrRatingsRDD = dates.map{date => 
@@ -55,8 +78,22 @@ object DataProcess {
   
   
     /**
-     *   This method generates ( UserID, ItemID, feedback ) tuples from ACR watch time data
-     *   and stores the tuples, list of UserID, list of ItemID into the system. 
+     * Generates user-item matrix, user list, and item list. 
+     * 
+     * This method generates ( UserID, ItemID, feedback ) tuples from ACR watch time data
+     * and stores the tuples, list of UserID, list of ItemID into the system. 
+     * 
+     * The following data fields will be filled:
+     * `jobStatus.users`,
+     * `jobStatus.items`,
+     * `jobStatus.userIdMap`,
+     * `jobStatus.itemIdMap`,
+     * `jobStatus.resourceLocation_CombineData`, 
+     * `jobStatus.resourceLocation_UserList`,
+     * `jobStatus.resourceLocation_ItemList`.
+     * 
+     *  @param jobInfo the job information
+     *   
      */
 	def prepareTrain(jobInfo:RecJob) {
 	    
@@ -66,7 +103,7 @@ object DataProcess {
 	    val dataLocUserList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList_" + dataHashingStr
 	    val dataLocItemList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemList_" + dataHashingStr
 	    val dataLocUserMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userMap_" + dataHashingStr
-      val dataLocItemMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemMap_" + dataHashingStr
+        val dataLocItemMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemMap_" + dataHashingStr
 
 	    val jobStatus:RecJobStatus = jobInfo.jobStatus
 	    
@@ -145,45 +182,47 @@ object DataProcess {
             users.unpersist(false)
             items.unpersist(false)
 		}
-	    
 	}
 	
 	
-	/*
-	 * read the data from test dates into RDD form
+	/**
+	 * Reads the data from test dates into RDD form.
+	 * 
+	 * The following resource will be filled:
+	 * `jobInfo.jobStatus.testWatchTime`.
+	 * 
+	 * @param jobInfo the job information
 	 */
 	def prepareTest(jobInfo: RecJob)  = {
 
-    //get spark context
-	  val sc  = jobInfo.sc
-
-    //get userMap and itemMap
-    val userMap = jobInfo.jobStatus.userIdMap 
-    val itemMap = jobInfo.jobStatus.itemIdMap   
-    
-    //broadcast item map
-    val bIMap = sc.broadcast(itemMap)
-
-    //read all data mentioned in test dates l date
-    //get RDD of data of each individua
-    val testData = getDataFromDates(jobInfo.testDates, 
-                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
-                    sc)
-
-    //include only users and items seen in training
-    testData foreach {data =>
-      val replacedItemIds =  data.filter(x => bIMap.value.contains(x._2)
-                                  ).map{record =>
-                      (record._1, (bIMap.value(record._2), record._3))
-                    }
-      val replacedUserIds = substituteIntId(userMap,
-                                            replacedItemIds, sc)    
-      jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
-                                            Rating(x._1, x._2, x._3)
-                                        })
+	    //get spark context
+		  val sc  = jobInfo.sc
+	
+	    //get userMap and itemMap
+	    val userMap = jobInfo.jobStatus.userIdMap 
+	    val itemMap = jobInfo.jobStatus.itemIdMap   
+	    
+	    //broadcast item map
+	    val bIMap = sc.broadcast(itemMap)
+	
+	    //read all data mentioned in test dates l date
+	    //get RDD of data of each individual
+	    val testData = getDataFromDates(jobInfo.testDates, 
+	                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+	                    sc)
+	
+	    //include only users and items seen in training
+	    testData foreach {data =>
+	      val replacedItemIds =  data.filter(x => bIMap.value.contains(x._2)
+	                                  ).map{record =>
+	                      (record._1, (bIMap.value(record._2), record._3))
+	                    }
+	      val replacedUserIds = substituteIntId(userMap,
+	                                            replacedItemIds, sc)    
+	      jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
+	                                            Rating(x._1, x._2, x._3)
+	                                        })
+	    }
     }
 
-  }
-
-	
 }
