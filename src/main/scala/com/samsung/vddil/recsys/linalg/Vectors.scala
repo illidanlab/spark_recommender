@@ -120,7 +120,18 @@ object Vectors{
     *  @param size vector size. 
     */
    def dense(size:Int): DenseVector = new DenseVector(BV.zeros[Double](size).toDenseVector)
-   
+ 
+
+   /**
+    *Creates a sparse vector from dense array
+    *@param values full array containing values
+    */
+    def sparse(values:Array[Double]): SparseVector = {
+      val denseVec:DenseVector = dense(values) 
+      denseVec.toSparse
+    }
+
+
    /**
    * Creates a sparse vector providing its index array and value array.
    *
