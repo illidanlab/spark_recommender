@@ -610,7 +610,7 @@ case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, Stri
 	//will calculate average hit rate across passed user hits for all items
     // and new items 
     def run(hitSets:RDD[HitSet]):(Double, Double) = {
-    	println(hitSets.count)
+    	Logger.info("Count of hit sets: " + hitSets.count)
         //TODO:  case when there was no new item in test 
         val hitScores = hitSets.map {hitSet =>
             val allHRInters = (hitSet.topNPredAllItem.toSet & 
