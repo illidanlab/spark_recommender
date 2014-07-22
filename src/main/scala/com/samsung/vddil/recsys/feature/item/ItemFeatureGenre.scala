@@ -137,7 +137,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         }
         
         //save genre mapping to indexes
-        if (jobInfo.outputResource(featureFileName)){
+        if (jobInfo.outputResource(featureMapFileName)){
         	Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
         	genreInd2KeyDescRDD.saveAsTextFile(featureMapFileName)
         }
