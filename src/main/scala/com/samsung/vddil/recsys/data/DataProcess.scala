@@ -181,6 +181,13 @@ object DataProcess {
       jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
                                             Rating(x._1, x._2, x._3)
                                         })
+      val testObjFile = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/test.obj"
+      jobInfo.jobStatus.testWatchTime foreach {testData=>
+        if (jobInfo.outputResource(testObjFile)) {
+          testData.saveAsObjectFile(testObjFile)
+        }
+      }
+      jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](testObjFile))
     }
 
   }

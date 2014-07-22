@@ -1,16 +1,18 @@
 package com.samsung.vddil.recsys.testing
 
-import scala.collection.mutable.HashMap
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
-import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.job.Rating
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
 import com.samsung.vddil.recsys.linalg.Vector
-import org.apache.spark.RangePartitioner 
+import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
+
+import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.RangePartitioner 
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import scala.collection.mutable.HashMap
 
 trait LinearRegTestHandler {
 	
@@ -26,31 +28,40 @@ trait LinearRegTestHandler {
      */
 
     //get features of user or item
-    def getOrderedFeatures(idSet: Set[Int], featureOrder: List[String], 
+    def getOrderedFeatures(idSet: RDD[Int], featureOrder: List[String], 
     		                    featureResourceMap: HashMap[String, FeatureStruct],
-    		                    sc:SparkContext): RDD[(Int, Vector)] = {
+    		                    sc:SparkContext, isPartition:Boolean = false): RDD[(Int, Vector)] = {
       
       //create parallel RDDs of ids to be used in join
-      val idRDDs = sc.parallelize(idSet.toList).map((_,1))
+      val idRDDs = idSet.map((_,1))
 
     	//initialize list of RDD of format (id,features)
-        var idFeatures:List[RDD[(Int, Vector)]]  = List.empty
-        var featureJoin = sc.objectFile[(Int, Vector)](
-                featureResourceMap(featureOrder.head).featureFileName
-                ).join(idRDDs).map(x => (x._1, x._2._1)) //(id, features)
-
-        //add remaining features
-        for (usedFeature <- featureOrder.tail) {
-        	featureJoin  = featureJoin.join(
-                            sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName
-                                    ).join(idRDDs).map(x => (x._1, x._2._1)) //(id, features) 
-                          ).map{x => // (ID, (prevFeatureVector, newFeatureVector))
-                              val ID = x._1
-                              val feature:Vector = x._2._1 ++ x._2._2
-                              (ID, feature)
-                          }
-        }
-        featureJoin
+      val headFeatures = sc.objectFile[(Int, Vector)](
+                          featureResourceMap(featureOrder.head).featureFileName) 
+      Logger.info("Starting partitioning features...") 
+      val partedFeatures = if(isPartition) {
+                            headFeatures.partitionBy(new
+                              RangePartitioner(Pipeline.getPartitionNum,
+                                                idRDDs)) 
+                           } else headFeatures
+      Logger.info("Features partitioned successfully, joining features...")
+      var featureJoin = partedFeatures.join(idRDDs).map{x => 
+                                                      val id:Int = x._1
+                                                      val feature:Vector = x._2._1
+                                                      (id, feature)
+                                                    }
+      //add remaining features
+      for (usedFeature <- featureOrder.tail) {
+        featureJoin  = featureJoin.join(
+                          sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName)
+                        ).map{x => // (ID, (prevFeatureVector, newFeatureVector))
+                            val ID = x._1
+                            val feature:Vector = x._2._1 ++ x._2._2
+                            (ID, feature)
+                        }
+      }
+      Logger.info("Feature joining completed...")
+      featureJoin
     }
     
     /**
