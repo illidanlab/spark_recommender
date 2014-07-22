@@ -5,10 +5,11 @@ import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
+import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.utils.HashString
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.Pipeline
 
 
 case class HitSet(user: Int, topNPredAllItem:List[Int], 
@@ -29,7 +30,9 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
               testParams:HashMap[String, String],
               model: LinearRegressionModelStruct): 
                   RDD[HitSet] = {
-      
+    //hash string to cache intermediate files, helpful in case of crash    
+    val dataHashStr =  HashString.generateHash(testName + "RegNotColdHit")
+
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElse("N", "10").toInt
    
@@ -37,6 +40,9 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     //compute on all users
     val userSamplePc:Double = testParams.getOrElse("UserSampleSize",
                                                   "0.2").toDouble
+
+    //seed parameter needed for sampling test users
+    val seed = testParams.getOrElse("seed", "3").toInt
 
     //get spark context
     val sc = jobInfo.sc
@@ -51,16 +57,13 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                           )
         
     //get test users
-    val testUsers = filtTestData.map{ _._1.toInt}.distinct
-  
+    val testUsers = filtTestData.map{ _._1.toInt}.distinct  
 
     //get sampled test users based on passed sample size
     val withReplacement = false
-    //TODO: make this parameter passed in xml
-    val seed = 3 
     val sampledTestUsers = testUsers.sample(withReplacement, userSamplePc, seed)
 
-    //get test data only corresponding to these users
+    //get test data only corresponding to sampled users
     val sampledTestData = filtTestData.join(testUsers.map((_,1)))
                                       .map{x =>
                                         val user = x._1
@@ -68,7 +71,6 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                         val rating = x._2._1._2
                                         (user, (item, rating))
                                       }
-
 
     //get train items
     val trainItems = sc.parallelize(jobInfo.jobStatus.itemIdMap.values.toList)
@@ -82,25 +84,30 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                         
     //get required user item features     
     Logger.info("Preparing item features...")
-    val itemFeaturesRDD = getOrderedFeatures(trainItems, itemFeatureOrder, 
-                        jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
-    val itemFeatObjFile = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/iFeat.obj"
+    val itemFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemFeatObj" + dataHashStr 
     if (jobInfo.outputResource(itemFeatObjFile)) {
-      itemFeaturesRDD.saveAsObjectFile(itemFeatObjFile)
-    }
-    val itemFeaturesRDD2 = sc.objectFile[(Int, Vector)](itemFeatObjFile)
-      
+      //item features file don't exist
+      //generate and save
+      val iFRDD = getOrderedFeatures(trainItems, itemFeatureOrder, 
+                    jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+      iFRDD.saveAsObjectFile(itemFeatObjFile)
+    } 
+    val itemFeaturesRDD:RDD[(Int, Vector)] =  sc.objectFile[(Int, Vector)](itemFeatObjFile)                    
+
+
     Logger.info("Preparing user features...")
-    val userFeaturesRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
-                        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
-    val userFeatObjFile = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/uFeat.obj"
+    val userFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userFeatObj" + dataHashStr 
     if (jobInfo.outputResource(userFeatObjFile)) {
-      userFeaturesRDD.saveAsObjectFile(userFeatObjFile)
-    }
-    val userFeaturesRDD2 = sc.objectFile[(Int, Vector)](userFeatObjFile)   
-    
+      //item features file don't exist
+      //generate and save
+      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
+                    jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      uFRDD.saveAsObjectFile(userFeatObjFile)
+    }  
+    val userFeaturesRDD:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)                    
+
     //get features only for sampled test users
-    val sampledTestUserFeatures = userFeaturesRDD2.join(sampledTestUsers.map((_,1)))
+    val sampledTestUserFeatures = userFeaturesRDD.join(sampledTestUsers.map((_,1)))
                                                   .map{ x=>
                                                     val user = x._1
                                                     val features = x._2._1
@@ -131,41 +138,29 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
 
     //for each user get all possible user item features
     Logger.info("Generating all possible user-item features")
-    //TODO: partition number return by getPartiotion in Pipeline is 32, fix it
-    Logger.info("Default num partitions in pipeline: " +
-      Pipeline.getPartitionNum)
- 
-    val userItemFeat = concateUserWAllItemFeat(sampledTestUserFeatures, itemFeaturesRDD2
+
+    //TODO: remove hard coded partition count, Pipeline.getPartitionNum not
+    //working correctly? investigate and fix
+    val userItemFeat = concateUserWAllItemFeat(sampledTestUserFeatures, itemFeaturesRDD
                                               ).map(x =>
                                                 //(user, (item, feature))
                                                 (x._1, (x._2, x._3))
                                               ).partitionBy(Pipeline.getHashPartitioner(400))
                 
     //for each user in test get prediction on all train items
-    Logger.info("For each user get prediction all items")
-    Logger.info("Num partitions: " + userItemFeat.partitions.length)  
-    //def pred: (org.apache.spark.mllib.linalg.Vector) => Double = model.model.predict
-    //can do map values too here
-    /*val userItemPred:RDD[(Int, (Int, Double))] = userItemFeat.mapValues{x =>
-                          //(item, prediction)
-                         (x._1, pred(x._2)) 
-                  }
-    */
     val userItemPred:RDD[(Int, (Int, Double))] = userItemFeat.mapPartitions{iter =>                 
               def pred: (org.apache.spark.mllib.linalg.Vector) => Double = model.model.predict
               //(item, prediction)
               iter.map( x => (x._1, (x._2._1, pred(x._2._2)))) 
             }
+    
     //get top N predicted items for user
-    Logger.info("Get Top-N predicted items for users in train set")
     val topPredictedItems = getTopAllNNewItems(userItemPred, sampledUserTrainItemsSet, N)
 
     //for each user in test, get his actual Top-N overall viewed items
-    Logger.info("Get actual Top-N items from test set")
     val topTestItems = getTopAllNNewItems(sampledTestData, sampledUserTrainItemsSet, N)
 
     //join predicted and test ranking by user keyi
-    Logger.info("Join predicted and test rankings")
     val topPredNTestItems = topPredictedItems.join(topTestItems)
    
     //RDD[(user, ((topPredictedAll, topPredictedNew), (topTestAll, topTestNew)))]
@@ -177,14 +172,15 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
   
   /*
    *will return top-N items both including and excluding passed item set
-   *NOTE: this assumes a well partitioned userItemRat RDD
    */
   def getTopAllNNewItems(userItemRat:RDD[(Int, (Int, Double))], 
                       userItemsSet:RDD[(Int, Set[Int])], 
                       N: Int): RDD[(Int, (List[Int], List[Int]))] = {
     
+    //get user ratings on all items
     val userKeyedRatings:RDD[(Int, Iterable[(Int, Double)])] = userItemRat.groupByKey
 
+    //join user rating with already itemsSet
     val userItemSetNRatings:RDD[(Int, (Iterable[(Int,Double)], Set[Int]))] = userKeyedRatings.join(userItemsSet)
 
     userItemSetNRatings.map {x =>      

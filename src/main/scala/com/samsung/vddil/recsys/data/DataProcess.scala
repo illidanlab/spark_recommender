@@ -60,7 +60,7 @@ object DataProcess {
      */
 	def prepareTrain(jobInfo:RecJob) {
 	    
-		val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+      val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
 	  
 	    val dataLocCombine  = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/combineData_" + dataHashingStr
 	    val dataLocUserList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList_" + dataHashingStr
@@ -153,7 +153,10 @@ object DataProcess {
 	 * read the data from test dates into RDD form
 	 */
 	def prepareTest(jobInfo: RecJob)  = {
-
+    
+    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
+    val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
+	 
     //get spark context
 	  val sc  = jobInfo.sc
 
@@ -181,13 +184,12 @@ object DataProcess {
       jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
                                             Rating(x._1, x._2, x._3)
                                         })
-      val testObjFile = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/test.obj"
       jobInfo.jobStatus.testWatchTime foreach {testData=>
-        if (jobInfo.outputResource(testObjFile)) {
-          testData.saveAsObjectFile(testObjFile)
+        if (jobInfo.outputResource(dataLocTest)) {
+          testData.saveAsObjectFile(dataLocTest)
         }
       }
-      jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](testObjFile))
+      jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](dataLocTest))
     }
 
   }

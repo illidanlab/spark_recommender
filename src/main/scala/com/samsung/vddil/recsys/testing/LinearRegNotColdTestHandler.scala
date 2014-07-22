@@ -1,12 +1,12 @@
 package com.samsung.vddil.recsys.testing
 
-import org.apache.spark.rdd.RDD
-import scala.collection.mutable.HashMap
-
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
+import com.samsung.vddil.recsys.utils.HashString
+import org.apache.spark.rdd.RDD
+import scala.collection.mutable.HashMap
 
 object LinearRegNotColdTestHandler extends NotColdTestHandler 
                                     with LinearRegTestHandler{
@@ -20,6 +20,10 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 			            testParams: HashMap[String, String],
 			            model: LinearRegressionModelStruct
 			             ): RDD[(Int, Int, Double, Double)] = {
+    
+    //hash string to cache intermediate files, helpful in case of crash    
+    val dataHashStr =  HashString.generateHash(testName + "LinearRegNotCold")
+
     //get test data
 		var testData = jobInfo.jobStatus.testWatchTime.get
 		
@@ -44,44 +48,44 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
     
     //get required item n user features 
     Logger.info("Preparing item features...")
-		val itemFeaturesRDD:RDD[(Int, Vector)] = 
-		    	getOrderedFeatures(testItems, itemFeatureOrder, 
-	                        		  jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
-    
-    val itemFeatObjFile = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/iFeat.obj"
+    val itemFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemFeatObj" + dataHashStr
     if (jobInfo.outputResource(itemFeatObjFile)) {
-      itemFeaturesRDD.saveAsObjectFile(itemFeatObjFile)
-    }
-    val itemFeaturesRDD2 = sc.objectFile[(Int, Vector)](itemFeatObjFile)
+      //item features file don't exist
+      //generate and save
+      val iFRDD = getOrderedFeatures(testItems, itemFeatureOrder, 
+                    jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+      iFRDD.saveAsObjectFile(itemFeatObjFile)
+    } 
+    val itemFeaturesRDD:RDD[(Int, Vector)] =  sc.objectFile[(Int, Vector)](itemFeatObjFile)                    
 
+    
     Logger.info("Preparing user features...")
-    val userFeaturesRDD:RDD[(Int, Vector)] = 
-		    	getOrderedFeatures(testUsers, userFeatureOrder, 
-				            		  jobInfo.jobStatus.resourceLocation_UserFeature, sc, true)			
-
-    val userFeatObjFile = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/uFeat.obj"
+    val userFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userFeatObj" + dataHashStr
     if (jobInfo.outputResource(userFeatObjFile)) {
-      userFeaturesRDD.saveAsObjectFile(userFeatObjFile)
-    }
-    val userFeaturesRDD2 = sc.objectFile[(Int, Vector)](userFeatObjFile)
-
+      //item features file don't exist
+      //generate and save
+      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
+                    jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      uFRDD.saveAsObjectFile(userFeatObjFile)
+    }  
+    val userFeaturesRDD:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)                    
+    
+    
     Logger.info("Concatenating user and item features in test")
     
     //get user item features
     //NOTE: this will also do filtering of test data in case feature not found 
-    //owing to coverage criteria of training data
-    val userItemFeatWRating = concatUserTestFeatures(userFeaturesRDD2, itemFeaturesRDD2, testData)
-
-    val userItemFeatObjFile = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/uiFeat.obj"
+    val userItemFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/uiFeat.obj" + dataHashStr
     if (jobInfo.outputResource(userItemFeatObjFile)) {
-      userItemFeatWRating.saveAsObjectFile(userItemFeatObjFile)
+      val uIFeatWRating = concatUserTestFeatures(userFeaturesRDD, itemFeaturesRDD, testData) 
+      uIFeatWRating.saveAsObjectFile(userItemFeatObjFile)
     }
-    val userItemFeatWRating2 = sc.objectFile[(Int, Int, Vector, Double)](userItemFeatObjFile)
+    val userItemFeatWRating = sc.objectFile[(Int, Int, Vector, Double)](userItemFeatObjFile)
 
     //get prediction on test data
     //conv to label points
     Logger.info("Converting to testlabel point")
-    val testLabelPoints = convToLabeledPoint(userItemFeatWRating2)
+    val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
     
     //NOTE: user-item pair in test can appear more than once
     Logger.info("Getting prediction on test label points")
@@ -91,12 +95,14 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
                                 point._3.label, //actual label
                                model.model.predict(point._3.features))
                             }
-    val labelObjFile = "hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/testLabelPred.obj"
+    /*
+    val labelObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testLabelPred.obj" + dataHashStr 
     if (jobInfo.outputResource(labelObjFile)) {
       testLabelNPred.saveAsObjectFile(labelObjFile)
     }
     val testLabelNPred2 = sc.objectFile[(Int, Int, Double, Double)](labelObjFile)
-    testLabelNPred2
+    */
+    testLabelNPred
 	}
 	
 }
