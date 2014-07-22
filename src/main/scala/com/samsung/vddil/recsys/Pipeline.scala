@@ -132,10 +132,12 @@ object Pipeline {
 	 */
 	def getPartitionNum():Int = {
 	    require(Pipeline.instance.isDefined)
-	    
 	    val numExecutors = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.instances")
-        val numExecCores = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
-        2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt
+      val numExecCores = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
+      Logger.info("Num executors: " + numExecutors + " numExecCores: " +
+        numExecCores)
+      val numParts = 2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt 
+      numParts 
 	}
 
 	
@@ -152,7 +154,7 @@ object Pipeline {
 	    }
 	    Instance.get.hashPartitioners(partitionerName)
 	}
-	
+
   
   def main(args: Array[String]): Unit = {
 		PropertyConfigurator.configure("log4j.properties")
