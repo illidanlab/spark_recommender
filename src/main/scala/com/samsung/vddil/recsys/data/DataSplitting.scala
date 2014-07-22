@@ -3,14 +3,15 @@ package com.samsung.vddil.recsys.data
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.job.RecJobStatus
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.HashPartitioner
-import org.apache.spark.RangePartitioner 
+import org.apache.spark.RangePartitioner
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
+
 
 /**
  * The object version of data splitting, which splits an object version assembled data into 

@@ -3,9 +3,8 @@ package com.samsung.vddil.recsys.testing
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
-
+import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.RangePartitioner 

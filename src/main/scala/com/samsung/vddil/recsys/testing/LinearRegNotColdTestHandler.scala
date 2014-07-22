@@ -2,7 +2,7 @@ package com.samsung.vddil.recsys.testing
 
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.Logger
+import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
 import com.samsung.vddil.recsys.utils.HashString
 import org.apache.spark.rdd.RDD

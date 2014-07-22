@@ -5,7 +5,6 @@ import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.job.RecJobStatus
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.Logger
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import org.apache.spark.HashPartitioner
@@ -15,27 +14,24 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
+import com.samsung.vddil.recsys.utils.Logger
 
 /**
- * This is the object version of data assemble. During the data assemble, features are
- * stored in the data structure of com.samsung.vddil.recsys.linalg.Vector
- * 
- * @author jiayu.zhou
+ * This is the object version of data assemble. During the data assembling, features are
+ * stored in the data structure of [[com.samsung.vddil.recsys.linalg.Vector]]
  */
-
-
-case class AggDataWFeatures(location: String, userFeatureOrder: List[String],
-                            itemFeatureOrder: List[String])
-
 object DataAssemble {
    
    /**
-   * return join of features of specified IDs and ordering of features
+   * Returns join of features of specified IDs, and ordering of features
    * 
-   * @param idSet
-   * @param usedFeature
-   * @param featureResourceMap
-   * @param sc SparkContext
+   * @param idSet the ID (user ID or item ID) to be used in join
+   * @param usedFeature the feature resource identity
+   * @param featureResourceMap the resource map associated with this type of feature (item/user)
+   * @param sc SparkContext the SparkContext used to 
+   * 
+   * @return a tuple of (joined features, used feature list), the former is an concatenated vector,
+   *         and the latter is a list of strings representing the order of features used in the concatenation. 
    */
    def getCombinedFeatures(
 		   idSet: RDD[Int], 
@@ -55,7 +51,7 @@ object DataAssemble {
                ).join(idSetRDD
                ).map{x=>  // (ID, (feature, 1))
                    val ID = x._1 // could be both user ID and item ID
-                   val feature = x._2._1
+                   val feature:Vector = x._2._1
                    (ID, feature)
        		   }
        ///remaining
@@ -64,7 +60,7 @@ object DataAssemble {
 				sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName)
 		   ).map{ x=> // (ID, feature1, feature2)
 		      val ID = x._1
-		      val concatenateFeature = x._2._1 ++ x._2._2 
+		      val concatenateFeature:Vector = x._2._1 ++ x._2._2 
 		      (ID, concatenateFeature) //TODO: do we need to make sure this is a sparse vector? 
 		   }
 	   }
@@ -72,11 +68,13 @@ object DataAssemble {
    }
   
    /**
-   * will return intersection of IDs for which features exist
+   * Returns intersection of IDs for which features exist
    * 
    * @param usedFeatures features for which we want intersection of IDs
    * @param featureResourceMap contains mapping of features to actual files
    * @param sc SparkContext
+   * 
+   * @return an RDD of IDs. 
    */
   def getIntersectIds(usedFeatures: HashSet[String], 
             featureResourceMap: HashMap[String, FeatureStruct], 
@@ -91,12 +89,14 @@ object DataAssemble {
   }
     
    /**
-   * will return only those features which satisfy minimum coverage criteria
+   * Returns only those features which satisfy minimum coverage criteria
    * 
    * @param featureResourceMap contains map of features and location
    * @param minCoverage minimum coverage i.e. no. of features found should be greater than this pc
    * @param sc spark context
    * @param total number of items or users
+   * 
+   * @return the features with the specified minimum item/user coverage
    */
   def filterFeatures(featureResourceMap: HashMap[String, FeatureStruct], 
       minCoverage: Double, sc: SparkContext, total: Int) :HashSet[String] = {
@@ -118,13 +118,19 @@ object DataAssemble {
    }
    
    /**
-    * Join features and generate continuous data. The output is the location of the serialized file,
-    * which has the type of (userID:String, itemID:String, features:Vector, rating:Double)  
-    * The data is also stored in <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
+    * Joins features and generates continuous data, and returns the resource identity.  
+    * 
+    * A data structure is stored in the HashMap 
+    * `jobInfo.jobStatus.resourceLocation_AggregateData_Continuous` with 
+    * the resource identity as the key. 
+    * The data is serialized and stored in HDFS. The serialization file  
+    * has the type of (userID:String, itemID:String, features:Vector, rating:Double)
     * 
     * @param jobInfo the job information
     * @param minIFCoverage minimum item feature coverage 
     * @param minUFCoverage minimum user feature coverage
+    * 
+    * @return the resource identity of the assembled data
     */
    def assembleContinuousData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double ):String = {
       require(minIFCoverage >= 0 && minIFCoverage <= 1)
@@ -141,7 +147,6 @@ object DataAssemble {
       
       //get num of items
       val numItems = jobInfo.jobStatus.items.length
-      
       
       //set to keep keys of item feature having desired coverage
       val usedItemFeature:HashSet[String] = filterFeatures(
@@ -265,7 +270,7 @@ object DataAssemble {
           val sampleSize = joinedUserItemFeatures.count
           
           jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
-                    DataSet(assembleFileName, userFeatureOrder, itemFeatureOrder)
+                    AssembledDataSet(assembleFileName, userFeatureOrder, itemFeatureOrder)
           Logger.info("assembled features: " + assembleFileName)
           Logger.info("Total data size: " + sampleSize)
       }
@@ -274,7 +279,19 @@ object DataAssemble {
    }
    
    /**
-    * The identity string of the assemble data structure, which 
+    * Returns the unique identity string of the continuous assemble data structure
+    * 
+    *  The string can be used as key for resource map storing this data, 
+    *  as well as the file name for storing the data in file system. 
+    *  
+    *  An example of data identifier is 
+    * {{{
+    * val dataIdentifier = HashString.generateOrderedArrayHash(jobInfo.trainDates) 
+    * }}}
+    * @param dataIdentifier 
+    * @param userFeature a set of user features
+    * @param itemFeature a set of item features 
+    * @return a string uniquely identifies the assemble data
     */
    def assembleContinuousDataIden(
       dataIdentifier:String,
@@ -290,6 +307,22 @@ object DataAssemble {
      throw new NotImplementedError("This function is yet to be implemented. ")
   }
   
+  /**
+    * Returns the unique identity string of the binary assemble data structure
+    * 
+    *  The string can be used as key for resource map storing this data, 
+    *  as well as the file name for storing the data in file system.  
+    * 
+    * An example of data identifier is 
+    * {{{
+    * val dataIdentifier = HashString.generateOrderedArrayHash(jobInfo.trainDates) 
+    * }}}
+    * 
+    * @param dataIdentifier 
+    * @param userFeature a set of user features
+    * @param itemFeature a set of item features 
+    * @return a string uniquely identifies the assemble data
+   */
   def assembleBinaryDataIden(
       dataIdentifier:String,
       userFeature:HashSet[String], 

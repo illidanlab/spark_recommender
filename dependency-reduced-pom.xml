@@ -125,7 +125,7 @@
         <configuration>
           <archive>
             <manifest>
-              <mainClass>com.samsung.vddil.recsys.TestObj</mainClass>
+              <mainClass>com.samsung.vddil.recsys.Pipeline</mainClass>
               <packageName>com.samsung.vddil.recsys</packageName>
             </manifest>
             <manifestEntries>
