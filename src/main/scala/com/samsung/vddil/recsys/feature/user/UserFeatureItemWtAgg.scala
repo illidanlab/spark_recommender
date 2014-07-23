@@ -12,7 +12,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
 
-trait UserFeatureItemWtAgg {
+trait UserFeatureItemWtAgg extends Serializable {
  
   /*
 	 * take item genre feature vector and watchtime
@@ -71,9 +71,10 @@ trait UserFeatureItemWtAgg {
     val userGroupedItemFeats = userItemFeats.groupByKey
 
     //get weighted aggregation of item features per user
+    val aggFeatureFunc:(Iterable[(Vector, Double)]) => Vector = this.aggByItemFeature
     userGroupedItemFeats.map{x => 
       val user:Int = x._1
-      val aggFeature:Vector = aggByItemFeature(x._2)
+      val aggFeature:Vector = aggFeatureFunc(x._2)
       (user, aggFeature)
     }
   }

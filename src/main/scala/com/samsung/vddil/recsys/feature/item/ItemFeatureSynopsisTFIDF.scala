@@ -6,12 +6,14 @@ import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.SparseVector
 import com.samsung.vddil.recsys.linalg.Vectors
+import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.rdd._
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
 import scala.math.log
+import scala.io.Source
 
 /*
  * Item Feature: extract TFIDF numerical features from synopsis
@@ -20,6 +22,12 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
 
   val ItemIdInd = 1
   val ItemDescInd = 4
+  val stopWords:Set[String] = {
+    val fileLoc = "/stopwords.txt"
+    val inputStream = getClass().getResourceAsStream(fileLoc)
+    Source.fromInputStream(inputStream).mkString.split("\n").map(_.trim).toSet
+  }
+
 
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
     
@@ -27,7 +35,7 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
     val sc = jobInfo.sc
 
     // 1. Complete default parameters
-    val N:Int = featureParams.getOrElse("N",  "50").toInt
+    val N:Int = featureParams.getOrElse("N",  "100").toInt
 		
     // 2. Generate resource identity using resouceIdentity()
     val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
@@ -45,19 +53,35 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
                                             val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) +
                                                             trainDate + "/program_desc*"
                                             sc.textFile(fileName).map {line =>
-                                              val fields = line.split("|")
+                                              val fields = line.split('|')
                                               val itemId = fields(ItemIdInd)
-                                              val itemDesc = fields(ItemDescInd)
-                                              //get terms from descriptioni
-                                              //split description on word
-                                              //boundary
-                                              val terms = itemDesc.split("""\b""").filter(desc => {
-                                                val isWordRegex = """^\w+""".r
-                                                (isWordRegex findFirstIn
-                                                  desc).nonEmpty
-                                              }).toList
+                                              var terms:List[String] = List() 
+                                              if (fields.length > ItemDescInd)  {
+                                                val itemDesc = fields(ItemDescInd)
+                                                //get terms from description
+                                                //split description on word
+                                                //boundary
+                                                terms = itemDesc.split("""\b""").filter(desc => {
+                                                  //get non-empty and starting
+                                                  //with words
+                                                  val isWordRegex = """^\w+""".r
+                                                  (isWordRegex findFirstIn
+                                                    desc).nonEmpty
+                                                }).map(
+                                                  //convert to lower case
+                                                  _.toLowerCase
+                                                  ).filter(
+                                                    //length of words is more
+                                                    //than 2
+                                                    _.length > 2
+                                                  ).filterNot(
+                                                  //remove  stopwords
+                                                  stopWords(_)  
+                                                ).toList
+                                              }
                                               (itemId, terms)
-                                            }
+                                            }.filter(_._2.length > 0
+                                            ).repartition(Pipeline.getPartitionNum)
                                           }
     //item id and terms
     val allProgramTerms:RDD[(String, List[String])] = arrProgramTermsRDD.reduce{(a,b) => 
@@ -67,7 +91,8 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
                                             //program
                                             a ++ b 
                                          }
-    
+   
+
     //number of items
     val numItems = allProgramTerms.map(_._1).distinct.count.toDouble
     
@@ -75,14 +100,14 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
     val termFreq:RDD[(String, Int)] = allProgramTerms.flatMap{_._2 map((_,1))}.reduceByKey(_+_)
 
     //terms - document frequency, i.e. no. of documents term occurs
-    val docFreq:RDD[(String, Int)] = allProgramTerms.flatMap{x =>
+    val docFreq:RDD[(String, Double)] = allProgramTerms.flatMap{x =>
                                                       val itemId = x._1
                                                       val itemTerms = x._2
                                                       itemTerms.map((_, itemId))
                                                     }.groupByKey.map{x =>
                                                       val term = x._1
                                                       val numTermDocs =
-                                                        x._2.toList.length
+                                                        x._2.toList.length.toDouble
                                                       (term, numTermDocs)
                                                     }
  
@@ -120,17 +145,15 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
       Logger.logger.info("Dumping feature resource: " + featureFileName)
       itemTermCounts.saveAsObjectFile(featureFileName)
     }
-
+    
     //save the terms with score
     if (jobInfo.outputResource(featureMapFileName)){
       Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
       tfIdfs.saveAsTextFile(featureMapFileName)
     }
     
-    
     val featureStruct:ItemFeatureStruct = 
         new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName)
-
 
     // 4. Generate and return a FeatureResource that includes all resources.  
 		val resourceMap:HashMap[String, Any] = new HashMap()

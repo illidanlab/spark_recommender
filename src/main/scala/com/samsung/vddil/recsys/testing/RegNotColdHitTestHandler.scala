@@ -145,7 +145,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                               ).map(x =>
                                                 //(user, (item, feature))
                                                 (x._1, (x._2, x._3))
-                                              ).partitionBy(Pipeline.getHashPartitioner(400))
+                                              ).partitionBy(Pipeline.getHashPartitioner())
                 
     //for each user in test get prediction on all train items
     val userItemPred:RDD[(Int, (Int, Double))] = userItemFeat.mapPartitions{iter =>                 

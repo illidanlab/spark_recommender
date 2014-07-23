@@ -163,7 +163,6 @@ object Pipeline {
 	 * 
 	 * The number is currently given by 
 	 *     2 * number of executors * number of executor cores.
-	 * In local machine, this number is given by 32
 	 * 
 	 * @return the partition number used for hash/range partitioner. 
 	 */
@@ -171,9 +170,8 @@ object Pipeline {
 	    require(Pipeline.instance.isDefined)
 	    val numExecutors = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.instances")
       val numExecCores = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
-      Logger.info("Num executors: " + numExecutors + " numExecCores: " +
-        numExecCores)
-      val numParts = 2 * numExecutors.getOrElse("8").toInt * numExecCores.getOrElse("2").toInt 
+      val numParts = 2 * numExecutors.getOrElse("50").toInt * numExecCores.getOrElse("2").toInt 
+      Logger.info("numParts: " + numParts)
       numParts 
 	}
 
@@ -202,7 +200,11 @@ object Pipeline {
 		
 		// configure and create SparkContext
 		config()
-		
+	
+    //display spark configuratiion variables
+    Instance.get.sc.getConf.getAll.map{x => Logger.info(x.toString)}
+
+
 		// only proceed to jobs if pipeline is properly configured. 
 		if (instance.isDefined){
 		
