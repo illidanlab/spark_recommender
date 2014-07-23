@@ -1,11 +1,5 @@
 package com.samsung.vddil.recsys.job
 
-import org.apache.hadoop.fs.FileSystem
-import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.HashSet
-import scala.xml._
 import com.samsung.vddil.recsys.data.DataAssemble
 import com.samsung.vddil.recsys.data.DataProcess
 import com.samsung.vddil.recsys.data.DataProcess
@@ -19,6 +13,12 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.testing._
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
+import org.apache.hadoop.fs.FileSystem
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
+import scala.xml._
 
 /**
  * The constant variables of recommendation job.

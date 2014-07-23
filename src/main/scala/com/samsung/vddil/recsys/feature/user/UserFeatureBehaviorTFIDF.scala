@@ -30,5 +30,5 @@ object UserFeatureBehaviorTFIDF extends FeatureProcessingUnit
 
 	}
 	
-	val IdenPrefix:String = "UserFeatureSynopsisTFIDF"
+	val IdenPrefix:String = "UserFeatureSynTFIDF"
 }

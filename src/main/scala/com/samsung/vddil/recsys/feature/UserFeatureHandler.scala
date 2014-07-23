@@ -1,11 +1,9 @@
 package com.samsung.vddil.recsys.feature
 
+import com.samsung.vddil.recsys.feature.user._
 import com.samsung.vddil.recsys.job.RecJob
-import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.feature.user.UserFeatureBehaviorWatchtime
-import com.samsung.vddil.recsys.feature.user.UserFeatureBehaviorZapping
-import com.samsung.vddil.recsys.feature.user.UserFeatureBehaviorGenre
 import com.samsung.vddil.recsys.utils.Logger
+import scala.collection.mutable.HashMap
 
 /*
  * This is the main entrance of the user feature processing.
@@ -16,7 +14,8 @@ object UserFeatureHandler extends FeatureHandler{
 	val UFBehaviorWatchtime = "watchtime"
 	val UFBehaviorZapping   = "zap"
 	val UFBehaviorGenre     = "genre"
-	
+	val UFBehaviorTFIDF     = "tfidf"
+
 	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean={
 		Logger.info("Processing user feature [%s:%s]".format(featureName, featureParams))
 	
@@ -27,6 +26,7 @@ object UserFeatureHandler extends FeatureHandler{
 	      case UFBehaviorWatchtime => resource = UserFeatureBehaviorWatchtime.processFeature(featureParams, jobInfo)
 	      case UFBehaviorZapping   => resource = UserFeatureBehaviorZapping.processFeature(featureParams, jobInfo)
 	      case UFBehaviorGenre     => resource = UserFeatureBehaviorGenre.processFeature(featureParams, jobInfo)
+	      case UFBehaviorTFIDF     => resource = UserFeatureBehaviorTFIDF.processFeature(featureParams, jobInfo)
 	      case _ => Logger.warn("Unknown item feature type [%s]".format(featureName))
 	    }
 	    
