@@ -14,7 +14,7 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 
 
-object UserFeatureBehaviorTFIDF extends FeatureProcessingUnit 
+object UserFeatureBehaviorSynTFIDF extends FeatureProcessingUnit 
                                 with UserFeatureItemWtAgg {
 	
   def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
