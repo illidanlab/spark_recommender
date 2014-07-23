@@ -2,6 +2,7 @@ package com.samsung.vddil.recsys.feature.item
 
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.SparseVector
 import com.samsung.vddil.recsys.linalg.Vectors
@@ -125,10 +126,19 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
       Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
       tfIdfs.saveAsTextFile(featureMapFileName)
     }
+    
+    
+    val featureStruct:ItemFeatureStruct = 
+        new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName)
 
 
     // 4. Generate and return a FeatureResource that includes all resources.  
-		FeatureResource.fail
+		val resourceMap:HashMap[String, Any] = new HashMap()
+    resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
+    
+    Logger.info("Saved item features and feature map")
+
+    new FeatureResource(true, Some(resourceMap), resourceIden)
 	}
 	
 	val IdenPrefix:String = "ItemFeatureSynTFIDF"

@@ -8,8 +8,6 @@ import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
-import com.samsung.vddil.recsys.feature.ItemFeatureStruct
-import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.linalg.Vectors
 import com.samsung.vddil.recsys.utils.Logger
 
