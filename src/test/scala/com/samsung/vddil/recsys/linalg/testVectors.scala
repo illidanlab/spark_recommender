@@ -72,8 +72,8 @@ object testVectors {
      val correctResult = Vectors.dense(Array(0.6/1.1, 0, 0.8/1.1, 1.8/1.1, 4.2/1.1)).toSparse
      
      println(userGenreWatchtimes)
-     val aggResult = UserFeatureBehaviorGenre.aggByItemGenres(userGenreWatchtimes)
-     println(aggResult)
+     //val aggResult = UserFeatureBehaviorGenre.aggByItemGenres(userGenreWatchtimes)
+     //println(aggResult)
      println(correctResult)
        
      //the equals does not hold because there might be some numerical error in map function. 
