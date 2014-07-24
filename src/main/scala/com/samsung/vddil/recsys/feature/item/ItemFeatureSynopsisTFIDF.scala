@@ -36,7 +36,8 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
 
     // 1. Complete default parameters
     val N:Int = featureParams.getOrElse("N",  "100").toInt
-		
+	  val MinTermLen:Int = featureParams.getOrElse("MINTERMLEN", "2").toInt
+
     // 2. Generate resource identity using resouceIdentity()
     val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
     val resourceIden = resourceIdentity(featureParams, dataHashingStr)
@@ -45,62 +46,78 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
                   "/" + resourceIden
     var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
                   "/" + resourceIden + "_Map"
-        
-  
+    
+    //broadcast item map to workers to workonly on items relevant to training
+    val itemIdMap = jobInfo.jobStatus.itemIdMap
+    val bItemIdMap = sc.broadcast(itemIdMap)
+      
     // 3. Feature generation algorithms (HDFS operations)
     var fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + jobInfo.trainDates(0) + "/program_desc*" 
-    val arrProgramTermsRDD:Array[RDD[(String, List[String])]] = jobInfo.trainDates.map {trainDate =>
-                                            val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) +
-                                                            trainDate + "/program_desc*"
-                                            sc.textFile(fileName).map {line =>
-                                              val fields = line.split('|')
-                                              val itemId = fields(ItemIdInd)
-                                              var terms:List[String] = List() 
-                                              if (fields.length > ItemDescInd)  {
-                                                val itemDesc = fields(ItemDescInd)
-                                                //get terms from description
-                                                //split description on word
-                                                //boundary
-                                                terms = itemDesc.split("""\b""").filter(desc => {
-                                                  //get non-empty and starting
-                                                  //with words
-                                                  val isWordRegex = """^\w+""".r
-                                                  (isWordRegex findFirstIn
-                                                    desc).nonEmpty
-                                                }).map(
-                                                  //convert to lower case
-                                                  _.toLowerCase
-                                                  ).filter(
-                                                    //length of words is more
-                                                    //than 2
-                                                    _.length > 2
-                                                  ).filterNot(
-                                                  //remove  stopwords
-                                                  stopWords(_)  
-                                                ).toList
-                                              }
-                                              (itemId, terms)
-                                            }.filter(_._2.length > 0
-                                            ).repartition(Pipeline.getPartitionNum)
-                                          }
-    //item id and terms
-    val allProgramTerms:RDD[(String, List[String])] = arrProgramTermsRDD.reduce{(a,b) => 
-                                            a.union(b)
-                                          }.reduceByKey{(a,b) =>
-                                            //combine two terms list for same
-                                            //program
-                                            a ++ b 
-                                         }
+    
+    val itemSynText:RDD[(Int, String)] = jobInfo.trainDates.map {trainDate =>      
+      val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/program_desc*"
+      val currItemText:RDD[(String, String)] = sc.textFile(fileName).map{line =>
+        val fields = line.split('|')
+        //get item id
+        val itemId = fields(ItemIdInd)
+        val synText = if (fields.length > ItemDescInd) fields(ItemDescInd) else ""
+        (itemId, synText)
+      }
+    
+      //remove empty text and item which are not presented in itemIdMap
+      val filtCurrItemText:RDD[(String, String)] = currItemText.filter(x =>
+          x._2.length > 0).filter(x => bItemIdMap.value.contains(x._1))
+      
+      //replace with intId created while running data process
+      val subIntIdText:RDD[(Int, String)] = filtCurrItemText.map{x =>
+        val intId = bItemIdMap.value(x._1)
+        val text = x._2
+        (intId, text)
+      }
+      subIntIdText
+    }.reduce{ (a,b) =>
+      //take union of RDDs
+      a.union(b)
+    }
    
+    //combine text of same item
+    val itemCombSynText:RDD[(Int, String)] = itemSynText.reduceByKey{(a, b) =>
+      a + " " + b
+    }
+    
+    //tokenize item texts and apply some filters
+    val itemTerms:RDD[(Int, List[String])] = itemCombSynText.map{itemText =>
+      val itemId:Int = itemText._1
+      val text:String = itemText._2
+      val tokens:List[String] = text.split("""\b""").filter{token =>
+        //get only non-empty and starting with word
+        val isWordRegex = """^\w+""".r
+        (isWordRegex findFirstIn token).nonEmpty
+      }.map{
+        //convert to lower-case
+        _.toLowerCase
+      }.filter{
+        //length of words is more than threshold
+        _.length > MinTermLen 
+      }.filterNot{
+        //remove stopwords
+        stopWords(_)
+      }.toList
+      (itemId, tokens)
+    }.filter{
+      //consider only those items who have non-empty tokens
+      _._2.length > 0
+    }
+
 
     //number of items
-    val numItems = allProgramTerms.map(_._1).distinct.count.toDouble
+    val numItems = itemTerms.map(_._1).distinct.count.toDouble
     
     //terms count
-    val termFreq:RDD[(String, Int)] = allProgramTerms.flatMap{_._2 map((_,1))}.reduceByKey(_+_)
+    val termFreq:RDD[(String, Int)] = itemTerms.flatMap{_._2 map((_,1))}.reduceByKey(_+_)
 
     //terms - document frequency, i.e. no. of documents term occurs
-    val docFreq:RDD[(String, Double)] = allProgramTerms.flatMap{x =>
+    val docFreq:RDD[(String, Double)] = itemTerms.flatMap{x =>
                                                       val itemId = x._1
                                                       val itemTerms = x._2
                                                       itemTerms.map((_, itemId))
@@ -129,7 +146,7 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
     val bTopTerms = sc.broadcast(topTerms) 
 
     //get top term counts per item
-    val itemTermCounts:RDD[(String, SparseVector)] = allProgramTerms.map{x =>
+    val itemTermCounts:RDD[(Int, SparseVector)] = itemTerms.map{x =>
                                           val item = x._1
                                           val termsList = x._2
                                           val topTermCounts =

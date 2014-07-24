@@ -110,13 +110,6 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         val itemGenreInds = itemGenreList.groupByKey().map { x =>
           var itemId = x._1
           
-          ////save to dense vector
-          //var featureVec = Array.fill[Byte](numGenres)(0) //initialize all to 0
-          //for (genre <- x._2) {
-          //    featureVec(genre2Ind(genre)) = 1
-          //}
-          //itemId + "," + featureVec.mkString(",")
-          
           //save to sparse vector
           var featureVecPair = Seq[(Int, Double)]()
           for (genre <- x._2) {

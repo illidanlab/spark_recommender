@@ -41,7 +41,7 @@ object DataAssemble {
        ): (RDD[(Int, Vector)], List[String]) = 
    {
        val usedFeaturesList = usedFeatures.toList
-       
+       Logger.info("Length of used features: " + usedFeaturesList.length)       
        val idSetRDD = idSet.map(x => (x,1))
        
        //join all features RDD
@@ -58,7 +58,7 @@ object DataAssemble {
 	   for (usedFeature <- usedFeaturesList.tail){
 		   featureJoin = featureJoin.join(
 				sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName)
-		   ).map{ x=> // (ID, feature1, feature2)
+		   ).map{ x => // (ID, feature1, feature2)
 		      val ID = x._1
 		      val concatenateFeature:Vector = x._2._1 ++ x._2._2 
 		      (ID, concatenateFeature) //TODO: do we need to make sure this is a sparse vector? 
@@ -116,7 +116,8 @@ object DataAssemble {
         }
         usedFeatures
    }
-   
+  
+
    /**
     * Joins features and generates continuous data, and returns the resource identity.  
     * 
