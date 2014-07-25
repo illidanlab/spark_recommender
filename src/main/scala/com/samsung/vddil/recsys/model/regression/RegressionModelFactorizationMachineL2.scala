@@ -8,7 +8,6 @@ import org.apache.spark.mllib.regression.RidgeRegressionModel
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.model.ModelResource
 import com.samsung.vddil.recsys.model.ModelProcessingUnit
@@ -65,11 +64,11 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
                                                 numIterations)
         
         //save best model found above
-        val modelStruct:LinearRegressionModelStruct = null
-//            = new LinearRegressionModelStruct(IdenPrefix, resourceIden, 
-//            		                            dataResourceStr,
-//                                                modelFileName, modelParams, 
-//                                                bestModel.get)
+        val modelStruct:CustomizedModelStruct[FactorizationMachineRegressionModel] = 
+             new CustomizedModelStruct[FactorizationMachineRegressionModel](IdenPrefix, resourceIden, 
+            		                            dataResourceStr,
+                                                modelFileName, modelParams, 
+                                                bestModel.get)
         
         // 4. Compute training and testing error.
         

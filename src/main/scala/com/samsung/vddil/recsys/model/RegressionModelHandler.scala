@@ -4,6 +4,7 @@ import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.model.regression.RegressionModelRidge
 import com.samsung.vddil.recsys.utils.Logger
+import com.samsung.vddil.recsys.model.regression.RegressionModelFactorizationMachine
 
 object RegressionModelHandler extends ModelHandler {
 	//predefined values for model name
@@ -19,6 +20,7 @@ object RegressionModelHandler extends ModelHandler {
 		modelName match{
 		  case RegModelRidge => resource = RegressionModelRidge.learnModel(modelParams, dataResourceStr, jobInfo)
 		  //case RegModelLasso => resource = ModelResource.fail
+		  case RegModelFML2  => resource = RegressionModelFactorizationMachine.learnModel(modelParams, dataResourceStr, jobInfo)
 		  case _ => Logger.warn("Unknown regression model name [%s]".format(modelName))
 		}
 	  
