@@ -14,20 +14,21 @@ import com.samsung.vddil.recsys.model.ModelResource
 import com.samsung.vddil.recsys.model.ModelProcessingUnit
 import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.utils.Logger
-
 import com.samsung.vddil.recsys.model._
+import org.apache.spark.mllib.optimization.FactorizationMachineRegressionL2WithSGD
+import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
 
-object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
+object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegCustomizedModel[FactorizationMachineRegressionModel] {
 	
-	
-	
+    def ParamLatentFactor = "latentFactor"
+    
 	//models...
 	def learnModel(modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob):ModelResource = {
 		
 		
         // 1. Complete default parameters 
         val (numIterations, stepSizes, regParams) = getParameters(modelParams)
-        
+        val latentDim = Integer.valueOf(modelParams.getOrElseUpdate(ParamLatentFactor, "5"))
         
         // 2. Generate resource identity using resouceIdentity()
         val resourceIden = resourceIdentity(modelParams, dataResourceStr)
@@ -50,18 +51,25 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         val testData = parseDataObj(teDataFilename, sc)
         val valData = parseDataObj(vaDataFilename, sc)
         
+        //initial solution
+        
+        //creates a closure of training function 
+        val trainMeth = (input:RDD[LabeledPoint], numIterations:Int, stepSize:Double, regParam:Double) => 
+        					FactorizationMachineRegressionL2WithSGD.train(
+        					        	input, latentDim, numIterations, stepSize, regParam, 1.0)
+        					
         //build model for each parameter combination
         val bestModel = getBestModelByValidation(
-                                                RidgeRegressionWithSGD.train, trainData, 
+                                                trainMeth, trainData, 
                                                 valData, regParams, stepSizes, 
                                                 numIterations)
         
         //save best model found above
-        val modelStruct:LinearRegressionModelStruct 
-            = new LinearRegressionModelStruct(IdenPrefix, resourceIden, 
-            		                            dataResourceStr,
-                                                modelFileName, modelParams, 
-                                                bestModel.get)
+        val modelStruct:LinearRegressionModelStruct = null
+//            = new LinearRegressionModelStruct(IdenPrefix, resourceIden, 
+//            		                            dataResourceStr,
+//                                                modelFileName, modelParams, 
+//                                                bestModel.get)
         
         // 4. Compute training and testing error.
         
@@ -85,6 +93,6 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         new ModelResource(true, resourceMap, resourceIden)
 	}
 	
-	val IdenPrefix:String = "RegModelRidge"
+	val IdenPrefix:String = "RegModelRMFL2"
 	
 }

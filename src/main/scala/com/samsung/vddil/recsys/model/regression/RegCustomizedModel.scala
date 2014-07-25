@@ -1,25 +1,23 @@
 package com.samsung.vddil.recsys.model.regression
 
+import scala.collection.mutable.HashMap
+import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.optimization.CustomizedAlgorithm
+import org.apache.spark.mllib.optimization.CustomizedModel
+import org.apache.spark.mllib.regression.LabeledPoint
+import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
 import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.model.ModelUtil
-import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.mllib.regression.GeneralizedLinearAlgorithm
-import org.apache.spark.mllib.regression.GeneralizedLinearModel
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext
-import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.utils.Logger
-import org.apache.spark.mllib.optimization.CustomizedModel
 
-trait RegLinearModel  {
-	
-    /**
-     * Get labels and prediction on data
+trait RegCustomizedModel[ M <: CustomizedModel] {
+	/**
+     * get labels and prediction on data
      */
     def getLabelAndPred(data:RDD[LabeledPoint], 
-                        model:GeneralizedLinearModel): RDD[(Double, Double)] = {
+                        model:M): RDD[(Double, Double)] = {
         data.map { point =>
             val prediction = model.predict(point.features)
             (point.label, prediction)
@@ -30,20 +28,20 @@ trait RegLinearModel  {
      * train the passed model on training data for every combination of passed parameters
      * returns learned best model based on validation Mean Square Error
      */
-    def getBestModelByValidation(trainMeth: (RDD[LabeledPoint], Int, Double, Double) => GeneralizedLinearModel,
+    def getBestModelByValidation(trainMeth: (RDD[LabeledPoint], Int, Double, Double) => M,
     		                        trainData: RDD[LabeledPoint],
     		                        valData: RDD[LabeledPoint],
     		                        regParams: Array[Double],
     		                        stepSizes: Array[Double],
-    		                        numIterations:Array[Double]):Option[GeneralizedLinearModel] = {
+    		                        numIterations:Array[Double]):Option[M] = {
     	//build model for each parameter combination
         var bestParams:Option[(Double,Double,Double)] = None
         var bestValMSE:Option[Double] = None
-        var bestModel:Option[GeneralizedLinearModel] = None
+        var bestModel:Option[M] = None
         for (regParam <- regParams; stepSize <- stepSizes; 
                                     numIter <- numIterations) {
             //learn model
-            val model = trainMeth(trainData, numIter.toInt, stepSize, regParam)
+            val model:M = trainMeth(trainData, numIter.toInt, stepSize, regParam)
             
             //perform validation
             //compute prediction on validation data
@@ -69,7 +67,7 @@ trait RegLinearModel  {
     /**
      * Compute training and testing error.
      */
-    def trainNTestError(model: GeneralizedLinearModel, 
+    def trainNTestError(model: M, 
     		                trainData: RDD[LabeledPoint],
     		                testData: RDD[LabeledPoint]) = {
         //compute prediction on training data
@@ -83,6 +81,5 @@ trait RegLinearModel  {
         val testMSE = ContinuousPrediction.computeMSE(testLabelAndPreds)
         
         (trainMSE, testMSE)
-    }
-    
+    }    
 }

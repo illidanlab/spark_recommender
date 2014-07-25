@@ -1,13 +1,12 @@
 package org.apache.spark.mllib.optimization
 
 import scala.collection.immutable.HashMap
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.mllib.regression.RegressionModel
 import org.apache.spark.mllib.regression.LabeledPoint
-
 import breeze.linalg.{norm => brzNorm, DenseMatrix => BDM, axpy => brzAxpy, Vector=> BV, DenseVector=> BDV}
+import scala.util.Random
 
 /**
  * The factorization machine regression model. This class defines the 
@@ -105,6 +104,27 @@ object FactorizationMachineRegressionModel {
                 	BDV(Array[Double](w0))
                 )
     }
+    
+    /**
+     * Creates an empty model vector (all zero), serves as the default staring point. 
+     */
+    def initZeroModel(featureDim:Int, latentDim:Int):Vector = {
+        val modelSize = featureDim * (latentDim + 1) + 1
+        
+        //Vectors.dense(Array.fill[Double](modelSize)(rnd.nextGaussian()))
+        
+        Vectors.dense(new Array[Double](modelSize))
+    }
+    
+    /**
+     * Creates a random model vector (all zero), serves as the default staring point. 
+     */
+    def initRandModel(featureDim:Int, latentDim:Int, scale:Double, rnd:Random = new Random(52)):Vector = {
+        val modelSize = featureDim * (latentDim + 1) + 1
+        
+        Vectors.dense(Array.fill[Double](modelSize)(scale * rnd.nextGaussian()))
+    }
+    
     
     /**
      * Defines gradient computation
@@ -255,10 +275,27 @@ object FactorizationMachineRegressionL2WithSGD{
             stepSize: Double,
             regParam: Double,
             miniBatchFraction: Double,
-            initialWeights: Vector) = {
+            initialWeights: Vector): FactorizationMachineRegressionModel = {
+        
         new FactorizationMachineRegressionL2WithSGD(latentDim, stepSize, numIterations, regParam, miniBatchFraction).run(
                 input, initialWeights, HashMap[String, Any](
                 FactorizationMachineRegressionModel.ParamLatentDimension -> latentDim))
+    }
+    
+    def train(
+            input: RDD[LabeledPoint],
+            latentDim: Int,
+            numIterations: Int,
+            stepSize: Double,
+            regParam: Double,
+            miniBatchFraction: Double): FactorizationMachineRegressionModel = {
+        
+        val featureDim:Int = input.first.features.size
+        val initialWeights: Vector = FactorizationMachineRegressionModel.initZeroModel(featureDim, latentDim)
+        
+        FactorizationMachineRegressionL2WithSGD.train(
+                input, latentDim, numIterations, stepSize, regParam, miniBatchFraction, initialWeights)
+        
     }
     
 }

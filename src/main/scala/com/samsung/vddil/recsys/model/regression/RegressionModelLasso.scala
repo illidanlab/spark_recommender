@@ -15,7 +15,10 @@ import com.samsung.vddil.recsys.model.ModelProcessingUnit
 import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.utils.Logger
 
-object RegressionModelLasso extends ModelProcessingUnit with RegLinearModel {
+import com.samsung.vddil.recsys.model._
+
+object RegressionModelLasso extends 
+	ModelProcessingUnit with RegLinearModel{
 	
 	
 	//models...
