@@ -9,6 +9,7 @@ object RegressionModelHandler extends ModelHandler {
 	//predefined values for model name
 	val RegModelRidge:String = "ridge_reg"
 	val RegModelLasso:String = "lasso_reg"
+	val RegModelFML2:String  = "fm_l2_reg"
 	
 	def buildModel(modelName:String, modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob): Boolean = {
 	    
