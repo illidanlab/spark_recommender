@@ -3,10 +3,11 @@ package com.samsung.vddil.recsys.testing
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.utils.Logger
-import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
 import com.samsung.vddil.recsys.utils.HashString
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.model.GeneralizedLinearModelStruct
+import org.apache.spark.mllib.regression.GeneralizedLinearModel
 
 object LinearRegNotColdTestHandler extends NotColdTestHandler 
                                     with LinearRegTestHandler{
@@ -18,7 +19,7 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 	 */
 	def performTest(jobInfo:RecJob, testName: String, 
 			            testParams: HashMap[String, String],
-			            model: LinearRegressionModelStruct
+			            model: GeneralizedLinearModelStruct
 			             ): RDD[(Int, Int, Double, Double)] = {
     
     //hash string to cache intermediate files, helpful in case of crash    

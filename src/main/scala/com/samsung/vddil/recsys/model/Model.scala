@@ -6,7 +6,12 @@ import org.apache.spark.SparkContext
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.spark.mllib.regression.GeneralizedLinearModel
-
+import com.esotericsoftware.kryo.Kryo
+import com.esotericsoftware.kryo.io.Output
+import com.esotericsoftware.kryo.io.Input
+import com.samsung.vddil.recsys.Pipeline
+import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
+import org.apache.spark.mllib.optimization.CustomizedModel
 
 /**
  * This is a trait for model. 
@@ -18,23 +23,11 @@ import org.apache.spark.mllib.regression.GeneralizedLinearModel
  * resourceLoc:String     the location in HDFS where the model will be saved.
  * modelParams:HashMap[String, String]
  */
-trait ModelStruct{
+trait ModelStruct extends Serializable{
 	var modelName:String //IdenPrefix 
 	var resourceStr:String //or resourceIden
-	var modelFileName:String
 	var modelParams:HashMap[String, String]
 	var performance:HashMap[String, Double] //each key corresponds to one type of performance
-	
-	/*
-	 * Serialized the current model into a model file using SparkContext
-	 */
-	def saveModel(sc: SparkContext)
-	
-	/*
-	 * Deserialize a model from HDFS. 
-	 */
-	def loadModel(sc: SparkContext)
-	
 }
 
 object ModelStruct{
@@ -42,76 +35,48 @@ object ModelStruct{
     val PerformanceTrainMSE = "trainMSE"
 }
 
-trait LinearModelStruct extends ModelStruct{
-    
-    var weights: Option[Vector] = None
-	var intercept: Option[Double] = None
-	var model:GeneralizedLinearModel
-	
+trait SerializableModel [M <: Serializable ] extends ModelStruct{
+    var model:M
+	var modelFileName:String
     var performance:HashMap[String, Double] = new HashMap() 
     
     def saveModel(sc: SparkContext){
-      	weights = Some(model.weights)
-      	intercept = Some(model.intercept)
       	
-	    val hadoopConf = sc.hadoopConfiguration
-		val fileSystem = FileSystem.get(hadoopConf)
-		//create file on hdfs
-		val out = fileSystem.create(new Path(modelFileName))
+		val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
 
-		//write weights if exists, note using Options hence first for each
-		weights foreach { value =>
-			value.toArray foreach {v => 
-                                        out.writeChars(v.toString)  
-                                        out.write(',')
-			                        }
-		}
-		out.write('\n')
+		val kyro:Kryo = new Kryo()
+		kyro.writeObject(new Output(out), model)
 		
-		//write intercept if exists
-		intercept foreach {
-			value => out.writeChars(value.toString)
-		}
-		
-		//close file
 		out.close()
 	}
 	
-	def loadModel(sc: SparkContext){
-	    //TODO: need to build Spark model from the intercept and weights. 
-	    val hadoopConf = sc.hadoopConfiguration
-        val fileSystem = FileSystem.get(hadoopConf)
+	def loadModel(sc: SparkContext)(implicit mf: ClassManifest[M]){ 
         
-        //open file on hdfs
-        val in = fileSystem.open(new Path(modelFileName))
+	    val in = Pipeline.instance.get.fs.open(new Path(modelFileName))
         
-        //read weights
-        val weightsStr =  in.readLine().trim().split(',')
-        if (weightsStr.length > 0) {
-        	weights = Some(Vectors.dense(weightsStr.map(_.toDouble)))
-        }
-        //read intercept
-        val interceptStr = in.readLine().trim()
-        if (interceptStr.length() > 0) {
-        	intercept = Some(interceptStr.toDouble)
-        }
+        val kryo:Kryo = new Kryo()
+        this.model = kryo.readObject(new Input(in), mf.runtimeClass).asInstanceOf[M]
         
-        //close file
         in.close()
 	}
 }
 
-case class LinearRegressionModelStruct(
-		    var modelName:String, var resourceStr:String, var learnDataResourceStr:String, var modelFileName:String,
-		    var modelParams:HashMap[String, String] = new HashMap(), var model:GeneralizedLinearModel
-	    ) extends LinearModelStruct{
+case class GeneralizedLinearModelStruct(
+		    var modelName:String, 
+		    var resourceStr:String, 
+		    var learnDataResourceStr:String, 
+		    var modelFileName:String,
+		    var modelParams:HashMap[String, String] = new HashMap(), 
+		    override var model:GeneralizedLinearModel
+	    ) extends SerializableModel[GeneralizedLinearModel]{
 }
 
-case class LinearClassificationModelStruct(
-			var modelName:String, var resourceStr:String, var modelFileName:String,
-			var modelParams:HashMap[String, String] = new HashMap(), var model:GeneralizedLinearModel
-		) extends LinearModelStruct{
-}
-
-
+case class CustomizedModelStruct[M <: CustomizedModel](
+        	var modelName:String, 
+        	var resourceStr:String, 
+        	var learnDataResourceStr:String, 
+        	var modelFileName:String,
+			var modelParams:HashMap[String, String] = new HashMap(), 
+			override var model:M
+        ) extends SerializableModel[M]
 

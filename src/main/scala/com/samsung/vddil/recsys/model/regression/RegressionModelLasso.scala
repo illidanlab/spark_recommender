@@ -8,14 +8,13 @@ import org.apache.spark.mllib.regression.LassoModel
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.model.ModelResource
 import com.samsung.vddil.recsys.model.ModelProcessingUnit
 import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.utils.Logger
-
 import com.samsung.vddil.recsys.model._
+import org.apache.spark.mllib.regression.GeneralizedLinearModel
 
 object RegressionModelLasso extends 
 	ModelProcessingUnit with RegLinearModel{
@@ -60,8 +59,8 @@ object RegressionModelLasso extends
 		
 		
 		//save best model found above
-		val modelStruct:LinearRegressionModelStruct 
-			= new LinearRegressionModelStruct(IdenPrefix, resourceIden, 
+		val modelStruct:GeneralizedLinearModelStruct 
+			= new GeneralizedLinearModelStruct(IdenPrefix, resourceIden, 
 					                            dataResourceStr,
 					                            modelFileName, modelParams, 
 					                            bestModel.get)

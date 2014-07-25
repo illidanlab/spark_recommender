@@ -19,6 +19,7 @@ import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
 import scala.xml._
+import org.apache.spark.mllib.regression.GeneralizedLinearModel
 
 /**
  * The constant variables of recommendation job.
@@ -793,7 +794,7 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 		
 		model match {
 			//get predicted labels
-			case linearModel:LinearRegressionModelStruct => {
+			case linearModel:GeneralizedLinearModelStruct => {
 			    metricList.map { metric =>
 			    	metric match {
 			    		case metricSE:RecJobMetricSE => {
@@ -824,7 +825,7 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 	}
 	
 	def linearModelSEEval(jobInfo: RecJob, 
-			                linearModel:LinearRegressionModelStruct) = {
+			                linearModel:GeneralizedLinearModelStruct) = {
 		if (!testHandlerRes.isDefined) {
             testHandlerRes = Some(LinearRegNotColdTestHandler.performTest(jobInfo, 
             		                          testName, testParams, linearModel))
@@ -832,7 +833,7 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 	}	
 	
 	def linearModelHREval(jobInfo: RecJob, 
-			                linearModel:LinearRegressionModelStruct) = {
+			                linearModel:GeneralizedLinearModelStruct) = {
 		if (!hitTestHandlerRes.isDefined) {
 			hitTestHandlerRes = Some(RegNotColdHitTestHandler.performTest(jobInfo, 
 					                    testName, testParams, linearModel))

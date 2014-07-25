@@ -252,5 +252,6 @@ class SerializationRegistrator extends KryoRegistrator{
         kyro.register(classOf[com.samsung.vddil.recsys.linalg.Vector])
         kyro.register(classOf[com.samsung.vddil.recsys.linalg.SparseVector])
         kyro.register(classOf[com.samsung.vddil.recsys.linalg.DenseVector])
+        kyro.register(classOf[org.apache.spark.mllib.regression.GeneralizedLinearModel])
     }
 }

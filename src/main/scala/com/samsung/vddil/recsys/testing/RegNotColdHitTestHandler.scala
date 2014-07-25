@@ -3,13 +3,14 @@ package com.samsung.vddil.recsys.testing
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.model.LinearRegressionModelStruct
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.model.GeneralizedLinearModelStruct
+import org.apache.spark.mllib.regression.GeneralizedLinearModel
 
 
 case class HitSet(user: Int, topNPredAllItem:List[Int], 
@@ -28,7 +29,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    */
   def performTest(jobInfo:RecJob, testName: String,
               testParams:HashMap[String, String],
-              model: LinearRegressionModelStruct): 
+              model: GeneralizedLinearModelStruct): 
                   RDD[HitSet] = {
     //hash string to cache intermediate files, helpful in case of crash    
     val dataHashStr =  HashString.generateHash(testName + "RegNotColdHit")
