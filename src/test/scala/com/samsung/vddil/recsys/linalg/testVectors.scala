@@ -1,11 +1,33 @@
 package com.samsung.vddil.recsys.linalg
 
-import com.samsung.vddil.recsys.feature.user.UserFeatureBehaviorGenre
-
-
-
 
 object testVectors {
+    
+      /*
+	 * take item genre feature vector and watchtime
+	 * will add feature vector weighted by watchtime and divide by sum watchtimes
+	 * \sigma (watchtime*genreFeatures)/ \sigma (watchtime)
+   */
+  def aggByItemFeature(userFeatureWatchtimes: Iterable[(Vector, Double)]) :
+  Vector = {
+    require(userFeatureWatchtimes.size > 0)
+    val firstWatchtime = userFeatureWatchtimes.head._1
+    val initVector:Vector = Vectors.dense(firstWatchtime.size)
+	    
+		val (sumVec, sumWt) = 
+		  userFeatureWatchtimes.foldLeft((initVector, 0.0))( 
+		      (gw1, gw2) => (gw1._1 + gw2._1.mapValues(_ *  gw2._2), gw1._2 + gw2._2) )
+		
+		//only divide non-zero values.
+		val result = Vectors.fromBreeze(sumVec.data.mapActiveValues( t => t/sumWt.toDouble)) 
+	
+    //as we don't know the type use pattern match to know type and return in
+    //desired form
+		firstWatchtime match {
+	      case v:SparseVector => result.toSparse()
+	      case _ => result
+	    }
+  }
 
   def main(args: Array[String]): Unit = {
      println ("Test Vectors. ")
@@ -72,8 +94,8 @@ object testVectors {
      val correctResult = Vectors.dense(Array(0.6/1.1, 0, 0.8/1.1, 1.8/1.1, 4.2/1.1)).toSparse
      
      println(userGenreWatchtimes)
-     //val aggResult = UserFeatureBehaviorGenre.aggByItemGenres(userGenreWatchtimes)
-     //println(aggResult)
+     val aggResult = aggByItemFeature(userGenreWatchtimes)
+     println(aggResult)
      println(correctResult)
        
      //the equals does not hold because there might be some numerical error in map function. 
