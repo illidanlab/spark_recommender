@@ -33,6 +33,8 @@ object RecJob{
 	val ResourceLoc_JobData    = "jobData"
 	val ResourceLoc_JobModel   = "jobModel"
 	  
+	val ResourceLocAddon_GeoLoc = "geoLocation"
+	    
 	val DataSplitting_trainRatio = "trainRatio"
 	val DataSplitting_testRatio  = "testRatio"
 	val DataSplitting_validRatio = "validRatio"
@@ -86,6 +88,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	 *     3. location storing store model for this job = resourceLoc(RecJob.ResourceLoc_JobModel):String   
      */
     val resourceLoc:HashMap[String, String] = populateResourceLoc() 
+    
+    /** a list of addon resource locations, parsing all key value pairs from the job file */
+    val resourceLocAddon:HashMap[String, String] = populateAddonResourceLoc()
     
     /** a list of features */
     val featureList:Array[RecJobFeature] = populateFeatures()
@@ -306,7 +311,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     }
     
     /**
-     * Populates resource locations.
+     * Populates special resource locations.
      * 
      * @return a map whose keys are given by 
      *    [[RecJob.ResourceLoc_RoviHQ]],
@@ -349,6 +354,52 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        resourceLoc
     } 
     
+    /**
+     * Populates all resource locations
+     * 
+     * The keys are directly from the XML tags. For example in the job XML we have 
+     * 
+     * <resourceLocation>
+			<roviHq>data/ROVI/</roviHq>
+			<watchTime>data/ACR/</watchTime>
+			<geoLocation>data/GeoData</geoLocation>
+	 * 
+	 * Gives HashMap("roviHq"->"data/ROVI/", "watchTime"->"data/ACR/", "geoLocation"->"data/GeoData")
+	 * 
+	 * now the geoLocation can be accessed by resourceLocAddon("geoLocation")
+     */
+    def populateAddonResourceLoc():HashMap[String, String] = {
+        var addonResourceLoc:HashMap[String, String] = HashMap()
+        
+        var nodeList = jobNode \ JobTag.RecJobResourceLocation
+        if (nodeList.size == 0){
+           Logger.error("Resource locations are not given. ")
+           return resourceLoc
+        }
+        
+        for (resourceEntryNode <- nodeList){
+          //in case multiple resource location  exist. 
+          
+          // the #PCDATA is currently ignored. 
+          val resourceLocList = resourceEntryNode.child.
+        		  map(resourceEntry => (resourceEntry.label, resourceEntry.text )).filter(_._1 != "#PCDATA")
+          
+          for (resourceLocPair <- resourceLocList ){
+            addonResourceLoc += (resourceLocPair._1 -> resourceLocPair._2)
+          }
+        }
+        
+        //print
+        Logger.info("Addon Resource Locations list:")
+        addonResourceLoc.map(pair => {
+	            val resourceLocKey = pair._1
+	            val resourceLocVal = pair._2
+	            Logger.info("Key: "+ resourceLocKey + " Value:" + resourceLocVal)
+        	}
+        )
+        
+        addonResourceLoc
+    }
     
     /**
      * Populates training dates.

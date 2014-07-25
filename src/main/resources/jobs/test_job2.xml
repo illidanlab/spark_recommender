@@ -9,6 +9,7 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
+			<geoLocation>data/GeoData</geoLocation>
       <workspace>/tmp/vddil/recsys-spark</workspace>
 		</resourceLocation>
 		<trainDates>
