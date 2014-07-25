@@ -168,33 +168,36 @@ object Vectors{
       new SparseVector(size, Array(), Array())
    }
    
-   /**
-    * Create a MLLib vector instance from our RecSys vector instance.
-    */
-   def toMLLib(recsysVector:Vector): SV = {
-       breezeToMLLib(recsysVector.data)
-   }
+//   /**
+//    * Create a MLLib vector instance from our RecSys vector instance.
+//    */
+//   def toMLLib(recsysVector:Vector): SV = {
+//       breezeToMLLib(recsysVector.data)
+//   }
    
    /**
    * Creates a MLLib vector instance from a breeze vector.
    */
-  private[recsys] def breezeToMLLib(breezeVector: BV[Double]): SV = {
-    breezeVector match {
-      case v: BDV[Double] =>
-        if (v.offset == 0 && v.stride == 1) {
-          new SDV(v.data)
+  private[recsys] def breezeToMLLib(breezeVector: BDV[Double]): SDV = {
+
+        if (breezeVector.offset == 0 && breezeVector.stride == 1) {
+          new SDV(breezeVector.data)
         } else {
-          new SDV(v.toArray)  // Can't use underlying array directly, so make a new one
+          new SDV(breezeVector.toArray)  // Can't use underlying array directly, so make a new one
         }
-      case v: BSV[Double] =>
-        if (v.index.length == v.used) {
-          new SSV(v.length, v.index, v.data)
+  }
+  
+  /**
+   * Creates a MLLib vector instance from a breeze vector.
+   */
+  private[recsys] def breezeToMLLib(breezeVector: BSV[Double]): SSV = {
+ 
+        if (breezeVector.index.length == breezeVector.used) {
+          new SSV(breezeVector.length, breezeVector.index, breezeVector.data)
         } else {
-          new SSV(v.length, v.index.slice(0, v.used), v.data.slice(0, v.used))
+          new SSV(breezeVector.length, breezeVector.index.slice(0, breezeVector.used), breezeVector.data.slice(0, breezeVector.used))
         }
-      case v: BV[_] =>
-        sys.error("Unsupported Breeze vector type: " + v.getClass.getName)
-    }
+      
   }
   
   /**
@@ -269,7 +272,7 @@ class DenseVector(val data:BDV[Double]) extends Vector {
 
   override def toArray: Array[Double] = data.toArray
 
-  def toMLLib:SV = {
+  def toMLLib:SDV = {
      Vectors.breezeToMLLib(this.data)
   }
   
@@ -326,7 +329,7 @@ class SparseVector(val data:BSV[Double]) extends Vector{
 
     override def toArray: Array[Double] = data.toArray
     
-    def toMLLib:SV = {
+    def toMLLib:SSV = {
         Vectors.breezeToMLLib(this.data)
     }
     
