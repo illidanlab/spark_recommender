@@ -39,13 +39,10 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 	 */
 	def run(jobInfo: RecJob, model:ModelStruct, metricList:Array[RecJobMetric]) = {
 		
-		model match {
-			//get predicted labels
-			case linearModel:GeneralizedLinearModelStruct => {
-			    metricList.map { metric =>
+		metricList.map { metric =>
 			    	metric match {
 			    		case metricSE:RecJobMetricSE => {
-			    			linearModelSEEval(jobInfo, linearModel)
+			    			linearModelSEEval(jobInfo, model)
 			    			testHandlerRes foreach { testVal =>
 		    				     val score = metricSE.run(testVal.map{x => (x._3, x._4)})
 		    				     //TODO: add test type
@@ -55,7 +52,7 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 			    		}
 			    		
 			    		case metricHR:RecJobMetricHR => {
-			    			linearModelHREval(jobInfo, linearModel)
+			    			linearModelHREval(jobInfo, model)
 			    			hitTestHandlerRes foreach { testVal =>
 			    				val scores  = metricHR.run(testVal)
 			    				//TODO: add test type
@@ -66,13 +63,10 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 			    		case _ => Logger.warn(s"$metric not known metric")
 			    	}
 			    }
-			}
-			case _ => None
-		}
 	}
 	
 	def linearModelSEEval(jobInfo: RecJob, 
-			                linearModel:GeneralizedLinearModelStruct) = {
+			                linearModel:ModelStruct) = {
 		if (!testHandlerRes.isDefined) {
             testHandlerRes = Some(LinearRegNotColdTestHandler.performTest(jobInfo, 
             		                          testName, testParams, linearModel))
@@ -80,7 +74,7 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 	}	
 	
 	def linearModelHREval(jobInfo: RecJob, 
-			                linearModel:GeneralizedLinearModelStruct) = {
+			                linearModel:ModelStruct) = {
 		if (!hitTestHandlerRes.isDefined) {
 			hitTestHandlerRes = Some(RegNotColdHitTestHandler.performTest(jobInfo, 
 					                    testName, testParams, linearModel))

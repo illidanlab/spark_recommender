@@ -1,17 +1,15 @@
 package com.samsung.vddil.recsys.testing
 
+import scala.collection.mutable.HashMap
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext._
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
-import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext._
-import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.model.GeneralizedLinearModelStruct
-import org.apache.spark.mllib.regression.GeneralizedLinearModel
-
+import com.samsung.vddil.recsys.model.ModelStruct
 
 case class HitSet(user: Int, topNPredAllItem:List[Int], 
                topNPredNewItems:List[Int], topNTestAllItems:List[Int],
@@ -29,7 +27,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    */
   def performTest(jobInfo:RecJob, testName: String,
               testParams:HashMap[String, String],
-              model: GeneralizedLinearModelStruct): 
+              model: ModelStruct): 
                   RDD[HitSet] = {
     //hash string to cache intermediate files, helpful in case of crash    
     val dataHashStr =  HashString.generateHash(testName + "RegNotColdHit")
@@ -150,7 +148,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                 
     //for each user in test get prediction on all train items
     val userItemPred:RDD[(Int, (Int, Double))] = userItemFeat.mapPartitions{iter =>                 
-              def pred: (org.apache.spark.mllib.linalg.Vector) => Double = model.model.predict
+              def pred: (org.apache.spark.mllib.linalg.Vector) => Double = model.predict
               //(item, prediction)
               iter.map( x => (x._1, (x._2._1, pred(x._2._2)))) 
             }
