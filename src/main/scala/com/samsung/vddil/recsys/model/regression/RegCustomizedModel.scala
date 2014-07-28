@@ -10,7 +10,6 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.model.ModelUtil
 
 trait RegCustomizedModel[ M <: CustomizedModel] {
 	/**
