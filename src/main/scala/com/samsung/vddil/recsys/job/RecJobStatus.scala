@@ -10,6 +10,10 @@ import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.data.AssembledDataSet
 import com.samsung.vddil.recsys.utils.Logger
+import com.samsung.vddil.recsys.feature.RecJobItemFeature
+import com.samsung.vddil.recsys.feature.RecJobUserFeature
+import com.samsung.vddil.recsys.feature.RecJobFactFeature
+import com.samsung.vddil.recsys.model.RecJobModel
 
 /** 
  * Stores the location of different types of resources (prepared data, features, models). 
