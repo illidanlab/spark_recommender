@@ -1,22 +1,33 @@
 package com.samsung.vddil.recsys
 
-import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
-import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.model.ModelUtil
+import scala.collection.mutable.HashMap
+
 import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.mllib.regression.GeneralizedLinearAlgorithm
-import org.apache.spark.mllib.regression.GeneralizedLinearModel
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
-import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.utils.Logger
-import org.apache.spark.mllib.optimization.CustomizedModel
+import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
+import com.samsung.vddil.recsys.linalg.Vector
 
 /**
  * This package provides the handlers for model units as well as a list of regression models 
  */
 package object model {
+    /**
+     * Parses parameter string to give parameters
+     * "0:2:8,10,12" -> [0,2,4,6,8,10,12]
+     */
+    def parseParamString(param: String):Array[Double] = {
+        param.split(",").map(_.split(":")).flatMap { _ match {
+                //Array(0,2,8)
+                case Array(a,b,c) => a.toDouble to c.toDouble by b.toDouble 
+                //Array(10) or Array(12)
+                case Array(a) => List(a.toDouble)
+            }
+        }
+    }
+    
 	/**
      * Gets the parameters for optimization (SGD) based the models
      * (numIterations, stepSizes, regParams) default (Array(100), Array(1), Array(1))
@@ -29,19 +40,19 @@ package object model {
         
         //get model parameters
         if (modelParams.contains("regParam")) {
-            regParams = ModelUtil.parseParamString(modelParams("regParam"))
+            regParams = parseParamString(modelParams("regParam"))
         } else{
             modelParams("regParam") = regParams.mkString(",") 
         }
         
         if (modelParams.contains("stepSize")) {
-            stepSizes = ModelUtil.parseParamString(modelParams("stepSize"))
+            stepSizes = parseParamString(modelParams("stepSize"))
         } else{
             modelParams("stepSize") = stepSizes.mkString(",")
         }
         
         if (modelParams.contains("numIterations")) {
-            numIterations = ModelUtil.parseParamString(modelParams("numIterations"))
+            numIterations = parseParamString(modelParams("numIterations"))
         } else{
             modelParams("numIterations") = numIterations.mkString(",") 
         }
