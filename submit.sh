@@ -15,7 +15,7 @@
 SPARK_BIN=$HOME/installSrc/spark/spark/bin/
 SPARK_EXEC_MEMORY="4G"
 SPARK_EXEC_CORES=2
-SPARK_EXEC_NUM=400
+SPARK_EXEC_NUM=200
 
 if [ $# -lt 1 ]; then
     echo "Job file has not specified. Abort."
@@ -34,11 +34,13 @@ fi
 server_job_workspace="hdfs://gnosis-01-01-01.crl.samsung.com:8020/apps/vddil/recsys/jobfiles"
 
 MVNJAR=$PWD/target/recsys-spark-0.0.1.jar
-SBTJAR=$PWD/target/scala-2.10/samsung-vd-recommender-system_2.10-1.0.jar
+#SBTJAR=$PWD/target/scala-2.10/samsung-vd-recommender-system_2.10-1.0.jar
+SBTJAR=$PWD/target/scala-2.10/samsung-recsys-assembly.jar
 
 if [ $# -ge 2 ]; then
     echo "Compiling"
-    sbt package
+    #sbt package
+    sbt assembly
 fi
 
 

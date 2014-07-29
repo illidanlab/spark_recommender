@@ -62,5 +62,7 @@
   case n if n.startsWith("library.properties") => MergeStrategy.discard
   case n if n.startsWith("license.html") => MergeStrategy.discard
   case n if n.startsWith("about.html") => MergeStrategy.discard
+  case n if n.endsWith("LICENSE.txt") => MergeStrategy.first
+  case n if n.endsWith(".txt") => MergeStrategy.first
   case _ => MergeStrategy.deduplicate
 }
