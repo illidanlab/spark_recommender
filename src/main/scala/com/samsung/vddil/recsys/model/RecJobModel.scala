@@ -21,8 +21,8 @@ sealed trait RecJobModel{
 
 /** Constants used in building models. */
 object RecJobModel{
-	val defaultMinUserFeatureCoverage = 0.3
-	val defaultMinItemFeatureCoverage = 0.5
+	val defaultMinUserFeatureCoverage = 0.1
+	val defaultMinItemFeatureCoverage = 0.1
   
 	val Param_MinUserFeatureCoverage = "minUFCoverage"
 	val Param_MinItemFeatureCoverage = "minIFCoverage"
