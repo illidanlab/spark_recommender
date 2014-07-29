@@ -224,8 +224,11 @@ object FactorizationMachineRegressionModel {
             brzWeights(brzWeights.size - 1) = w0Weights //recover the intercept weight
             
             brzAxpy(-thisIterStepSize, gradient.toBreeze, brzWeights)
-    		val norm = brzNorm(brzWeights(0 to brzWeights.size - 2), 2.0) //norm without w0
-
+            
+            //norm without w0 
+            //NOTE: scala breeze 0.7 does not support brzNorm on slice 
+            val norm = brzWeights(0 to brzWeights.size - 2).norm(2.0)
+    		
     		(Vectors.fromBreeze(brzWeights), 0.5 * regParam * norm * norm)
         }
     }
