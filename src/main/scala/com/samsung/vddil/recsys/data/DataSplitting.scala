@@ -94,18 +94,18 @@ object DataSplitting {
 		    	//get the train data, i.e all random id < trainPc
 		    	val trainData = partedRandData.filter(_._1 < trainingPerc)
                                         .values //remove the random id get only the data
-          val trainSize = trainData.count
+          //val trainSize = trainData.count
 		    	
 		    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
 		    	val testData = partedRandData.filter(x => x._1 >= trainingPerc 
 		    	                                && x._1 < (trainingPerc + testingPerc))
                                        .values //remove the random id get only the data
-          val testSize = testData.count
+          //val testSize = testData.count
 		        
 		        //get the validation data i.e. all randomId > (trainPc+testPc)
 		    	val valData = partedRandData.filter(x => x._1 >= (trainingPerc + testingPerc))
                                       .values //remove the random id get only the data
-          val validSize = valData.count
+          //val validSize = valData.count
 		    	
 		    	
 		    	//save data into files
@@ -115,9 +115,9 @@ object DataSplitting {
 		    	
 		    	//unpersist the persisted data to free up memory associated
 		    	randData.unpersist(false)
-		    	Logger.info("Training sample size: " + trainSize)
-		    	Logger.info("Testing sample size: " + testSize )
-		    	Logger.info("Validation sample size: " + validSize)
+		    	//Logger.info("Training sample size: " + trainSize)
+		    	//Logger.info("Testing sample size: " + testSize )
+		    	//Logger.info("Validation sample size: " + validSize)
 	    	}
 	    	
 	    	//save resource to jobStatus

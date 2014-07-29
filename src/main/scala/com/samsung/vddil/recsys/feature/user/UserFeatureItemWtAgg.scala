@@ -11,6 +11,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.Pipeline
 
 trait UserFeatureItemWtAgg extends Serializable {
  
@@ -117,7 +118,7 @@ trait UserFeatureItemWtAgg extends Serializable {
         //save generated userFeatures at specified file path
         if(jobInfo.outputResource(featureFilePath)) {
             Logger.info("Dumping feature resource: " + featureFilePath)
-            userFeatures.saveAsObjectFile(featureFilePath)
+            userFeatures.coalesce(Pipeline.getPartitionNum).saveAsObjectFile(featureFilePath)
         }
       }
     }
