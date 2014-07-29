@@ -268,12 +268,12 @@ object DataAssemble {
         	  // join features and store in assembleFileName
         	  joinedUserItemFeatures.saveAsObjectFile(assembleFileName)
           }
-          val sampleSize = joinedUserItemFeatures.count
+          //val sampleSize = joinedUserItemFeatures.count
           
           jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
                     AssembledDataSet(assembleFileName, userFeatureOrder, itemFeatureOrder)
           Logger.info("assembled features: " + assembleFileName)
-          Logger.info("Total data size: " + sampleSize)
+          //Logger.info("Total data size: " + sampleSize)
       }
       
       resourceStr
