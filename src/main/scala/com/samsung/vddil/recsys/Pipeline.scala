@@ -15,6 +15,7 @@ import scala.collection.mutable.HashMap
 import scala.xml.XML
 import com.samsung.vddil.recsys.job.Job
 import com.samsung.vddil.recsys.utils.Logger
+import org.apache.spark.serializer.KryoSerializer
 
 /**
  * This is the pipeline class, which includes pipeline configurations such as Spark Context and 
@@ -26,6 +27,8 @@ import com.samsung.vddil.recsys.utils.Logger
  */
 class Pipeline private (val sc:SparkContext, val fs:FileSystem){
 	val hashPartitioners:HashMap[String, HashPartitioner] = new HashMap()
+	
+	val kryo = new KryoSerializer(sc.getConf).newInstance
 }
 
 /**

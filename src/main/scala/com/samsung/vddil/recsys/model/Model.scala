@@ -12,6 +12,8 @@ import com.esotericsoftware.kryo.io.Input
 import com.samsung.vddil.recsys.Pipeline
 import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
 import org.apache.spark.mllib.optimization.CustomizedModel
+import scala.reflect._
+import org.objenesis.strategy.StdInstantiatorStrategy
 
 /**
  * This is a trait for model. 
@@ -47,34 +49,18 @@ trait SerializableModel [M <: Serializable ] extends ModelStruct{
     var model:M
 	var modelFileName:String
     var performance:HashMap[String, Double] = new HashMap() 
-    
+    def ev: ClassTag[_] // record runtime. 
     /**
      * Serialize the model using Kyro serializer and save the model in a specified 
      * location [[com.samsung.vddil.recsys.model.SerializableModel.modelFileName]]. 
      */
-    def saveModel(sc: SparkContext){
-      	
-		val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
-
-		val kyro:Kryo = new Kryo()
-		kyro.writeObject(new Output(out), model)
-		
-		out.close()
-	}
+    def saveModel() 
 	
     /**
      * Deserialize the model from a file and load it from a specific location
      * [[com.samsung.vddil.recsys.model.SerializableModel.modelFileName]] 
      */
-	def loadModel(sc: SparkContext)(implicit mf: ClassManifest[M]){ 
-        
-	    val in = Pipeline.instance.get.fs.open(new Path(modelFileName))
-        
-        val kryo:Kryo = new Kryo()
-        this.model = kryo.readObject(new Input(in), mf.runtimeClass).asInstanceOf[M]
-        
-        in.close()
-	}
+	def loadModel() 
 }
 
 /**
@@ -87,23 +73,68 @@ case class GeneralizedLinearModelStruct(
 		    var modelFileName:String,
 		    var modelParams:HashMap[String, String] = new HashMap(), 
 		    override var model:GeneralizedLinearModel
-	    ) extends SerializableModel[GeneralizedLinearModel]{
+	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) extends SerializableModel[GeneralizedLinearModel]{
     
     def predict(testData: org.apache.spark.mllib.linalg.Vector) = model.predict(testData)
+    
+    override def saveModel() = {
+        val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
+        
+        val ser2 = Pipeline.instance.get.kryo.serializeStream(out).writeObject(model)
+        
+        ser2.close()
+        out.close()
+	}
+    
+    override def loadModel() = {
+        val in = Pipeline.instance.get.fs.open(new Path(this.modelFileName))
+                
+        this.model = Pipeline.instance.get.kryo.deserializeStream(in).readObject[GeneralizedLinearModel]()
+
+        in.close()
+    }
 }
 
 /**
  * The data structure for customized model
  */
-case class CustomizedModelStruct[M <: CustomizedModel](
+case class CustomizedModelStruct[M >: Null <: CustomizedModel](
         	var modelName:String, 
         	var resourceStr:String, 
         	override var learnDataResourceStr:String, 
         	var modelFileName:String,
 			var modelParams:HashMap[String, String] = new HashMap(), 
 			override var model:M
-        ) extends SerializableModel[M]{
+        )(implicit val ev: ClassTag[M]) extends SerializableModel[M]{
     
+    def this(modelName:String, 
+        	resourceStr:String, 
+        	learnDataResourceStr:String, 
+        	modelFileName:String,
+			modelParams:HashMap[String, String])(implicit mf: Manifest[M])
+		= this(modelName, resourceStr, learnDataResourceStr, modelFileName, modelParams, null)
+		
+	if (this.model == null){
+	    this.loadModel()
+	}
+		
     def predict(testData: org.apache.spark.mllib.linalg.Vector) = model.predict(testData)
+    
+    override def saveModel() = {
+        val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
+        
+        val ser2 = Pipeline.instance.get.kryo.serializeStream(out).writeObject(model)
+        ser2.close()
+
+        out.close()
+	}
+    
+    override def loadModel() = {
+        val in = Pipeline.instance.get.fs.open(new Path(this.modelFileName))
+                
+        this.model = Pipeline.instance.get.kryo.deserializeStream(in).readObject[M]()
+
+        in.close()
+    }
 }
 

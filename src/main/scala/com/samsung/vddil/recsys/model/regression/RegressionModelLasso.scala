@@ -75,7 +75,7 @@ object RegressionModelLasso extends
 		Logger.info("trainMSE = " + trainMSE + "testMSE = " + testMSE 
 				        + " valMSE = " + bestValMSE.get)
 		
-		modelStruct.saveModel(sc)
+		modelStruct.saveModel
 		
 		// 5. Generate and return a ModelResource that includes all resources. 
 		

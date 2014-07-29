@@ -72,7 +72,7 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         Logger.info("trainMSE = " + trainMSE + " testMSE = " + testMSE)
         Logger.info("trainData: " + trainData.count + " testData: "
                                + testData.count + " valData: " + valData.count)
-        modelStruct.saveModel(sc)
+        modelStruct.saveModel
         
         // 5. Generate and return a ModelResource that includes all resources. 
         
