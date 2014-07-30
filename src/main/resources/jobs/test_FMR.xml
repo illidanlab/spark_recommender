@@ -44,7 +44,7 @@
 					<regParam>1.5</regParam>
 					<minUFCoverage>0.8</minUFCoverage>
 					<minIFCoverage>0.8</minIFCoverage>
-					<numIterations>10</numIterations>
+					<numIterations>1</numIterations>
 					<stepSize>0.0001</stepSize>
 				</param>
 			</model>
