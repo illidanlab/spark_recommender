@@ -184,13 +184,16 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     
     //get top N predicted items for user
     val topPredictedItems = getTopAllNNewItems(userItemPred, sampledUserTrainItemsSet, N)
+    Logger.info("DEBUG:: topPredictedItems " + topPredictedItems.count)
 
     //for each user in test, get his actual Top-N overall viewed items
     val topTestItems = getTopAllNNewItems(sampledTestData, sampledUserTrainItemsSet, N)
-
+    Logger.info("DEBUG:: topTestItems " + topTestItems.count)
     //join predicted and test ranking by user keyi
+    
     val topPredNTestItems = topPredictedItems.join(topTestItems)
-   
+    Logger.info("DEBUG:: topPredNTestItems " + topPredNTestItems.count)
+    
     //RDD[(user, ((topPredictedAll, topPredictedNew), (topTestAll, topTestNew)))]
     topPredNTestItems.map(x => HitSet(x._1, //user
                                        x._2._1._1, x._2._1._2, //top predicted all, top predicted new  
