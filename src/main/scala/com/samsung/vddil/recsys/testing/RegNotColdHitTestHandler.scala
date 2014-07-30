@@ -3,6 +3,7 @@ package com.samsung.vddil.recsys.testing
 import scala.collection.mutable.HashMap
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
+import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
@@ -19,8 +20,14 @@ case class HitSet(user: Int, topNPredAllItem:List[Int],
 object RegNotColdHitTestHandler extends NotColdTestHandler 
                                 with LinearRegTestHandler {
   
-  /*
-   * perform predictions on all possible items for user and return top predicted
+  def resourceIdentity(testParam:HashMap[String, String], dataIdentifier:String):String = {
+        IdenPrefix + "_" + HashString.generateHash(testParam.toString) + "_" + dataIdentifier 
+  }
+  
+  val IdenPrefix = "RegNotColdHit"
+      
+  /**
+   * Performs predictions on all possible items for user and return top predicted
    * items according to model and top items in test along with new items for user
    * which he didn't see in training
    * RDD[(User, ((topPredictedAll, topPredictedNew), (topTestAll, topTestNew)))]
@@ -33,16 +40,25 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     val dataHashStr =  HashString.generateHash(testName + "RegNotColdHit")
 
     //get the value of "N" in Top-N from parameters
-    val N:Int = testParams.getOrElse("N", "10").toInt
+    val N:Int = testParams.getOrElseUpdate("N", "10").toInt
    
     //get percentage of user sample to predict on as it takes really long to
     //compute on all users
-    val userSamplePc:Double = testParams.getOrElse("UserSampleSize",
+    val userSamplePc:Double = testParams.getOrElseUpdate("UserSampleSize",
                                                   "0.2").toDouble
 
     //seed parameter needed for sampling test users
-    val seed = testParams.getOrElse("seed", "3").toInt
+    val seed = testParams.getOrElseUpdate("seed", "3").toInt
 
+    val resourceIden = resourceIdentity(testParams, testName)
+    
+    val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 
+    
+    //
+    val itemFeatObjFile         = testResourceDir + "/itemFeat"   
+    val userFeatObjFile         = testResourceDir + "/userFeat" 
+    val sampledUserFeatObjFile  = testResourceDir + "/sampledUserFeat" 
+    val sampledItemUserFeatFile = testResourceDir + "/sampledUserItemFeat"
     //get spark context
     val sc = jobInfo.sc
     
@@ -83,10 +99,8 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                         
     //get required user item features     
     Logger.info("Preparing item features...")
-    val itemFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemFeatObj" + dataHashStr 
     if (jobInfo.outputResource(itemFeatObjFile)) {
-      //item features file don't exist
-      //generate and save
+      //item features file don't exist, we generate and save
       val iFRDD = getOrderedFeatures(trainItems, itemFeatureOrder, 
                     jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
       iFRDD.saveAsObjectFile(itemFeatObjFile)
@@ -95,10 +109,8 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
 
 
     Logger.info("Preparing user features...")
-    val userFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userFeatObj" + dataHashStr 
     if (jobInfo.outputResource(userFeatObjFile)) {
-      //item features file don't exist
-      //generate and save
+      //item features file don't exist, we generate and save
       val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
                     jobInfo.jobStatus.resourceLocation_UserFeature, sc)
       uFRDD.saveAsObjectFile(userFeatObjFile)
@@ -106,14 +118,18 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     val userFeaturesRDD:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)                    
 
     //get features only for sampled test users
-    val sampledTestUserFeatures = userFeaturesRDD.join(sampledTestUsers.map((_,1)))
-                                                  .map{ x=>
-                                                    val user = x._1
-                                                    val features = x._2._1
-                                                    (user, features)
-                                                  }
-
-
+    Logger.info("Preparing sampled user features...")
+    if (jobInfo.outputResource(sampledUserFeatObjFile)){
+    	val sampledUFRDD = userFeaturesRDD.
+    		join(sampledTestUsers.map((_,1))).map{ x=>
+               val user:Int = x._1
+               val features:Vector = x._2._1
+               (user, features)
+            }
+    	sampledUFRDD.saveAsObjectFile(sampledUserFeatObjFile)
+    }
+    val sampledTestUserFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](sampledUserFeatObjFile)
+    
     //for each user get train/past/old items, require to know new items for user
     //NOTE: This will generate user item set map which can take y
     Logger.info("Get training users item sets")
@@ -134,17 +150,30 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                                       (x._1, x._2.toSet)
                                                     }
 
-
     //for each user get all possible user item features
     Logger.info("Generating all possible user-item features")
 
-    //TODO: remove hard coded partition count, Pipeline.getPartitionNum not
-    //working correctly? investigate and fix
-    val userItemFeat = concateUserWAllItemFeat(sampledTestUserFeatures, itemFeaturesRDD
-                                              ).map(x =>
-                                                //(user, (item, feature))
-                                                (x._1, (x._2, x._3))
-                                              ).partitionBy(Pipeline.getHashPartitioner())
+    if (jobInfo.outputResource(sampledItemUserFeatFile)){
+        val sampledUFIFRDD = sampledTestUserFeatures.cartesian(itemFeaturesRDD
+            ).map{ x=> //((userID, userFeature), (itemID, itemFeature))
+                val userID:Int = x._1._1
+                val itemID:Int = x._2._1
+                val feature:Vector = x._1._2 ++ x._2._2
+                (userID, (itemID, feature.toMLLib))
+            }
+        //NOTE: by rearranging (userID, (itemID, feature)) we want to use
+        //      the partitioner by userID.
+        sampledUFIFRDD.saveAsObjectFile(sampledItemUserFeatFile)
+    }
+    val userItemFeat = sc.objectFile[(Int, (Int, SV))](sampledItemUserFeatFile)
+    		
+//    //TODO: remove hard coded partition count, Pipeline.getPartitionNum not
+//    //working correctly? investigate and fix
+//    val userItemFeat = concateUserWAllItemFeat(sampledTestUserFeatures, itemFeaturesRDD
+//                                              ).map(x =>
+//                                                //(user, (item, feature))
+//                                                (x._1, (x._2, x._3))
+//                                              ).partitionBy(Pipeline.getHashPartitioner())
                 
     //for each user in test get prediction on all train items
     val userItemPred:RDD[(Int, (Int, Double))] = userItemFeat.mapPartitions{iter =>                 
