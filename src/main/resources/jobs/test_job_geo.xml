@@ -1,0 +1,40 @@
+<jobList xmlns:recsys="Samsung Recsys">
+	<jobEntry>
+		<jobType>recommendation</jobType>
+		<jobName>exp_test_20140522_20140525</jobName>
+		<jobDesc>Test experiment from 20140522 to 20140525</jobDesc>
+		<sparkContext>
+			<master>local[4]</master>
+		</sparkContext>
+		<resourceLocation>
+			<roviHq>data/ROVI/</roviHq>
+			<watchTime>data/ACR/</watchTime>
+			<geoLocation>data/GeoData</geoLocation>
+      		<workspace>/Users/yin.zhou/Documents/workspace/learning_scala</workspace>
+		</resourceLocation>
+		<trainDates>
+			<date>20140522</date>
+			<date>20140523</date>
+    </trainDates>
+    <testDates>
+        <date>20140524</date>
+        <date>20140525</date>
+    </testDates>
+		<features>		
+			<feature>
+				<type>userFeature</type>
+				<name>geo</name>
+				<param>
+					<numLatitudeSeg>5</numLatitudeSeg>
+				</param>
+				<param>
+					<numLongitudeSeg>12</numLongitudeSeg>
+				</param>
+			</feature>
+		</features>
+		<dataSplit>
+			<testingRatio>0.2</testingRatio>
+			<validationRatio>0.1</validationRatio>
+		</dataSplit>
+	</jobEntry>
+</jobList>
