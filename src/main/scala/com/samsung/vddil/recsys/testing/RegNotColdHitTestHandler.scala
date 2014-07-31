@@ -20,8 +20,10 @@ case class HitSet(user: Int, topNPredAllItem:List[Int],
 object RegNotColdHitTestHandler extends NotColdTestHandler 
                                 with LinearRegTestHandler {
   
-  def resourceIdentity(testParam:HashMap[String, String], dataIdentifier:String):String = {
-        IdenPrefix + "_" + HashString.generateHash(testParam.toString) + "_" + dataIdentifier 
+  def resourceIdentity(testParams:HashMap[String, String], metricParams:HashMap[String, String], dataIdentifier:String):String = {
+        IdenPrefix + "_" + dataIdentifier + "_" + 
+        		HashString.generateHash(testParams.toString) + 
+        		"_" + HashString.generateHash(metricParams.toString) 
   }
   
   val IdenPrefix = "RegNotColdHit"
@@ -34,6 +36,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    */
   def performTest(jobInfo:RecJob, testName: String,
               testParams:HashMap[String, String],
+              metricParams:HashMap[String, String],
               model: ModelStruct): 
                   RDD[HitSet] = {
     //hash string to cache intermediate files, helpful in case of crash    
@@ -44,14 +47,14 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    
     //get percentage of user sample to predict on as it takes really long to
     //compute on all users
-    val userSampleParam:Double = testParams.getOrElseUpdate("UserSampleSize",
+    val userSampleParam:Double = metricParams.getOrElseUpdate("UserSampleSize",
                                                   "0.2").toDouble
     Logger.info("User sample parameter: " + userSampleParam)
     
     //seed parameter needed for sampling test users
     val seed = testParams.getOrElseUpdate("seed", "3").toInt
 
-    val resourceIden = resourceIdentity(testParams, testName)
+    val resourceIden = resourceIdentity(testParams, metricParams, testName)
     
     val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 
     
@@ -86,6 +89,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     val userSamplePc:Double = 
         if (userSampleParam > 1)  userSampleParam/totalTestUserNum.toDouble 
         else userSampleParam 
+    Logger.info("Adjusted sample ratio: " + userSamplePc)
         
     val sampledTestUsers = testUsers.sample(withReplacement, userSamplePc, seed)
     Logger.info("The total sampled user number: " + sampledTestUsers.count)

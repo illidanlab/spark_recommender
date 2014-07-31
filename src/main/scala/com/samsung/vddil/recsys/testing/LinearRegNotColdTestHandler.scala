@@ -18,6 +18,7 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 	 */
 	def performTest(jobInfo:RecJob, testName: String, 
 			            testParams: HashMap[String, String],
+			            metricParams: HashMap[String, String],
 			            model: ModelStruct
 			             ): RDD[(Int, Int, Double, Double)] = {
     
