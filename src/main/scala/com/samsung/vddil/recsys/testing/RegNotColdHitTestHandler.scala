@@ -88,7 +88,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
         else userSampleParam 
         
     val sampledTestUsers = testUsers.sample(withReplacement, userSamplePc, seed)
-    Logger.info("The total sampled user number: " + sampledTestUsers)
+    Logger.info("The total sampled user number: " + sampledTestUsers.count)
     
     //get test data only corresponding to sampled users
     val sampledTestData = filtTestData.join(testUsers.map((_,1)))
@@ -175,7 +175,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
             }
         //NOTE: by rearranging (userID, (itemID, feature)) we want to use
         //      the partitioner by userID.
-        sampledUFIFRDD.coalesce(1000, false).saveAsObjectFile(sampledItemUserFeatFile)
+        sampledUFIFRDD.coalesce(1000).saveAsObjectFile(sampledItemUserFeatFile)
     }
     val userItemFeat = sc.objectFile[(Int, (Int, SV))](sampledItemUserFeatFile)
     		
