@@ -35,7 +35,7 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
     val sc = jobInfo.sc
 
     // 1. Complete default parameters
-    val N:Int = featureParams.getOrElse("N",  "100").toInt
+    val N:Int = featureParams.getOrElse("N",  "500").toInt
 	  val MinTermLen:Int = featureParams.getOrElse("MINTERMLEN", "2").toInt
 
     // 2. Generate resource identity using resouceIdentity()
@@ -53,7 +53,8 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
       
     // 3. Feature generation algorithms (HDFS operations)
     var fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + jobInfo.trainDates(0) + "/program_desc*" 
-    
+   
+    //get item and description
     val itemSynText:RDD[(Int, String)] = jobInfo.trainDates.map {trainDate =>      
       val fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/program_desc*"
       val currItemText:RDD[(String, String)] = sc.textFile(fileName).map{line =>
@@ -116,7 +117,7 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
     //terms count
     val termFreq:RDD[(String, Int)] = itemTerms.flatMap{_._2 map((_,1))}.reduceByKey(_+_)
 
-    //terms - document frequency, i.e. no. of documents term occurs
+    //terms - document frequency, i.e. no. of documents the term occurs
     val docFreq:RDD[(String, Double)] = itemTerms.flatMap{x =>
                                                       val itemId = x._1
                                                       val itemTerms = x._2
@@ -166,7 +167,11 @@ object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit {
     //save the terms with score
     if (jobInfo.outputResource(featureMapFileName)){
       Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
-      tfIdfs.saveAsTextFile(featureMapFileName)
+      tfIdfs.map {x =>
+        val term = x._1
+        val score = x._2
+        term + "," + score
+      }.saveAsTextFile(featureMapFileName)
     }
     
     val featureStruct:ItemFeatureStruct = 
