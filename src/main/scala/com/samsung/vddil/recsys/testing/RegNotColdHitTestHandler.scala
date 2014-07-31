@@ -44,9 +44,10 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    
     //get percentage of user sample to predict on as it takes really long to
     //compute on all users
-    val userSamplePc:Double = testParams.getOrElseUpdate("UserSampleSize",
+    val userSampleParam:Double = testParams.getOrElseUpdate("UserSampleSize",
                                                   "0.2").toDouble
-
+    Logger.info("User sample parameter: " + userSampleParam)
+    
     //seed parameter needed for sampling test users
     val seed = testParams.getOrElseUpdate("seed", "3").toInt
 
@@ -76,8 +77,19 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
 
     //get sampled test users based on passed sample size
     val withReplacement = false
+    
+    val totalTestUserNum = testUsers.count
+    Logger.info("The total user number: " + totalTestUserNum)
+    
+    //If userSampleParam is larger than 1 we treat them as real counts
+    //or else we treat them as percentage. 
+    val userSamplePc:Double = 
+        if (userSampleParam > 1)  userSampleParam/totalTestUserNum.toDouble 
+        else userSampleParam 
+        
     val sampledTestUsers = testUsers.sample(withReplacement, userSamplePc, seed)
-
+    Logger.info("The total sampled user number: " + sampledTestUsers)
+    
     //get test data only corresponding to sampled users
     val sampledTestData = filtTestData.join(testUsers.map((_,1)))
                                       .map{x =>
@@ -163,7 +175,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
             }
         //NOTE: by rearranging (userID, (itemID, feature)) we want to use
         //      the partitioner by userID.
-        sampledUFIFRDD.saveAsObjectFile(sampledItemUserFeatFile)
+        sampledUFIFRDD.coalesce(1000, false).saveAsObjectFile(sampledItemUserFeatFile)
     }
     val userItemFeat = sc.objectFile[(Int, (Int, SV))](sampledItemUserFeatFile)
     		
