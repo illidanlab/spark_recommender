@@ -42,7 +42,7 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 		metricList.map { metric =>
 			    	metric match {
 			    		case metricSE:RecJobMetricSE => {
-			    			linearModelSEEval(jobInfo, model)
+			    			linearModelSEEval(jobInfo, model, metric.metricParams)
 			    			testHandlerRes foreach { testVal =>
 		    				     val score = metricSE.run(testVal.map{x => (x._3, x._4)})
 		    				     //TODO: add test type
@@ -52,7 +52,7 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 			    		}
 			    		
 			    		case metricHR:RecJobMetricHR => {
-			    			linearModelHREval(jobInfo, model)
+			    			linearModelHREval(jobInfo, model, metric.metricParams)
 			    			hitTestHandlerRes foreach { testVal =>
 			    				val scores  = metricHR.run(testVal)
 			    				//TODO: add test type
@@ -66,18 +66,20 @@ case class RecJobTestNoCold(testName: String, testParams: HashMap[String, String
 	}
 	
 	def linearModelSEEval(jobInfo: RecJob, 
-			                linearModel:ModelStruct) = {
+			                linearModel:ModelStruct,
+			                metricParams:HashMap[String, String]) = {
 		if (!testHandlerRes.isDefined) {
             testHandlerRes = Some(LinearRegNotColdTestHandler.performTest(jobInfo, 
-            		                          testName, testParams, linearModel))
+            		                          testName, testParams, metricParams, linearModel))
         }
 	}	
 	
 	def linearModelHREval(jobInfo: RecJob, 
-			                linearModel:ModelStruct) = {
+			                linearModel:ModelStruct, 
+			                metricParams:HashMap[String, String]) = {
 		if (!hitTestHandlerRes.isDefined) {
 			hitTestHandlerRes = Some(RegNotColdHitTestHandler.performTest(jobInfo, 
-					                    testName, testParams, linearModel))
+					                    testName, testParams, metricParams, linearModel))
 		}
 	}
 	

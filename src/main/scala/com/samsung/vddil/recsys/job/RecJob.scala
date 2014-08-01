@@ -26,7 +26,8 @@ object RecJob{
 	val ResourceLoc_JobFeature = "jobFeature"
 	val ResourceLoc_JobData    = "jobData"
 	val ResourceLoc_JobModel   = "jobModel"
-	  
+	val ResourceLoc_JobTest    = "jobTest"
+	    
 	val ResourceLocAddon_GeoLoc = "geoLocation"
 	    
 	val DataSplitting_trainRatio = "trainRatio"
@@ -171,13 +172,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	//testing recommendation performance on testing dates.
     	Logger.info("**preparing testing data")
     	DataProcess.prepareTest(this)
-    	Logger.info("**evaluating the models")
-    	performEvaluation()
-    }
-    
-    /** perform evaluation of models on test data */
-    def performEvaluation() {
     	
+    	Logger.info("**evaluating the models")
     	jobStatus.testWatchTime foreach { testData =>
     		//size of test data
     		Logger.info("Size of test data: " + testData.count)
@@ -338,6 +334,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	       resourceLoc(RecJob.ResourceLoc_JobData)    = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/data"
 	       resourceLoc(RecJob.ResourceLoc_JobFeature) = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/feature"
 	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/model"
+	       resourceLoc(RecJob.ResourceLoc_JobTest)    = resourceLoc(RecJob.ResourceLoc_Workspace) + "/"  + jobName + "/test"
        }
        
        Logger.info("Resource WATCHTIME:   " + resourceLoc(RecJob.ResourceLoc_WatchTime))

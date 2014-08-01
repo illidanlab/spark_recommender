@@ -135,7 +135,7 @@ object Pipeline {
 	    	 conf.set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")
 	    	 conf.set("spark.serializer",                 "org.apache.spark.serializer.KryoSerializer")
 	    	 conf.set("spark.kryo.registrator",           "com.samsung.vddil.recsys.SerializationRegistrator")
-	    	 conf.set("spark.speculation",                "true")
+	    	 //conf.set("spark.speculation",                "true")
 	    	 
 	         try{
 	             //construct spark context using SparkSubmit configurations.  
