@@ -12,6 +12,15 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.model.ModelStruct
 
+
+/**
+ * @param user id of user for which top-N items has been collected
+ * @param topNPredAllItem top N items predicted using all items 
+ * @param topNPredNewItems top N items predicted excluding items in training set
+ * @param topNTestAllItems actual top N items from test
+ * @param topNTestNewItems actual top N items excluding items in training
+ * @param N
+ */
 case class HitSet(user: Int, topNPredAllItem:List[Int], 
                topNPredNewItems:List[Int], topNTestAllItems:List[Int],
                topNTestNewItems:List[Int], N:Int)
@@ -58,7 +67,6 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     
     val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 
     
-    //
     val itemFeatObjFile         = testResourceDir + "/itemFeat"   
     val userFeatObjFile         = testResourceDir + "/userFeat" 
     val sampledUserFeatObjFile  = testResourceDir + "/sampledUserFeat" 
@@ -205,8 +213,8 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     //for each user in test, get his actual Top-N overall viewed items
     val topTestItems = getTopAllNNewItems(sampledTestData, sampledUserTrainItemsSet, N)
     Logger.info("DEBUG:: topTestItems " + topTestItems.count)
-    //join predicted and test ranking by user keyi
     
+    //join predicted and test ranking by user key   
     val topPredNTestItems = topPredictedItems.join(topTestItems)
     Logger.info("DEBUG:: topPredNTestItems " + topPredNTestItems.count)
     
@@ -218,7 +226,13 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
 
   
   /*
-   *will return top-N items both including and excluding passed item set
+   * will return top-N items both including and excluding passed item set
+   * @param userItemRat RDD of rating of users on items
+   * @param userItemsSet set of items which you want to exclude while
+   * calculating Top-N generally its training items of user
+   * @param N  number of top items to find per user
+   * @return RDD caontaining for each user list of Top-N items  including passed
+   * itemset and excluding passed item set
    */
   def getTopAllNNewItems(userItemRat:RDD[(Int, (Int, Double))], 
                       userItemsSet:RDD[(Int, Set[Int])], 
@@ -233,6 +247,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     userItemSetNRatings.map {x =>      
       val user = x._1
       val itemRatings = x._2._1
+      //sort in decreasing order of ratings
       val sortedItemRatings = itemRatings.toList.sortBy(-_._2)
       val itemSet:Set[Int] = x._2._2
       val topNAllItems = sortedItemRatings.slice(0, N+1).map(_._1)
