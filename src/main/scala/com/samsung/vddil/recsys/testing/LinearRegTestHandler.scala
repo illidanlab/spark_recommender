@@ -18,11 +18,12 @@ trait LinearRegTestHandler {
     /**
      *  Concatenate features according to a given order. 
      * 
-     *  @param idSet
-     *  @param featureOrder
-     *  @param featureResourceMap
-     *  @param sc
-     *  
+     *  @param idSet ids for which features need to be generated
+     *  @param featureOrder order in which features will be generated
+     *  @param featureResourceMap location of features
+     *  @param sc SparkContext
+     *  @param isPartition whether to partition the loaded feature file helpful
+     *  in case of large no. of features
      *  @return (ID:String, feature:com.samsung.vddil.recsys.linalg.Vector)
      */
 
