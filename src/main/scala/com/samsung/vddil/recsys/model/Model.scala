@@ -1,19 +1,23 @@
 package com.samsung.vddil.recsys.model
 
+import scala.reflect._
 import scala.collection.mutable.HashMap
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.apache.spark.SparkContext
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
-import org.apache.spark.mllib.regression.GeneralizedLinearModel
+
+
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.Output
 import com.esotericsoftware.kryo.io.Input
-import com.samsung.vddil.recsys.Pipeline
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.objenesis.strategy.StdInstantiatorStrategy
+import org.apache.spark.mllib.linalg.{Vector => SV}
+import org.apache.spark.SparkContext
+import org.apache.spark.mllib.regression.GeneralizedLinearModel
 import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
 import org.apache.spark.mllib.optimization.CustomizedModel
-import scala.reflect._
-import org.objenesis.strategy.StdInstantiatorStrategy
+import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.linalg.Vector
+
 
 /**
  * This is a trait for model. 
@@ -34,7 +38,7 @@ trait ModelStruct extends Serializable{
 	/**
 	 * Predicts the result 
 	 */
-	def predict(testData: org.apache.spark.mllib.linalg.Vector): Double
+	def predict(testData: Vector): Double
 }
 
 object ModelStruct{
@@ -63,6 +67,20 @@ trait SerializableModel [M <: Serializable ] extends ModelStruct{
 	def loadModel() 
 }
 
+
+trait PartializableModel{
+    /**
+     * Used to maintain the dimension of item features and then 
+     */
+    def itemFeatureDim
+    def applyItemFeature(itemFeature: SV):ItemAugmentedPartialModel 
+}
+
+trait ItemAugmentedPartialModel{
+    def predict(userFeature: SV)
+}
+
+
 /**
  * The data structure for generalized linear models
  */
@@ -75,7 +93,7 @@ case class GeneralizedLinearModelStruct(
 		    override var model:GeneralizedLinearModel
 	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) extends SerializableModel[GeneralizedLinearModel]{
     
-    def predict(testData: org.apache.spark.mllib.linalg.Vector) = model.predict(testData)
+    def predict(testData: Vector) = model.predict(testData.toMLLib)
     
     override def saveModel() = {
         val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
@@ -118,7 +136,7 @@ case class CustomizedModelStruct[M >: Null <: CustomizedModel](
 	    this.loadModel()
 	}
 		
-    def predict(testData: org.apache.spark.mllib.linalg.Vector) = model.predict(testData)
+    def predict(testData: Vector) = model.predict(testData.toMLLib)
     
     override def saveModel() = {
         val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
