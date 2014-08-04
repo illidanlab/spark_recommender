@@ -90,12 +90,21 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 	    
 	    //NOTE: user-item pair in test can appear more than once
 	    Logger.info("Getting prediction on test label points")
-	    val testLabelNPred = testLabelPoints.map { point =>
-	                              (point._1, //user
-	                               point._2, //item
-	                                point._3.label, //actual label
-	                               model.predict(point._3.features))
-	                            }
+//	    val testLabelNPred = testLabelPoints.map { point =>
+//	                              (point._1, //user
+//	                               point._2, //item
+//	                                point._3.label, //actual label
+//	                               model.predict(point._3.features))
+//	                            }
+	    
+	    val testLabelNPred = userItemFeatWRating.map{tuple =>
+	        	val userID:Int      = tuple._1
+	        	val itemID:Int      = tuple._2
+	        	val features:Vector = tuple._3
+	        	val label:Double    = tuple._4
+	        	(userID, itemID, label, model.predict(features))
+	        }
+	    
 	    /*
 	    val labelObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testLabelPred.obj" + dataHashStr 
 	    if (jobInfo.outputResource(labelObjFile)) {
