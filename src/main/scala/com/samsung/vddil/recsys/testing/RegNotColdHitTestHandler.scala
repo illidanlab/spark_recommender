@@ -171,13 +171,13 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                 val userID:Int = x._1._1
                 val itemID:Int = x._2._1
                 val feature:Vector = x._1._2 ++ x._2._2
-                (userID, (itemID, feature.toMLLib))
+                (userID, (itemID, feature))
             }
         //NOTE: by rearranging (userID, (itemID, feature)) we want to use
         //      the partitioner by userID.
         sampledUFIFRDD.coalesce(1000).saveAsObjectFile(sampledItemUserFeatFile)
     }
-    val userItemFeat = sc.objectFile[(Int, (Int, SV))](sampledItemUserFeatFile)
+    val userItemFeat = sc.objectFile[(Int, (Int, Vector))](sampledItemUserFeatFile)
     		
 //    //TODO: remove hard coded partition count, Pipeline.getPartitionNum not
 //    //working correctly? investigate and fix
@@ -189,10 +189,11 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                 
     //for each user in test get prediction on all train items
     val userItemPred:RDD[(Int, (Int, Double))] = userItemFeat.mapPartitions{iter =>                 
-              def pred: (org.apache.spark.mllib.linalg.Vector) => Double = model.predict
+              def pred: (Vector) => Double = model.predict
               //(item, prediction)
               iter.map( x => (x._1, (x._2._1, pred(x._2._2)))) 
             }
+    
     
     //get top N predicted items for user
     val topPredictedItems = getTopAllNNewItems(userItemPred, sampledUserTrainItemsSet, N)
