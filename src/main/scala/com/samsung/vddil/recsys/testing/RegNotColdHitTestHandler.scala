@@ -25,7 +25,15 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
   }
   
   val IdenPrefix = "RegNotColdHit"
-      
+  
+  /**
+   * In case the partial models are used, this parameter 
+   * determines how many models we compute together. A 
+   * larger number can accelerate the batch computing 
+   * performance but may cause memory issue.  
+   */
+  val partialModelBatchSize = 400
+  
   /**
    * Performs predictions on all possible items for user and return top predicted
    * items according to model and top items in test along with new items for user
@@ -176,8 +184,9 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
         
         //break the partial models into blocks for computing. 
         val itemPartialModelArr: List[Array[(Int, Vector => Double)]] 
-        		= itemPartialModels.grouped(10).toList
+        		= itemPartialModels.grouped(partialModelBatchSize).toList
         Logger.info("Item enclosed partial models created. Size:" + itemPartialModels.size)
+        
         val predBlockSize = itemPartialModelArr.size // size of the prediction blocks 
         Logger.info("Item enclosed partial models are divdided into " + predBlockSize + " blocks.")
         
