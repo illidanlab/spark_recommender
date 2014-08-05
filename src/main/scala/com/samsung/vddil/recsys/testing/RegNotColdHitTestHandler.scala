@@ -34,6 +34,8 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    */
   val partialModelBatchSize = 400
   
+  val partialModelBatchNum = 10
+  
   /**
    * Performs predictions on all possible items for user and return top predicted
    * items according to model and top items in test along with new items for user
@@ -175,30 +177,32 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                                 
     val userItemPred:RDD[(Int, (Int, Double))] = if (model.isInstanceOf[PartializableModel]){
         
-        Logger.info("Generating item partial models")
+        Logger.info("Generating item enclosed partial models")
         var itemPartialModels = itemFeaturesRDD.map{x=>
             val itemId:Int = x._1
             val partialModel = model.asInstanceOf[PartializableModel].applyItemFeature(x._2)
             (itemId, partialModel)
-        }.collect() //these partial models are to be stored. 
+        }.coalesce(partialModelBatchNum)
         
-        //break the partial models into blocks for computing. 
-        val itemPartialModelArr: List[Array[(Int, Vector => Double)]] 
-        		= itemPartialModels.grouped(partialModelBatchSize).toList
-        Logger.info("Item enclosed partial models created. Size:" + itemPartialModels.size)
-        
-        val predBlockSize = itemPartialModelArr.size // size of the prediction blocks 
+        val predBlockSize = itemPartialModels.partitions.size
+        val blockPredFiles = new Array[String](predBlockSize)
         Logger.info("Item enclosed partial models are divdided into " + predBlockSize + " blocks.")
         
-        //compute for each block. 
-        val blockPredFiles = new Array[String](predBlockSize)//place to store intermediate files. 
-        for ((itemPartialModelSet, idx) <- itemPartialModelArr.zipWithIndex){
-        	Logger.info("Broadcast set [" + idx + "] with size:" + itemPartialModelSet.size)
+        Logger.info("Preceed with partial models")
+        for ((partialModelBlock, blockId) <- itemPartialModels.partitions.zipWithIndex){
+            val idx = partialModelBlock.index
+            val blockRdd = itemPartialModels.mapPartitionsWithIndex(
+                    (ind, x) => if (ind == idx) x else Iterator(), true)
+            
+            //collect the models by block 
+            var blockItemPartialModels = blockRdd.collect()
+        	Logger.info("Broadcast block [ " + blockId + ":" + idx + "] with size:" + blockItemPartialModels.size)
         	
+        	//block file location. 
         	blockPredFiles(idx) = sampledPredBlockFiles + "_" + idx
         	
         	if (jobInfo.outputResource(blockPredFiles(idx))){
-		        val bcItemPartialModels = sc.broadcast(itemPartialModelSet) 
+		        val bcItemPartialModels = sc.broadcast(blockItemPartialModels) 
 		        //for each user compute the prediction for all items in this block. 
 		        sampledTestUserFeatures.flatMap{x=>
 		            val userId: Int = x._1
@@ -212,6 +216,46 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
 		        }.saveAsObjectFile(blockPredFiles(idx))
         	}
         }
+        
+        
+        
+//        Logger.info("Generating item partial models")
+//        var itemPartialModels = itemFeaturesRDD.map{x=>
+//            val itemId:Int = x._1
+//            val partialModel = model.asInstanceOf[PartializableModel].applyItemFeature(x._2)
+//            (itemId, partialModel)
+//        }.collect() //these partial models are to be stored. 
+//        
+//        //break the partial models into blocks for computing. 
+//        val itemPartialModelArr: List[Array[(Int, Vector => Double)]] 
+//        		= itemPartialModels.grouped(partialModelBatchSize).toList
+//        Logger.info("Item enclosed partial models created. Size:" + itemPartialModels.size)
+//        
+//        val predBlockSize = itemPartialModelArr.size // size of the prediction blocks 
+//        Logger.info("Item enclosed partial models are divdided into " + predBlockSize + " blocks.")
+//        
+//        //compute for each block. 
+//        val blockPredFiles = new Array[String](predBlockSize)//place to store intermediate files. 
+//        for ((itemPartialModelSet, idx) <- itemPartialModelArr.zipWithIndex){
+//        	Logger.info("Broadcast set [" + idx + "] with size:" + itemPartialModelSet.size)
+//        	
+//        	blockPredFiles(idx) = sampledPredBlockFiles + "_" + idx
+//        	
+//        	if (jobInfo.outputResource(blockPredFiles(idx))){
+//		        val bcItemPartialModels = sc.broadcast(itemPartialModelSet) 
+//		        //for each user compute the prediction for all items in this block. 
+//		        sampledTestUserFeatures.flatMap{x=>
+//		            val userId: Int = x._1
+//		            val userFeature:Vector = x._2
+//		            
+//		            //itemPartialModelMap will be shipped to executors.  
+//		            bcItemPartialModels.value.map{x =>
+//		                val itemId:Int = x._1
+//		                (userId, (itemId, x._2(userFeature) ))
+//		            }
+//		        }.saveAsObjectFile(blockPredFiles(idx))
+//        	}
+//        }
         
         //load all predict blocks and aggregate. 
         Logger.info("Loading and aggregating " + predBlockSize + " blocks.")
