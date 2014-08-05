@@ -11,6 +11,7 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.model.ModelStruct
+import com.samsung.vddil.recsys.model.PartializableModel
 
 
 object RegNotColdHitTestHandler extends NotColdTestHandler 
@@ -161,39 +162,57 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                                     ).map{x =>
                                                       (x._1, x._2.toSet)
                                                     }
-
-    //for each user get all possible user item features
-    Logger.info("Generating all possible user-item features")
-
-    if (jobInfo.outputResource(sampledItemUserFeatFile)){
-        val sampledUFIFRDD = sampledTestUserFeatures.cartesian(itemFeaturesRDD
-            ).map{ x=> //((userID, userFeature), (itemID, itemFeature))
-                val userID:Int = x._1._1
-                val itemID:Int = x._2._1
-                val feature:Vector = x._1._2 ++ x._2._2
-                (userID, (itemID, feature))
+                                                    
+                                                
+    val userItemPred:RDD[(Int, (Int, Double))] = if (model.isInstanceOf[PartializableModel]){
+        
+        Logger.info("Generating item partial models")
+        var itemPartialModels = itemFeaturesRDD.map{x=>
+            val itemId:Int = x._1
+            val partialModel = model.asInstanceOf[PartializableModel].applyItemFeature(x._2)
+            (itemId, partialModel)
+        }.collect() //these partial models are to be stored. 
+        
+        Logger.info("Item partial models created and to be broadcasted. Size:" + itemPartialModels.size)
+        val bcItemPartialModels = sc.broadcast(itemPartialModels) 
+        
+        sampledTestUserFeatures.flatMap{x=>
+            val userId: Int = x._1
+            val userFeature:Vector = x._2
+            
+            //itemPartialModelMap will be shipped to executors.  
+            bcItemPartialModels.value.map{x =>
+                val itemId:Int = x._1
+                (userId, (itemId, x._2(userFeature) ))
             }
-        //NOTE: by rearranging (userID, (itemID, feature)) we want to use
-        //      the partitioner by userID.
-        sampledUFIFRDD.coalesce(1000).saveAsObjectFile(sampledItemUserFeatFile)
+        }
+        
+        
+    }else{
+	    //for each user get all possible user item features
+	    Logger.info("Generating all possible user-item features")
+	
+	    if (jobInfo.outputResource(sampledItemUserFeatFile)){
+	        val sampledUFIFRDD = sampledTestUserFeatures.cartesian(itemFeaturesRDD
+	            ).map{ x=> //((userID, userFeature), (itemID, itemFeature))
+	                val userID:Int = x._1._1
+	                val itemID:Int = x._2._1
+	                val feature:Vector = x._1._2 ++ x._2._2
+	                (userID, (itemID, feature))
+	            }
+	        //NOTE: by rearranging (userID, (itemID, feature)) we want to use
+	        //      the partitioner by userID.
+	        sampledUFIFRDD.coalesce(1000).saveAsObjectFile(sampledItemUserFeatFile)
+	    }
+	    val userItemFeat = sc.objectFile[(Int, (Int, Vector))](sampledItemUserFeatFile)
+	    		
+	    //for each user in test get prediction on all train items
+	    userItemFeat.mapPartitions{iter =>                 
+	              def pred: (Vector) => Double = model.predict
+	              //(item, prediction)
+	              iter.map( x => (x._1, (x._2._1, pred(x._2._2)))) 
+	            }
     }
-    val userItemFeat = sc.objectFile[(Int, (Int, Vector))](sampledItemUserFeatFile)
-    		
-//    //TODO: remove hard coded partition count, Pipeline.getPartitionNum not
-//    //working correctly? investigate and fix
-//    val userItemFeat = concateUserWAllItemFeat(sampledTestUserFeatures, itemFeaturesRDD
-//                                              ).map(x =>
-//                                                //(user, (item, feature))
-//                                                (x._1, (x._2, x._3))
-//                                              ).partitionBy(Pipeline.getHashPartitioner())
-                
-    //for each user in test get prediction on all train items
-    val userItemPred:RDD[(Int, (Int, Double))] = userItemFeat.mapPartitions{iter =>                 
-              def pred: (Vector) => Double = model.predict
-              //(item, prediction)
-              iter.map( x => (x._1, (x._2._1, pred(x._2._2)))) 
-            }
-    
     
     //get top N predicted items for user
     val topPredictedItems = getTopAllNNewItems(userItemPred, sampledUserTrainItemsSet, N)

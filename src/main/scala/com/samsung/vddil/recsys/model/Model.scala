@@ -67,18 +67,39 @@ trait SerializableModel [M <: Serializable ] extends ModelStruct{
 	def loadModel() 
 }
 
-
-trait PartializableModel{
+/**
+ * Allows a partial model, e.g., a partially completed model with a specific item feature. 
+ * The computed partial feature then only requires a user feature, before it computes the 
+ * prediction. 
+ * 
+ *  Though there are two types of partial functions provided, the most useful one is 
+ *  applyItemFeature, where the item feature vector is enclosed.  
+ */
+trait PartializableModel extends ModelStruct{
     /**
-     * Used to maintain the dimension of item features and then 
+     * Apply the item feature first to form a partial model.  
+     * 
+     * @itemFeature the item feature 
+     * @return a function that predicts result given user feature
      */
-    def itemFeatureDim
-    def applyItemFeature(itemFeature: SV):ItemAugmentedPartialModel 
+    def applyItemFeature(itemFeature: Vector): Vector => Double = {
+        def partialModel(userFeature: Vector):Double = this.predict(userFeature ++ itemFeature)
+        partialModel
+    }
+    
+    /**
+     * Apply the item feature first to form a partial model.  
+     * 
+     * @itemFeature the user feature 
+     * @return a function that predicts result given item feature 
+     */
+    def applyUserFeature(userFeature: Vector): Vector => Double = {
+        def partialModel(itemFeature: Vector):Double = this.predict(userFeature ++ itemFeature)
+        partialModel
+    }
 }
 
-trait ItemAugmentedPartialModel{
-    def predict(userFeature: SV)
-}
+
 
 
 /**
@@ -91,7 +112,8 @@ case class GeneralizedLinearModelStruct(
 		    var modelFileName:String,
 		    var modelParams:HashMap[String, String] = new HashMap(), 
 		    override var model:GeneralizedLinearModel
-	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) extends SerializableModel[GeneralizedLinearModel]{
+	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) 
+	      extends SerializableModel[GeneralizedLinearModel] with PartializableModel{
     
     def predict(testData: Vector) = model.predict(testData.toMLLib)
     
@@ -123,7 +145,7 @@ case class CustomizedModelStruct[M >: Null <: CustomizedModel](
         	var modelFileName:String,
 			var modelParams:HashMap[String, String] = new HashMap(), 
 			override var model:M
-        )(implicit val ev: ClassTag[M]) extends SerializableModel[M]{
+        )(implicit val ev: ClassTag[M]) extends SerializableModel[M] with PartializableModel{
     
     def this(modelName:String, 
         	resourceStr:String, 
