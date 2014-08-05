@@ -26,14 +26,20 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
   
   val IdenPrefix = "RegNotColdHit"
   
+//  /**
+//   * In case the partial models are used, this parameter 
+//   * determines how many models we compute together. A 
+//   * larger number can accelerate the batch computing 
+//   * performance but may cause memory issue.  
+//   */
+//  val partialModelBatchSize = 400
+  
   /**
    * In case the partial models are used, this parameter 
-   * determines how many models we compute together. A 
-   * larger number can accelerate the batch computing 
-   * performance but may cause memory issue.  
+   * determines how many blocks we divide. A smaller number 
+   * can accelerate the batch computing performance, but may 
+   * cause memory issues. 
    */
-  val partialModelBatchSize = 400
-  
   val partialModelBatchNum = 10
   
   /**
@@ -41,6 +47,13 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    * items according to model and top items in test along with new items for user
    * which he didn't see in training
    * RDD[(User, ((topPredictedAll, topPredictedNew), (topTestAll, topTestNew)))]
+   * 
+   * @param jobInfo
+   * @param testName
+   * @param testParams
+   * @param metricParams
+   * @param model
+   * @return a RDD of hit rate. 
    */
   def performTest(jobInfo:RecJob, testName: String,
               testParams:HashMap[String, String],
@@ -176,6 +189,8 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                                     
                                                 
     val userItemPred:RDD[(Int, (Int, Double))] = if (model.isInstanceOf[PartializableModel]){
+        //if the model is a partializable model, then we use partial model 
+        //and apply the models in batch. 
         
         Logger.info("Generating item enclosed partial models")
         var itemPartialModels = itemFeaturesRDD.map{x=>
@@ -311,8 +326,9 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
   }
 
   
-  /*
-   * will return top-N items both including and excluding passed item set
+  /**
+   * Returns top-N items both including and excluding passed item set
+   * 
    * @param userItemRat RDD of rating of users on items
    * @param userItemsSet set of items which you want to exclude while
    * calculating Top-N generally its training items of user
