@@ -24,10 +24,11 @@ ItemFeatureExtractor {
 
   val ItemIdInd = 1
   val ItemDescInd = 4
+  val FeatSepChar = '|'
   val stopWords:Set[String] = {
     val fileLoc = "/stopwords.txt"
     val inputStream = getClass().getResourceAsStream(fileLoc)
-    Source.fromInputStream(inputStream).mkString.split("\n").map(_.trim).toSet
+    Source.fromInputStream(inputStream).mkString.split('\n').map(_.trim).toSet
   }
 
 
@@ -39,7 +40,7 @@ ItemFeatureExtractor {
     //get passed items description
     val itemText:RDD[(String, String)] = featureSources.map{fileName =>
       val currItemText:RDD[(String, String)] = sc.textFile(fileName).map{line =>
-        val fields = line.split('|')
+        val fields = line.split(FeatSepChar)
         //get item id
         val itemId = fields(ItemIdInd)
         val text = if (fields.length > ItemDescInd) fields(ItemDescInd) else ""
@@ -117,7 +118,7 @@ ItemFeatureExtractor {
 	  val MinTermLen:Int = featureParams.getOrElse("MINTERMLEN", "2").toInt
 
     val tfIdfs:RDD[(String, Double)] = sc.textFile(featureMapFileName).map{line =>
-      val fields = line.split(",")
+      val fields = line.split(',')
       val term = fields(0)
       val score = fields(1).toDouble
       (term, score)

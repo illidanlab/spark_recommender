@@ -19,7 +19,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
   
     val ItemGenreInd = 2
     val ItemIdInd = 1
-    
+    val FeatSepChar = '|'
     val GenreIdInd = 1
     val GenreLangInd = 2
     val GenreDescInd = 3
@@ -42,7 +42,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
     val bGenre2Ind = sc.broadcast(genre2Ind)
     val itemGenreList:RDD[(String, String)] = featureSources.map{fileName =>
       val itemsGenre:RDD[(String, String)] = sc.textFile(fileName).map{line =>
-        val fields = line.split("|")
+        val fields = line.split(FeatSepChar)
         val item = fields(ItemIdInd)
         val genre = fields(ItemGenreInd)
         (item, genre)
@@ -98,7 +98,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
     
     val genreInd2KeyDesc:RDD[(Int, String, String)] =
       sc.textFile(featureMapFileName).map{line =>
-        val fields = line.split(",")
+        val fields = line.split(',')
         val genreInd:Int = fields(0).toInt
         val genreKey:String = fields(1)
         val genreDesc:String = fields(2)
