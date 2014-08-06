@@ -1,12 +1,13 @@
 package com.samsung.vddil.recsys.feature
 
+import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
 import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.item.ItemFeatureSynopsisTFIDF
 import com.samsung.vddil.recsys.feature.item.ItemFeatureSynopsisTopic
 import com.samsung.vddil.recsys.feature.item.ItemFeatureGenre
 import com.samsung.vddil.recsys.utils.Logger
-
+import scala.collection.mutable.{Map=>MMap}
 /*
  * This is the main entrance of the item (program) feature processing.
  * 
@@ -17,7 +18,10 @@ object ItemFeatureHandler extends FeatureHandler{
 	val IFSynopsisTopic:String = "syn_topic"
 	val IFSynopsisTFIDF:String = "syn_tfidf"
 	val IFGenre:String = "genre"
-  
+
+  //this will contain reverse mapping from resource string to Feature object 
+  val revItemFeatureMap:MMap[String, ItemFeatureExtractor] = MMap.empty
+
 	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean = {
 		Logger.logger.info("Processing item feature [%s:%s]".format(featureName, featureParams))
 		 
@@ -37,8 +41,17 @@ object ItemFeatureHandler extends FeatureHandler{
 		      case featureStruct:ItemFeatureStruct=> 
 		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
 		   }
+
+       featureName match{
+		    case IFSynopsisTFIDF => revItemFeatureMap(resource.resourceIden) = ItemFeatureSynopsisTFIDF
+		    case IFGenre =>         revItemFeatureMap(resource.resourceIden) = ItemFeatureGenre
+		    case _ => Logger.logger.warn("Unknown item feature type for reverse feature map [%s]".format(featureName))
+		  }
+
 		}
 		
 		resource.success
 	}
+
+
 }

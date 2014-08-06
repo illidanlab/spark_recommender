@@ -16,7 +16,8 @@ import scala.collection.Map
 import scala.collection.mutable.HashMap
 
 object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor {
-  
+
+    var trFeatureParams = new HashMap[String,String]()
     val ItemGenreInd = 2
     val ItemIdInd = 1
     val FeatSepChar = '|'
@@ -26,7 +27,14 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
     val GenreLangFilt = "en" //default language 
       
     val Param_GenreLang = "lang" 
- 
+
+  
+  def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
+    dates.map{date =>
+      jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/genre*"
+    }.toList
+  }
+
 
   /**
    * get the genre for passed items
@@ -120,9 +128,12 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
 
     def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
     		
-    	//get spark context
+    	  //get spark context
         val sc = jobInfo.sc
         
+        //assign feature params
+        trFeatureParams = featureParams
+
         // 1. Complete default parameters
         //  default parameter for genre: lang filtering. 
         var param_GenreLang:String = GenreLangFilt
@@ -190,9 +201,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
         val bGenre2Ind = sc.broadcast(genre2Ind)
         val itemGenreList:RDD[(String, String)] = getItemGenreList(itemSet,
           genre2Ind, featureSources, sc)
-        
        
-        Logger.info("Created itemGenres list")
+        Logger.info("Created itemGenres list: ")
         
         val itemIdMap = jobInfo.jobStatus.itemIdMap
         val bItemMap = sc.broadcast(itemIdMap)
@@ -205,7 +215,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
           }
 
        
-        Logger.info("created item genre feature vectors")
+        Logger.info("created item genre feature vectors: ")
         
         //save item features as textfile
         if (jobInfo.outputResource(featureFileName)){

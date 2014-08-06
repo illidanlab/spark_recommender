@@ -22,6 +22,7 @@ import scala.io.Source
 object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit with
 ItemFeatureExtractor {
 
+  var trFeatureParams = new HashMap[String,String]()
   val ItemIdInd = 1
   val ItemDescInd = 4
   val FeatSepChar = '|'
@@ -109,6 +110,13 @@ ItemFeatureExtractor {
   }
 
 
+  def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
+    dates.map{date =>
+      jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_desc*"
+    }.toList
+  }
+  
+
   def extractFeature(items:Set[String], featureSources:List[String],
     featureParams:HashMap[String, String], featureMapFileName:String, 
     sc:SparkContext): RDD[(String, SparseVector)] = {
@@ -127,9 +135,6 @@ ItemFeatureExtractor {
     //get top N tf-idf terms sorted by decreasing score
     val sortedTerms = tfIdfs.collect.sortBy(-_._2) 
     val topTerms = sortedTerms.slice(0, N).map(_._1)
-    
-    //broadcast top terms to each partition
-    val bTopTerms = sc.broadcast(topTerms) 
     
     //broadcast item set
     val bItemsSet = sc.broadcast(items)
@@ -152,6 +157,9 @@ ItemFeatureExtractor {
 
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
     
+    //assign feature params
+    trFeatureParams = featureParams
+    
     //get spark context
     val sc = jobInfo.sc
 
@@ -173,11 +181,8 @@ ItemFeatureExtractor {
     val bItemIdMap = sc.broadcast(itemIdMap)
       
     // 3. Feature generation algorithms (HDFS operations)
-    var fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + jobInfo.trainDates(0) + "/program_desc*" 
-
-    val featureSources:List[String] = jobInfo.trainDates.map{trainDate =>
-      jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/program_desc*"
-    }.toList
+    val featureSources:List[String] = getFeatureSources(
+        jobInfo.trainDates.toList, jobInfo)      
    
     //get items and its description
     val itemsText:RDD[(String, String)] = getItemsText(itemIdMap.keys.toSet,
@@ -218,9 +223,6 @@ ItemFeatureExtractor {
     //get top N tf-idf terms sorted by decreasing score
     val sortedTerms = tfIdfs.collect.sortBy(-_._2) 
     val topTerms = sortedTerms.slice(0, N).map(_._1)
-
-    //broadcast top terms to each partition
-    val bTopTerms = sc.broadcast(topTerms) 
 
     //get top term counts per item
     val itemTermCounts:RDD[(String, SparseVector)] = getTermCounts(itemTerms,

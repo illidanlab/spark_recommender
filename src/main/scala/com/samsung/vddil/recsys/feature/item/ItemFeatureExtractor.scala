@@ -1,8 +1,9 @@
 package com.samsung.vddil.recsys.feature.item
 
+import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.linalg.SparseVector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
-import com.samsung.vddil.recsys.linalg.SparseVector
 import scala.collection.mutable.HashMap
 
 trait ItemFeatureExtractor {
@@ -17,6 +18,15 @@ trait ItemFeatureExtractor {
   def extractFeature(items:Set[String], featureSources:List[String],
     featureParams:HashMap[String, String], featureMapFileName:String, 
     sc:SparkContext): RDD[(String, SparseVector)]
+  
+  /**
+   * get files from which feature extraction should be done
+   * @param dates dates for which feature should be extracted
+   * @param jobInfo contains location of data
+   * @return list of file paths of feature sources
+   */
+  def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String]
 
-
+  //feature parameters in train 
+  var trFeatureParams:HashMap[String, String]
 }
