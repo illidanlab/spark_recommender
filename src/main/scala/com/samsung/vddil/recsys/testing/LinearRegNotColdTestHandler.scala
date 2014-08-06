@@ -11,6 +11,18 @@ import com.samsung.vddil.recsys.model.ModelStruct
 object LinearRegNotColdTestHandler extends NotColdTestHandler 
                                     with LinearRegTestHandler{
 	
+    def resourceIdentity(
+          testParams:HashMap[String, String], 
+          metricParams:HashMap[String, String], 
+          modelStr:String
+          ):String = {
+        IdenPrefix + "_" + 
+        		HashString.generateHash(testParams.toString) + "_" + 
+        		HashString.generateHash(metricParams.toString)  + "_" +
+        		modelStr
+    }
+  
+    val IdenPrefix = "LinearRegNotCold"
 	
 	/**
 	 * perform predictions on test data and return result as
@@ -23,8 +35,13 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 			             ): RDD[(Int, Int, Double, Double)] = {
     
 		//hash string to cache intermediate files, helpful in case of crash    
-		val dataHashStr =  HashString.generateHash(testName + "LinearRegNotCold")
-
+		val resourceIden = resourceIdentity(testParams, metricParams, model.resourceStr)
+        val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 		
+		
+        val itemFeatObjFile     = testResourceDir + "/itemFeat"
+	    val userFeatObjFile     = testResourceDir + "/userFeat"
+	    val userItemFeatObjFile = testResourceDir + "/userItemFeat" 
+	    
     	//get test data
 		var testData = jobInfo.jobStatus.testWatchTime.get
 		
@@ -49,7 +66,6 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
     
 	    //get required item n user features 
 	    Logger.info("Preparing item features...")
-	    val itemFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemFeatObj" + dataHashStr
 	    if (jobInfo.outputResource(itemFeatObjFile)) {
 	      //item features file don't exist
 	      //generate and save
@@ -61,7 +77,7 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 	
 	    
 	    Logger.info("Preparing user features...")
-	    val userFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userFeatObj" + dataHashStr
+
 	    if (jobInfo.outputResource(userFeatObjFile)) {
 	      //item features file don't exist
 	      //generate and save
@@ -76,7 +92,7 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 	    
 	    //get user item features
 	    //NOTE: this will also do filtering of test data in case feature not found 
-	    val userItemFeatObjFile = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/uiFeat.obj" + dataHashStr
+	    
 	    if (jobInfo.outputResource(userItemFeatObjFile)) {
 	      val uIFeatWRating = concatUserTestFeatures(userFeaturesRDD, itemFeaturesRDD, testData) 
 	      uIFeatWRating.saveAsObjectFile(userItemFeatObjFile)

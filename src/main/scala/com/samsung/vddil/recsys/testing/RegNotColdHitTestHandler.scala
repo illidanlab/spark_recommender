@@ -17,11 +17,15 @@ import com.samsung.vddil.recsys.model.PartializableModel
 object RegNotColdHitTestHandler extends NotColdTestHandler 
                                 with LinearRegTestHandler {
   
-  def resourceIdentity(testParams:HashMap[String, String], 
-    metricParams:HashMap[String, String], dataIdentifier:String):String = {
-        IdenPrefix + "_" + dataIdentifier + "_" + 
-        		HashString.generateHash(testParams.toString) + 
-        		"_" + HashString.generateHash(metricParams.toString) 
+  def resourceIdentity(
+          testParams:HashMap[String, String], 
+          metricParams:HashMap[String, String], 
+          modelStr:String
+          ):String = {
+        IdenPrefix + "_" + 
+        		HashString.generateHash(testParams.toString) + "_" + 
+        		HashString.generateHash(metricParams.toString)  + "_" +
+        		modelStr
   }
   
   val IdenPrefix = "RegNotColdHit"
@@ -60,8 +64,6 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
               metricParams:HashMap[String, String],
               model: ModelStruct): 
                   RDD[HitSet] = {
-    //hash string to cache intermediate files, helpful in case of crash    
-    val dataHashStr =  HashString.generateHash(testName + "RegNotColdHit")
 
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
@@ -75,10 +77,11 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     //seed parameter needed for sampling test users
     val seed = testParams.getOrElseUpdate("seed", "3").toInt
 
-    val resourceIden = resourceIdentity(testParams, metricParams, testName)
+    val resourceIden = resourceIdentity(testParams, metricParams, model.resourceStr)
     
     val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 
     
+    //cache intermediate files, helpful in case of crash  
     val itemFeatObjFile         = testResourceDir + "/itemFeat"   
     val userFeatObjFile         = testResourceDir + "/userFeat" 
     val sampledUserFeatObjFile  = testResourceDir + "/sampledUserFeat" 
