@@ -12,7 +12,7 @@ import com.samsung.vddil.recsys.testing._
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.feature.{RecJobFeature, RecJobItemFeature, RecJobUserFeature, RecJobFactFeature}
-import com.samsung.vddil.recsys.evaluation.{RecJobMetric, RecJobMetricMSE, RecJobMetricRMSE, RecJobMetricHR}
+import com.samsung.vddil.recsys.evaluation._
 
 /**
  * The constant variables of recommendation job.
@@ -158,7 +158,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	}
     	    	
     	//learning models
-    	if (this.modelList.length > 0){
+    	/*if (this.modelList.length > 0){
     		  
     		Logger.info("**learning models")
 	    	this.modelList.foreach{
@@ -167,18 +167,18 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	    	         modelUnit.run(this)
 	    	     }
 	    	}
-    	}
+    	}*/
     	
     	//testing recommendation performance on testing dates.
     	Logger.info("**preparing testing data")
-    	DataProcess.prepareTest(this)
+    	//DataProcess.prepareTest(this)
     	
     	Logger.info("**evaluating the models")
     	jobStatus.testWatchTime foreach { testData =>
     		//size of test data
     		Logger.info("Size of test data: " + testData.count)
     		
-            //evaluate regression models on test data
+        /*    //evaluate regression models on test data
     		jobStatus.resourceLocation_RegressModel.map{
     		    case (modelStr, model) =>
     		        testList.map{_.run(this, model, metricList)}
@@ -188,7 +188,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     		jobStatus.resourceLocation_ClassifyModel.map{
     		    case (modelStr, model) =>
     		        //TODO: evaluate classification models. 
-    		}
+    		}*/
         }
     }
     
@@ -536,7 +536,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         	    	case JobTag.RecJobMetricType_MSE => metricList = metricList :+ RecJobMetricMSE(metricName, paramList)
         	    	case JobTag.RecJobMetricType_RMSE => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
         	    	case JobTag.RecJobMetricType_HR => metricList = metricList :+ RecJobMetricHR(metricName, paramList)
-        	    	case _ => Logger.warn("Metric type $metricType not found or ignored.")
+                case JobTag.RecJobMetricType_ColdRecall => metricList = metricList:+ RecJobMetricColdRecall(metricName, paramList)
+                case _ => Logger.warn("Metric type $metricType not found or ignored.")
         	    }
         	}
         }
@@ -579,13 +580,11 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     			//create tests by type
     			testType match {
     				case JobTag.RecJobTestType_NotCold => testList = testList :+ RecJobTestNoCold(testName, paramList)
-    				case _ => Logger.warn("Test type $testType not found or ignored.")
+            case JobTag.RecJobTestType_ColdItems => testList = testList :+ RecJobTestColdItem(testName, paramList)
+            case _ => Logger.warn("Test type $testType not found or ignored.")
     			}
-    			
-    			
     		}
     	}
-    	
     	testList
     }
     

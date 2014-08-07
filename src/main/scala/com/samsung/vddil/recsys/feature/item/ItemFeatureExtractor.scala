@@ -1,7 +1,7 @@
 package com.samsung.vddil.recsys.feature.item
 
 import com.samsung.vddil.recsys.job.RecJob
-import com.samsung.vddil.recsys.linalg.SparseVector
+import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
@@ -17,7 +17,7 @@ trait ItemFeatureExtractor {
    */
   def extractFeature(items:Set[String], featureSources:List[String],
     featureParams:HashMap[String, String], featureMapFileName:String, 
-    sc:SparkContext): RDD[(String, SparseVector)]
+    sc:SparkContext): RDD[(String, Vector)]
   
   /**
    * get files from which feature extraction should be done

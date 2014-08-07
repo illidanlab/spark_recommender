@@ -4,7 +4,7 @@ import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.job.RecJob
-import com.samsung.vddil.recsys.linalg.SparseVector
+import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.linalg.Vectors
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
@@ -90,13 +90,13 @@ ItemFeatureExtractor {
       
 
   def getTermCounts(itemTerms:RDD[(String, List[String])], 
-    topTerms:Array[String], sc:SparkContext):RDD[(String, SparseVector)] = {
+    topTerms:Array[String], sc:SparkContext):RDD[(String, Vector)] = {
     
     //broadcast top terms to each partition
     val bTopTerms = sc.broadcast(topTerms) 
       
     //get top term counts per item
-    val itemTermCounts:RDD[(String, SparseVector)] = itemTerms.map{x =>
+    val itemTermCounts:RDD[(String, Vector)] = itemTerms.map{x =>
       val item = x._1
       val termsList = x._2
       val topTermCounts =
@@ -119,7 +119,7 @@ ItemFeatureExtractor {
 
   def extractFeature(items:Set[String], featureSources:List[String],
     featureParams:HashMap[String, String], featureMapFileName:String, 
-    sc:SparkContext): RDD[(String, SparseVector)] = {
+    sc:SparkContext): RDD[(String, Vector)] = {
     
     //get default parameters
     val N:Int = featureParams.getOrElse("N",  "500").toInt
@@ -147,7 +147,7 @@ ItemFeatureExtractor {
       MinTermLen)
     
     //get top term counts or itemFeatures
-    val itemFeatures:RDD[(String, SparseVector)] = getTermCounts(itemTerms,
+    val itemFeatures:RDD[(String, Vector)] = getTermCounts(itemTerms,
       topTerms, sc)
 
     itemFeatures
@@ -225,10 +225,10 @@ ItemFeatureExtractor {
     val topTerms = sortedTerms.slice(0, N).map(_._1)
 
     //get top term counts per item
-    val itemTermCounts:RDD[(String, SparseVector)] = getTermCounts(itemTerms,
+    val itemTermCounts:RDD[(String, Vector)] = getTermCounts(itemTerms,
       topTerms, sc)
     //replace string id with int id for items
-    val subItemTermCounts:RDD[(Int, SparseVector)] =
+    val subItemTermCounts:RDD[(Int, Vector)] =
       itemTermCounts.map{itemTermCount =>
       val item:Int = bItemIdMap.value(itemTermCount._1)
       val feature = itemTermCount._2

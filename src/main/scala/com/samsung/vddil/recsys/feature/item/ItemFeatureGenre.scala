@@ -4,7 +4,7 @@ import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.job.RecJob
-import com.samsung.vddil.recsys.linalg.SparseVector
+import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.linalg.Vectors
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
@@ -74,7 +74,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
    * @return RDD of item and its genre feature vector
    */
   def itemGenreListToFeature(itemGenreList:RDD[(String, String)], 
-    genre2Ind:Map[String, Int]):RDD[(String, SparseVector)] = {
+    genre2Ind:Map[String, Int]):RDD[(String, Vector)] = {
    
     val numGenres:Int = genre2Ind.size
     itemGenreList.groupByKey.map{x =>
@@ -102,7 +102,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
    */
   def extractFeature(items:Set[String], featureSources:List[String],
     featureParams:HashMap[String, String], featureMapFileName:String, 
-    sc:SparkContext): RDD[(String, SparseVector)] = {
+    sc:SparkContext): RDD[(String, Vector)] = {
     
     val genreInd2KeyDesc:RDD[(Int, String, String)] =
       sc.textFile(featureMapFileName).map{line =>
@@ -207,10 +207,10 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
         val itemIdMap = jobInfo.jobStatus.itemIdMap
         val bItemMap = sc.broadcast(itemIdMap)
         //generate feature vector for each items    
-        val itemFeature:RDD[(Int, SparseVector)] =
+        val itemFeature:RDD[(Int, Vector)] =
           itemGenreListToFeature(itemGenreList, genre2Ind).map{x =>
             val item:Int = bItemMap.value(x._1)
-            val feature:SparseVector = x._2
+            val feature:Vector = x._2
             (item, feature)
           }
 

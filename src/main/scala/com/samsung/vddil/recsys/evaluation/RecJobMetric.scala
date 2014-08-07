@@ -37,7 +37,7 @@ case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, Stri
       val numUsers = combHR._2
       val avgCombHR = combHR._1/numUsers
   
-      //get hit-rate only on test items only when there was new new items in
+      //get hit-rate on test items if there was new items in
       //test, also while calculating recall divide by no. of new items in test
       //if less than N
       val testHR = hitSets.map{hitSet =>
@@ -57,6 +57,31 @@ case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, Stri
       avgHitRate
     }
 }
+
+/** metric type of recall for cold items recommendation**/
+case class RecJobMetricColdRecall(metricName:String, metricParams: HashMap[String,
+  String]) extends RecJobMetric {
+  /**
+   * @param topNPredColdItems RDD of topN predicted set and size of 
+   * intersection with cold items
+   */
+  def run(topNPredColdItems:RDD[(Int, (List[String], Int))]):Double = {
+    val (recallSum, count) = topNPredColdItems.map{x =>
+      //ideally it should be N, but some times the number of cold items can be
+      //less than N for a user
+      val topNSize:Int = x._2._1.length
+      //compute recall by dividing intersection with actual sold items by N or
+      //topNSize
+      val recall:Double = x._2._2.toDouble/topNSize
+      (recall, 1)
+    }.reduce{(a,b) =>
+      (a._1+b._1, a._2+b._2)    
+    }
+    (recallSum*1.0)/count
+  }
+}
+
+
 
 /** Metric type of mean squared error */
 case class RecJobMetricMSE(metricName: String, metricParams: HashMap[String, String])

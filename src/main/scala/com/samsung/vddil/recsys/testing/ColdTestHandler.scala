@@ -5,7 +5,7 @@ import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.job.RecJobStatus
-import com.samsung.vddil.recsys.linalg.SparseVector
+import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
@@ -43,7 +43,7 @@ trait ColdTestHandler {
    */
   def getColdItemFeatures(items:Set[String], jobInfo:RecJob,
     featureOrder:List[String], dates:List[String]
-    ):RDD[(String, SparseVector)] = {
+    ):RDD[(String, Vector)] = {
     
     //get feature resource location map
     val featureResourceMap = jobInfo.jobStatus.resourceLocation_ItemFeature  
@@ -51,7 +51,7 @@ trait ColdTestHandler {
     //get spark context
     val sc = jobInfo.sc
 
-    val itemFeatures:List[RDD[(String, SparseVector)]] = featureOrder.map{featureResStr =>
+    val itemFeatures:List[RDD[(String, Vector)]] = featureOrder.map{featureResStr =>
       val itemFeatureExtractor:ItemFeatureExtractor =
         ItemFeatureHandler.revItemFeatureMap(featureResStr)
       val featMapFileName:String =
@@ -63,12 +63,12 @@ trait ColdTestHandler {
     }
 
     //combine feature in order
-    val headItemFeatures:RDD[(String, SparseVector)] = itemFeatures.head 
-    val combItemFeatures:RDD[(String, SparseVector)] =
+    val headItemFeatures:RDD[(String, Vector)] = itemFeatures.head 
+    val combItemFeatures:RDD[(String, Vector)] =
       itemFeatures.tail.foldLeft(headItemFeatures){ (itemFeat1, itemFeat2) =>
-        val joinedItemFeat:RDD[(String, (SparseVector, SparseVector))] = itemFeat1.join(itemFeat2)
+        val joinedItemFeat:RDD[(String, (Vector, Vector))] = itemFeat1.join(itemFeat2)
         joinedItemFeat.mapValues{featVecs =>
-          (featVecs._1 ++ featVecs._2).toSparse
+          featVecs._1 ++ featVecs._2
         }
       }
 
