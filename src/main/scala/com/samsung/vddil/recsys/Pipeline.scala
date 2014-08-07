@@ -174,7 +174,7 @@ object Pipeline {
 	    require(Pipeline.instance.isDefined)
 	    val numExecutors = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.instances")
       val numExecCores = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
-      val numParts = 4 * numExecutors.getOrElse("50").toInt * numExecCores.getOrElse("2").toInt 
+      val numParts = 2 * numExecutors.getOrElse("100").toInt * numExecCores.getOrElse("2").toInt 
       Logger.info("numParts: " + numParts)
       numParts 
 	}

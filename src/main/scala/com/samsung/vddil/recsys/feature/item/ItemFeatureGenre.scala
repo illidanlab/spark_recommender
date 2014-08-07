@@ -31,7 +31,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
   
   def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
     dates.map{date =>
-      jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/genre*"
+      jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_genre*"
     }.toList
   }
 
@@ -114,8 +114,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
       }
     
     val genre2Ind:Map[String, Int] = genreInd2KeyDesc.map{x =>
-      val genreKey:String = x._2
       val genreInd:Int = x._1
+      val genreKey:String = x._2
       (genreKey, genreInd)
     }.collectAsMap
 
@@ -193,10 +193,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
         
         //get RDDs of items itemGenreList: itemId, subgenre, Genre   
         //filter only those for which genre is already found
-        val featureSources = jobInfo.trainDates.map{trainDate =>
-          jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/program_genre*"
-        }.toList
-       
+        val featureSources = getFeatureSources(jobInfo.trainDates.toList, jobInfo)
+
         val bItemsSet = sc.broadcast(itemSet)
         val bGenre2Ind = sc.broadcast(genre2Ind)
         val itemGenreList:RDD[(String, String)] = getItemGenreList(itemSet,

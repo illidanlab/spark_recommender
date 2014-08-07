@@ -157,7 +157,8 @@ object Vectors{
       require(prev < i, s"Found duplicate indices: $i.")
       prev = i
     }
-    require(prev < size)
+    
+    require(prev < size, s"Vectors.sparse $prev < $size.")
 
     new SparseVector(size, indices.toArray, values.toArray)
   }

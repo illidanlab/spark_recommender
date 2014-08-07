@@ -158,7 +158,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	}
     	    	
     	//learning models
-    	/*if (this.modelList.length > 0){
+    	if (this.modelList.length > 0){
     		  
     		Logger.info("**learning models")
 	    	this.modelList.foreach{
@@ -167,29 +167,29 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
 	    	         modelUnit.run(this)
 	    	     }
 	    	}
-    	}*/
+    	}
     	
     	//testing recommendation performance on testing dates.
     	Logger.info("**preparing testing data")
-    	//DataProcess.prepareTest(this)
+    	DataProcess.prepareTest(this)
     	
     	Logger.info("**evaluating the models")
-    	jobStatus.testWatchTime foreach { testData =>
+    	 jobStatus.testWatchTime foreach { testData =>
     		//size of test data
     		Logger.info("Size of test data: " + testData.count)
     		
-        /*    //evaluate regression models on test data
+        //evaluate regression models on test data
     		jobStatus.resourceLocation_RegressModel.map{
     		    case (modelStr, model) =>
     		        testList.map{_.run(this, model, metricList)}
-    		}
+    	 	}
     		
     		//evaluate classification models on test data
     		jobStatus.resourceLocation_ClassifyModel.map{
     		    case (modelStr, model) =>
     		        //TODO: evaluate classification models. 
-    		}*/
-        }
+    	 	}
+      }
     }
     
     /**
@@ -537,7 +537,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         	    	case JobTag.RecJobMetricType_RMSE => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
         	    	case JobTag.RecJobMetricType_HR => metricList = metricList :+ RecJobMetricHR(metricName, paramList)
                 case JobTag.RecJobMetricType_ColdRecall => metricList = metricList:+ RecJobMetricColdRecall(metricName, paramList)
-                case _ => Logger.warn("Metric type $metricType not found or ignored.")
+                case _ => Logger.warn(s"Metric type $metricType not found or ignored.")
         	    }
         	}
         }
@@ -581,7 +581,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     			testType match {
     				case JobTag.RecJobTestType_NotCold => testList = testList :+ RecJobTestNoCold(testName, paramList)
             case JobTag.RecJobTestType_ColdItems => testList = testList :+ RecJobTestColdItem(testName, paramList)
-            case _ => Logger.warn("Test type $testType not found or ignored.")
+            case _ => Logger.warn(s"Test type $testType not found or ignored.")
     			}
     		}
     	}
@@ -629,7 +629,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
          modelType match{
            case JobTag.RecJobModelType_Regress => modelList = modelList :+ RecJobScoreRegModel(modelName, paramList)
            case JobTag.RecJobModelType_Classify => modelList = modelList :+ RecJobBinClassModel(modelName, paramList)
-           case _ => Logger.warn("Model type $modelType not found and ignored.")
+           case _ => Logger.warn(s"Model type $modelType not found and ignored.")
          }
       }
       
