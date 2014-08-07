@@ -6,6 +6,7 @@ import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.job.RecJobStatus
 import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
@@ -30,7 +31,7 @@ trait ColdTestHandler {
     val testItems:Set[String] = testData.map(_._2 //item string id
                                             ).filter(
                                               item => !(bTrItems.value(item))
-                                            ).collect.toSet
+                                            ).distinct.collect.toSet
     testItems
   }
 

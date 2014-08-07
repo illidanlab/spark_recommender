@@ -48,6 +48,17 @@ LinearRegTestHandler {
   val partialModelBatchNum = 10
 
 
+  /**
+   * perform test on cold items i.e. for each user predict his preference on new
+   * items then compute recall on his actual preference of new items
+   * @param jobInfo
+   * @param testName
+   * @param testParams
+   * @param metricParams
+   * @param model
+   * @return RDD of user, his topN predicted cold items and size of intersection
+   * with actual preferred cold items
+   */
   def performTest(jobInfo:RecJob, testName: String,
     testParams:HashMap[String, String], 
     metricParams:HashMap[String, String],
@@ -55,7 +66,17 @@ LinearRegTestHandler {
 
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
- 
+    
+    //get percentage of user sample to predict on as it takes really long to
+    //compute on all users
+    val userSampleParam:Double = metricParams.getOrElseUpdate("UserSampleSize",
+                                                  "0.2").toDouble
+    Logger.info("User sample parameter: " + userSampleParam)
+    
+    //seed parameter needed for sampling test users
+    val seed = testParams.getOrElseUpdate("seed", "3").toInt
+
+
     //get spark context
     val sc = jobInfo.sc
   
@@ -79,7 +100,7 @@ LinearRegTestHandler {
     val trainItems:Set[String] = jobInfo.jobStatus.itemIdMap.keySet
     //get cold items not seen in training
     val coldItems:Set[String] = getColdItems(testData, trainItems, sc)
-    
+    Logger.info("Cold items not seen in training: " + coldItems.size) 
    
     //get features for cold items 
          
@@ -100,7 +121,9 @@ LinearRegTestHandler {
 
     //cold items with all features
     val finalColdItems:Set[String] = coldItemFeatures.map(_._1).collect.toSet
-   
+  
+    Logger.info("Number of cold items: " + finalColdItems.size)
+
     //broadcast cold items
     val bColdItems = sc.broadcast(finalColdItems)
 
@@ -112,13 +135,28 @@ LinearRegTestHandler {
     val trainUsers:RDD[String] = sc.parallelize(jobInfo.jobStatus.userIdMap.keys.toList)
     
     //filter out training users
-    val filtColdUsers:RDD[String] = preferredUsers.intersection(trainUsers)
-  
+    val allColdUsers:RDD[String] = preferredUsers.intersection(trainUsers)
+    val allColdUsersCount = allColdUsers.count
+
+    //If userSampleParam is larger than 1 we treat them as real counts
+    //or else we treat them as percentage. 
+    val userSamplePc:Double = 
+        if (userSampleParam > 1)  userSampleParam/allColdUsersCount.toDouble 
+        else userSampleParam 
+    Logger.info("Adjusted sample ratio: " + userSamplePc)
+    
+    val withReplacement = false
+    val sampledColdUsers:RDD[String] = allColdUsers.sample(withReplacement, userSamplePc, seed)
+    Logger.info("The total sampled user number: " + sampledColdUsers.count)
+
+
     //replace coldItemUsers from training with corresponding int id
     val userIdMap:Map[String, Int] = jobInfo.jobStatus.userIdMap
     val userMapRDD = sc.parallelize(userIdMap.toList)
-    val coldItemUsers:RDD[Int] = filtColdUsers.map(x =>
+    val coldItemUsers:RDD[Int] = sampledColdUsers.map(x =>
         (x,1)).join(userMapRDD).map{_._2._2}
+    val coldItemUsersCount = coldItemUsers.count
+    
 
     //replace userId in test with intId and contain only cold items
     val repTestData:RDD[(Int, (String, Double))] = testData.filter{x =>
@@ -129,7 +167,11 @@ LinearRegTestHandler {
       val item = x._2
       val rating = x._3
       (user, (item, rating))
-    }.join(userMapRDD).map{ x =>
+      }.join(sampledColdUsers.map(x => (x,1))).mapValues{v => 
+        //above join to filter only users for cold items
+        val itemRating = v._1
+        itemRating
+      }.join(userMapRDD).map{ x =>
       val oldUser:String = x._1
       val item:String = x._2._1._1
       val rating:Double = x._2._1._2
@@ -146,7 +188,9 @@ LinearRegTestHandler {
       userFeatures.saveAsObjectFile(userFeatObjFile)
     }
     val userFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)
-    
+    Logger.info("No. of users of cold items: " + userFeatures.count)
+
+
     val userItemPred:RDD[(Int, (String, Double))] = if (model.isInstanceOf[PartializableModel]){
         //if the model is a partializable model, then we use partial model 
         //and apply the models in batch. 
@@ -239,17 +283,30 @@ LinearRegTestHandler {
       (user, itemSet)
     }
 
-    //get top-N predicted cold items for each user
+    //get top-N predicted cold items for each user and size of intersection with
+    //actual preferred item sets
     val topNPredColdItems:RDD[(Int, (List[String], Int))] = 
       getTopAllNItems(userItemPred, userColdItems, N)    
     
     //get top-N actual cold items for each user
-    val topNActualColdItems:RDD[(Int, (List[String], Int))] =
-      getTopAllNItems(repTestData, userColdItems, N)
-
+    /*val topNActualColdItems:RDD[(Int, (List[String], Int))] =
+      getTopAllNItems(repTestData, userColdItems, N)*/
+    //topNActualColdItems
+    
     topNPredColdItems
   }
 
+
+  /**
+   * from the passed user-item-rating triplets will find top-N items for user
+   * and intersection with passed item set(actual preferred cold items set)
+   * @param userItemRat user, item ratings triplets
+   * @param userItemsSet set of items for users, generally actual item sets for
+   * user
+   * @param N number of top items needed to be found
+   * @return RDD of user, his top-N items, size of intersection of top-N items
+   * with userItemsSet
+   */
 
   def getTopAllNItems(userItemRat:RDD[(Int, (String, Double))], 
     userItemsSet:RDD[(Int, Set[String])], N:Int):RDD[(Int, (List[String], Int))] = {
