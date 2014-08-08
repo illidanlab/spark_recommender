@@ -46,7 +46,8 @@ object JobTag {
 	val RecJobMetricType_MSE = "mse"
 	val RecJobMetricType_RMSE = "rmse"
 	val RecJobMetricType_HR = "hr"
-		
+	val RecJobMetricType_ColdRecall = "cold_recall"
+
 	val RecJobFeatureList = "features"
 	val RecJobFeatureType_Item = "itemFeature"
 	val RecJobFeatureType_User = "userFeature"

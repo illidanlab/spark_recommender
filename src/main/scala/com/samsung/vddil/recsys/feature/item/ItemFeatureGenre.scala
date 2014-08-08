@@ -1,33 +1,139 @@
 package com.samsung.vddil.recsys.feature.item
 
-import scala.collection.mutable.HashMap
-import org.apache.spark.rdd._
-import org.apache.spark.SparkContext._
-import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
 import com.samsung.vddil.recsys.feature.FeatureResource
-import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.linalg.Vectors
+import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
+import org.apache.spark.rdd._
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import scala.collection.Map
+import scala.collection.mutable.HashMap
 
-object ItemFeatureGenre  extends FeatureProcessingUnit{
-  
+object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor {
+
+    var trFeatureParams = new HashMap[String,String]()
     val ItemGenreInd = 2
     val ItemIdInd = 1
-    
+    val FeatSepChar = '|'
     val GenreIdInd = 1
     val GenreLangInd = 2
     val GenreDescInd = 3
     val GenreLangFilt = "en" //default language 
       
     val Param_GenreLang = "lang" 
+
+  
+  def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
+    dates.map{date =>
+      jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_genre*"
+    }.toList
+  }
+
+
+  /**
+   * get the genre for passed items
+   * @param items set of items for which genre list needs to be retrieved
+   * @param genre2Ind map of genre string to index
+   * @param featureSources list of files from which feature will be extracted
+   * @param sc SparkContext instance
+   * @return RDD of item, genre pair
+   */
+  def getItemGenreList(items:Set[String], genre2Ind:Map[String, Int],
+    featureSources:List[String], sc:SparkContext):RDD[(String, String)] = {
+    val bItemsSet = sc.broadcast(items)
+    val bGenre2Ind = sc.broadcast(genre2Ind)
+    val itemGenreList:RDD[(String, String)] = featureSources.map{fileName =>
+      val itemsGenre:RDD[(String, String)] = sc.textFile(fileName).map{line =>
+        val fields = line.split(FeatSepChar)
+        val item = fields(ItemIdInd)
+        val genre = fields(ItemGenreInd)
+        (item, genre)
+      }.filter{itemGenre =>
+        val item = itemGenre._1
+        val genre = itemGenre._2
+        bItemsSet.value(item) && bGenre2Ind.value.contains(genre)
+      }
+      itemsGenre
+    }.reduce{(a,b) =>
+      a.union(b)
+    }.distinct
+    itemGenreList
+  }
+
+
+  /**
+   * from list of (item, genre) pairs create feature vectors for items
+   * @param itemGenreList RDD of item, genre pair
+   * @param genre2Ind map of genre string to index
+   * @return RDD of item and its genre feature vector
+   */
+  def itemGenreListToFeature(itemGenreList:RDD[(String, String)], 
+    genre2Ind:Map[String, Int]):RDD[(String, Vector)] = {
+   
+    val numGenres:Int = genre2Ind.size
+    itemGenreList.groupByKey.map{x =>
+      val itemId = x._1
+     
+      //save to sparse vector
+      var featureVecPair = Seq[(Int, Double)]()
+      for (genre <- x._2) {
+        featureVecPair = featureVecPair :+ (genre2Ind(genre), 1.0)
+      }
+      val featureVec = Vectors.sparse(numGenres, featureVecPair)
+      (itemId, featureVec)
+    }
+  }
+
+
+  /**
+   * extract features for passed items based on feature map
+   * @param items set of passed item
+   * @param featureSources list of files to extract feature
+   * @param featureParams passed feature parameters at time of training
+   * @param featureMapFileName contains mapping from genre to indices
+   * @param sc spark context instance
+   * @return paired RDD of item and its feature vector
+   */
+  def extractFeature(items:Set[String], featureSources:List[String],
+    featureParams:HashMap[String, String], featureMapFileName:String, 
+    sc:SparkContext): RDD[(String, Vector)] = {
     
+    val genreInd2KeyDesc:RDD[(Int, String, String)] =
+      sc.textFile(featureMapFileName).map{line =>
+        val fields = line.split(',')
+        val genreInd:Int = fields(0).toInt
+        val genreKey:String = fields(1)
+        val genreDesc:String = fields(2)
+        (genreInd, genreKey, genreDesc)
+      }
+    
+    val genre2Ind:Map[String, Int] = genreInd2KeyDesc.map{x =>
+      val genreInd:Int = x._1
+      val genreKey:String = x._2
+      (genreKey, genreInd)
+    }.collectAsMap
+
+    val itemGenreList:RDD[(String, String)] = getItemGenreList(items, genre2Ind, 
+      featureSources, sc)
+    itemGenreListToFeature(itemGenreList, genre2Ind) 
+  }
+
+
+
     def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
     		
-    	//get spark context
+    	  //get spark context
         val sc = jobInfo.sc
         
+        //assign feature params
+        trFeatureParams = featureParams
+
         // 1. Complete default parameters
         //  default parameter for genre: lang filtering. 
         var param_GenreLang:String = GenreLangFilt
@@ -52,19 +158,23 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         
         //get RDDs of genres only for param_GenreLang if exists
         var fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + jobInfo.trainDates(0) + "/genre*" 
-        var genreMap = sc.textFile(fileName).map { line =>
-          val fields = line.split('|')
-          (fields(GenreIdInd), fields(GenreLangInd), fields(GenreDescInd))
-        }.filter(x => x._2 == param_GenreLang)        
-        
-        for (trainDate <- jobInfo.trainDates.tail) {
-            fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/genre*"
-            val nextGenreMap = sc.textFile(fileName).map { line =>
-                val fields = line.split('|')
-                (fields(GenreIdInd), fields(GenreLangInd), fields(GenreDescInd))
-            }.filter(x => x._2 == param_GenreLang)
-            genreMap = genreMap.union(nextGenreMap).distinct
-        }  
+        val genreSources = jobInfo.trainDates.map{trainDate =>
+          jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/genre*" 
+        }
+
+        val genreMap:RDD[(String, String, String)] =
+          genreSources.map{genreSource =>
+            val currGenreMap:RDD[(String, String, String)] = sc.textFile(genreSource).map{line =>
+              val fields = line.split('|')
+              (fields(GenreIdInd), fields(GenreLangInd), fields(GenreDescInd))
+            }.filter{genreTriplet =>
+              val genreLang = genreTriplet._2
+              genreLang == param_GenreLang
+            }
+            currGenreMap
+          }.reduce{(a,b) =>
+            a.union(b)
+          }.distinct
         
         val genresWDesc = genreMap.collect
         val genreKeys = genresWDesc.map(x => x._1)
@@ -81,56 +191,45 @@ object ItemFeatureGenre  extends FeatureProcessingUnit{
         Logger.info("created genres to index map, numGenres: " + numGenres 
                     + " numItems: " + itemSet.size)
         
-        
-        
         //get RDDs of items itemGenreList: itemId, subgenre, Genre   
         //filter only those for which genre is already found
-        fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + jobInfo.trainDates(0) + "/program_genre*"
-        var itemGenreList = sc.textFile(fileName).map { line =>
-              val fields = line.split('|')
-              (fields(ItemIdInd),  fields(ItemGenreInd))             
-            }.filter(x => itemSet(x._1) && genre2Ind.contains(x._2)) 
-         
-        Logger.info("Creating item genrelist")
-        
-        //parse program genre file for each date and find genres for items in train
-        for (trainDate <- jobInfo.trainDates.tail) {
-            fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/program_genre*"
-            val nextGenre = sc.textFile(fileName).map { line =>
-              val fields = line.split('|')
-              (fields(ItemIdInd), fields(ItemGenreInd))              
-            }.filter(x => itemSet(x._1) && genre2Ind.contains(x._2))
-            itemGenreList = itemGenreList.union(nextGenre).distinct
-        }  
+        val featureSources = getFeatureSources(jobInfo.trainDates.toList, jobInfo)
+
+        val bItemsSet = sc.broadcast(itemSet)
+        val bGenre2Ind = sc.broadcast(genre2Ind)
+        val itemGenreList:RDD[(String, String)] = getItemGenreList(itemSet,
+          genre2Ind, featureSources, sc)
        
-        Logger.info("created itemGenres list")
+        Logger.info("Created itemGenres list: ")
         
         val itemIdMap = jobInfo.jobStatus.itemIdMap
+        val bItemMap = sc.broadcast(itemIdMap)
         //generate feature vector for each items    
-        val itemGenreInds = itemGenreList.groupByKey().map { x =>
-          var itemId = x._1
-          
-          //save to sparse vector
-          var featureVecPair = Seq[(Int, Double)]()
-          for (genre <- x._2) {
-        	  featureVecPair = featureVecPair :+ (genre2Ind(genre), 1.0)
+        val itemFeature:RDD[(Int, Vector)] =
+          itemGenreListToFeature(itemGenreList, genre2Ind).map{x =>
+            val item:Int = bItemMap.value(x._1)
+            val feature:Vector = x._2
+            (item, feature)
           }
-          val featureVec = Vectors.sparse(numGenres, featureVecPair)
-          (itemIdMap(itemId), featureVec)
-        }
-        
-        Logger.info("created item genre feature vectors")
+
+       
+        Logger.info("created item genre feature vectors: ")
         
         //save item features as textfile
         if (jobInfo.outputResource(featureFileName)){
         	Logger.logger.info("Dumping feature resource: " + featureFileName)
-        	itemGenreInds.saveAsObjectFile(featureFileName) //directly use object + serialization. 
+        	itemFeature.saveAsObjectFile(featureFileName) //directly use object + serialization. 
         }
         
         //save genre mapping to indexes
         if (jobInfo.outputResource(featureMapFileName)){
         	Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
-        	genreInd2KeyDescRDD.saveAsTextFile(featureMapFileName)
+          genreInd2KeyDescRDD.map{genreInd2KeyDes => 
+            val genreInd:Int = genreInd2KeyDes._1
+            val genreKey:String = genreInd2KeyDes._2._1
+            val genreDesc:String = genreInd2KeyDes._2._2
+            genreInd + "," + genreKey + "," + genreDesc
+          }.saveAsTextFile(featureMapFileName)
         }
         
         val featureStruct:ItemFeatureStruct = 

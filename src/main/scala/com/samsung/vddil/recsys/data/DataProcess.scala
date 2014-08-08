@@ -103,7 +103,7 @@ object DataProcess {
 	    val dataLocUserList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList_" + dataHashingStr
 	    val dataLocItemList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemList_" + dataHashingStr
 	    val dataLocUserMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userMap_" + dataHashingStr
-        val dataLocItemMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemMap_" + dataHashingStr
+      val dataLocItemMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemMap_" + dataHashingStr
 
 	    val jobStatus:RecJobStatus = jobInfo.jobStatus
 	    

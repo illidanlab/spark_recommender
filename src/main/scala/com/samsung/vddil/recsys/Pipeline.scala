@@ -135,7 +135,7 @@ object Pipeline {
 	    	 conf.set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")
 	    	 conf.set("spark.serializer",                 "org.apache.spark.serializer.KryoSerializer")
 	    	 conf.set("spark.kryo.registrator",           "com.samsung.vddil.recsys.SerializationRegistrator")
-	    	 conf.set("spark.speculation",                "true")
+	    	 //conf.set("spark.speculation",                "true")
 	    	 
 	         try{
 	             //construct spark context using SparkSubmit configurations.  
@@ -174,7 +174,7 @@ object Pipeline {
 	    require(Pipeline.instance.isDefined)
 	    val numExecutors = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.instances")
       val numExecCores = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
-      val numParts = 4 * numExecutors.getOrElse("50").toInt * numExecCores.getOrElse("2").toInt 
+      val numParts = 2 * numExecutors.getOrElse("100").toInt * numExecCores.getOrElse("2").toInt 
       Logger.info("numParts: " + numParts)
       numParts 
 	}

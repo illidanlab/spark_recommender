@@ -299,8 +299,7 @@ object DataAssemble {
       userFeature:HashSet[String], 
       itemFeature:HashSet[String]):String = {
     return "ContAggData_" + dataIdentifier+ 
-          HashString.generateHash(userFeature.toString) + "_" + 
-          HashString.generateHash(itemFeature.toString) 
+           "_" +  HashString.generateHash(userFeature.toString + "_" + itemFeature.toString) 
    }
 	
   def assembleBinaryData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double):String = {

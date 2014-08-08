@@ -77,7 +77,7 @@
               <type>hr</type>
               <name>HitRate</name>
               <param>
-                  <key>val</key>
+                  <UserSampleSize>3</UserSampleSize>
               </param>
           </metric>
 		</metrics>

@@ -36,16 +36,16 @@ object HashString {
 	/** 
 	 * Hashing a plain string using desired hashing  
 	 * 
-	 * hashContent: the original String
-	 * hashType: hashing algorithm. 
-	 *           Options: HashString.HashType_MD5
-	 *           	      HashString.HashType_SHA1
-	 *                    HashString.HashType_SHA256
-	 * 
 	 * Example:
 	 * 		hashContent: "123456"
 	 *   	hashType:    HashType_MD5
 	 * 		Result:      "e10adc3949ba59abbe56e057f20f883e"
+	 *   
+	 * @param hashContent: the original String
+	 * @param hashType: hashing algorithm. 
+	 *           Options: HashString.HashType_MD5
+	 *           	      HashString.HashType_SHA1
+	 *                    HashString.HashType_SHA256
 	 */
 	def generateHash(hashContent:String, hashType:String = HashType_MD5):String = {
 		

@@ -1,19 +1,23 @@
 package com.samsung.vddil.recsys.model
 
+import scala.reflect._
 import scala.collection.mutable.HashMap
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.apache.spark.SparkContext
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
-import org.apache.spark.mllib.regression.GeneralizedLinearModel
+
+
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.Output
 import com.esotericsoftware.kryo.io.Input
-import com.samsung.vddil.recsys.Pipeline
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.objenesis.strategy.StdInstantiatorStrategy
+import org.apache.spark.mllib.linalg.{Vector => SV}
+import org.apache.spark.SparkContext
+import org.apache.spark.mllib.regression.GeneralizedLinearModel
 import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
 import org.apache.spark.mllib.optimization.CustomizedModel
-import scala.reflect._
-import org.objenesis.strategy.StdInstantiatorStrategy
+import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.linalg.Vector
+
 
 /**
  * This is a trait for model. 
@@ -34,7 +38,7 @@ trait ModelStruct extends Serializable{
 	/**
 	 * Predicts the result 
 	 */
-	def predict(testData: org.apache.spark.mllib.linalg.Vector): Double
+	def predict(testData: Vector): Double
 }
 
 object ModelStruct{
@@ -64,6 +68,41 @@ trait SerializableModel [M <: Serializable ] extends ModelStruct{
 }
 
 /**
+ * Allows a partial model, e.g., a partially completed model with a specific item feature. 
+ * The computed partial feature then only requires a user feature, before it computes the 
+ * prediction. 
+ * 
+ *  Though there are two types of partial functions provided, the most useful one is 
+ *  applyItemFeature, where the item feature vector is enclosed.  
+ */
+trait PartializableModel extends ModelStruct{
+    /**
+     * Apply the item feature first to form a partial model.  
+     * 
+     * @itemFeature the item feature 
+     * @return a function that predicts result given user feature
+     */
+    def applyItemFeature(itemFeature: Vector): Vector => Double = {
+        def partialModel(userFeature: Vector):Double = this.predict(userFeature ++ itemFeature)
+        partialModel
+    }
+    
+    /**
+     * Apply the item feature first to form a partial model.  
+     * 
+     * @itemFeature the user feature 
+     * @return a function that predicts result given item feature 
+     */
+    def applyUserFeature(userFeature: Vector): Vector => Double = {
+        def partialModel(itemFeature: Vector):Double = this.predict(userFeature ++ itemFeature)
+        partialModel
+    }
+}
+
+
+
+
+/**
  * The data structure for generalized linear models
  */
 case class GeneralizedLinearModelStruct(
@@ -73,9 +112,10 @@ case class GeneralizedLinearModelStruct(
 		    var modelFileName:String,
 		    var modelParams:HashMap[String, String] = new HashMap(), 
 		    override var model:GeneralizedLinearModel
-	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) extends SerializableModel[GeneralizedLinearModel]{
+	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) 
+	      extends SerializableModel[GeneralizedLinearModel] with PartializableModel{
     
-    def predict(testData: org.apache.spark.mllib.linalg.Vector) = model.predict(testData)
+    def predict(testData: Vector) = model.predict(testData.toMLLib)
     
     override def saveModel() = {
         val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
@@ -105,7 +145,7 @@ case class CustomizedModelStruct[M >: Null <: CustomizedModel](
         	var modelFileName:String,
 			var modelParams:HashMap[String, String] = new HashMap(), 
 			override var model:M
-        )(implicit val ev: ClassTag[M]) extends SerializableModel[M]{
+        )(implicit val ev: ClassTag[M]) extends SerializableModel[M] with PartializableModel{
     
     def this(modelName:String, 
         	resourceStr:String, 
@@ -118,7 +158,7 @@ case class CustomizedModelStruct[M >: Null <: CustomizedModel](
 	    this.loadModel()
 	}
 		
-    def predict(testData: org.apache.spark.mllib.linalg.Vector) = model.predict(testData)
+    def predict(testData: Vector) = model.predict(testData.toMLLib)
     
     override def saveModel() = {
         val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
