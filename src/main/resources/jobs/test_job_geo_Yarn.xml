@@ -14,7 +14,7 @@
 		</resourceLocation>
 		<trainDates>
 			<date>20140522</date>
-			<date>20140522</date>
+			<date>20140523</date>
     </trainDates>
     <testDates>
         <date>20140524</date>
@@ -24,12 +24,6 @@
 			<feature>
 				<type>userFeature</type>
 				<name>geo</name>
-				<param>
-					<numLatitudeSeg>5</numLatitudeSeg>
-				</param>
-				<param>
-					<numLongitudeSeg>12</numLongitudeSeg>
-				</param>
 			</feature>
 		</features>
 		<dataSplit>

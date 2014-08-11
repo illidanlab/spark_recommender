@@ -56,7 +56,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
 		
 		val trainDate       = jobInfo.trainDates        
 		
-		val demogrphicsLoc:String = "data/Demographics"
+		val demogrphicsLoc:String = "/user/yin.zhou/recsys_offline_data" // "data/Demographics"
 		    
 		Logger.info("Geo data location: " + geoLoc)
 
