@@ -98,7 +98,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
 			    var duid    = fields(0)
 			    var zipcode = fields(5)		    
 			    //(jobInfo.jobStatus.userIdMap(duid),Vectors.sparse(demographicHashTableRDD.value(zipcode)))
-			    (duid,demographicHashTableRDD.value(zipcode))
+			    (jobInfo.jobStatus.userIdMap(duid),demographicHashTableRDD.value(zipcode))
 			}
 			userFeatureMapOneDay
         }.reduce{ (a,b) =>
@@ -123,18 +123,11 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
         
                
     	//save demographic user features as ObjectFile
-        /*
         if (jobInfo.outputResource(featureFileName)){
         	Logger.logger.info("Dumping feature resource: " + featureFileName)
         	userFeatureMap.saveAsObjectFile(featureFileName) //directly use object + serialization. 
         }		
-        *  */
-        
-
-        if (jobInfo.outputResource(featureFileName)){
-        	Logger.logger.info("Dumping feature resource: " + featureFileName)
-        	userFeatureMap.saveAsTextFile(featureFileName) //directly use object + serialization. 
-        }	        
+                       
         
         //save feature description mapping to indexes
         if (jobInfo.outputResource(featureMapFileName)){
