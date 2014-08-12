@@ -110,12 +110,12 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
             a.union(b)
         }.distinct
         
-        val uMap = jobInfo.jobStatus.userIdMap
-        val userFeatureMap2Sparse = userFeatureMap.map{
-            t => (uMap(t._1),Vectors.sparse(t._2))
+        val uMap = sc.parallelize(jobInfo.jobStatus.userIdMap.toList)
+        val userF  = userFeatureMap.join(uMap)
+        val userFeatureMap2Sparse = userF.map{x => 
+        	(x._2._2, Vectors.sparse(x._2._1))
         }
-        
-        
+  
         for (tt <- userFeatureMap2Sparse) {
             println(tt._1 + " " + tt._2.toString)
         }
