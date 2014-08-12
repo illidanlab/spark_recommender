@@ -101,17 +101,21 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
 			    //(jobInfo.jobStatus.userIdMap(duid),Vectors.sparse(demographicHashTableRDD.value(zipcode)))
 			    //val duid2Int =             userIDMapRDD.value(duid)
 			    //val hashedFeature2Sparse = Vectors.sparse(demographicHashTableRDD.value(zipcode))
-			    val value = demographicHashTableRDD.value(zipcode)
-			    val feaSparse = Vectors.sparse(value)
-			    (duid,feaSparse)
+			    //val value = demographicHashTableRDD.value(zipcode)
+			    //val feaSparse = Vectors.sparse(value)
+			    (duid,demographicHashTableRDD.value(zipcode))
 			}
 			userFeatureMapOneDay
         }.reduce{ (a,b) =>
             a.union(b)
         }.distinct
         
+        val userFeatureMap2Sparse = userFeatureMap.map{
+            t => (userIDMapRDD.value(t._1),Vectors.sparse(t._2))
+        }
         
-        for (tt <- userFeatureMap) {
+        
+        for (tt <- userFeatureMap2Sparse) {
             println(tt._1 + " " + tt._2.toString)
         }
         
@@ -130,7 +134,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
     	//save demographic user features as ObjectFile
         if (jobInfo.outputResource(featureFileName)){
         	Logger.logger.info("Dumping feature resource: " + featureFileName)
-        	userFeatureMap.saveAsObjectFile(featureFileName) //directly use object + serialization. 
+        	userFeatureMap2Sparse.saveAsObjectFile(featureFileName) //directly use object + serialization. 
         }		
                        
         
