@@ -97,8 +97,8 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
 			    val fields  = line.split("\t")
 			    var duid    = fields(0)
 			    var zipcode = fields(5)		    
-			    
-			    (jobInfo.jobStatus.userIdMap(duid),Vectors.sparse(demographicHashTableRDD.value(zipcode)))
+			    //(jobInfo.jobStatus.userIdMap(duid),Vectors.sparse(demographicHashTableRDD.value(zipcode)))
+			    (duid,demographicHashTableRDD.value(zipcode))
 			}
 			userFeatureMapOneDay
         }.reduce{ (a,b) =>
