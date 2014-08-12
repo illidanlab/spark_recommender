@@ -17,6 +17,7 @@ import scala.collection.immutable
 import java.io._
 import scala.collection.Parallel
 import org.apache.tools.ant.taskdefs.Parallel
+import scala.collection.immutable.Vector
 
 /*
  * User Feature: Geo Location and Demographic features. 
@@ -96,15 +97,17 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
 			    val fields  = line.split("\t")
 			    var duid    = fields(0)
 			    var zipcode = fields(5)		    
-			    (duid,demographicHashTableRDD.value(zipcode))
+			    
+			    (jobInfo.jobStatus.userIdMap(duid),Vectors.sparse(demographicHashTableRDD.value(zipcode)))
 			}
 			userFeatureMapOneDay
         }.reduce{ (a,b) =>
             a.union(b)
         }.distinct
         
+        
         for (tt <- userFeatureMap) {
-            println(tt._1 + " " + tt._2.toSeq.toString)
+            println(tt._1 + " " + tt._2.toString)
         }
         
         println("featureFileName : " + featureFileName)
@@ -122,13 +125,21 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
         	println(tt + " -> " + demographicsDescriptionMap(tt))
         
         
-    	//save item features as textfile
+    	//save demographic user features as ObjectFile
+        /*
         if (jobInfo.outputResource(featureFileName)){
         	Logger.logger.info("Dumping feature resource: " + featureFileName)
         	userFeatureMap.saveAsObjectFile(featureFileName) //directly use object + serialization. 
         }		
+        *  */
+        */
+
+        if (jobInfo.outputResource(featureFileName)){
+        	Logger.logger.info("Dumping feature resource: " + featureFileName)
+        	userFeatureMap.saveAsTextFile(featureFileName) //directly use object + serialization. 
+        }	        
         
-        //save genre mapping to indexes
+        //save feature description mapping to indexes
         if (jobInfo.outputResource(featureMapFileName)){
         	Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
         	demographicsDescriptionMapRDD.map{
