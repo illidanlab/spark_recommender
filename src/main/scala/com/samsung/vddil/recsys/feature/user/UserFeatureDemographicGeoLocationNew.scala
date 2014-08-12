@@ -110,9 +110,6 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
             x => (x._2._2, Vectors.sparse(x._2._1))
         }
   
-        for (tt <- userFeatureMap2Sparse) {
-            println(tt._1 + " " + tt._2.toString)
-        }
         
         println("featureFileName : " + featureFileName)
         println("resourceIden : " + resourceIden)
