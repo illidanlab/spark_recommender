@@ -9,8 +9,8 @@
 		<resourceLocation>
 			<roviHq>hdfs://gnosis-01-01-01.crl.samsung.com:8020/apps/vddil/rovi_hq/</roviHq>
 			<watchTime>hdfs://gnosis-01-01-01.crl.samsung.com:8020/apps/vddil/duid-program-watchTime/</watchTime>
-			<geoLocation>hdfs://gnosis-01-01-01.crl.samsung.com:8020/apps/vddil/DUID-GeoLocation/</geoLocation>
-      		<workspace>hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/yin.zhou/rec_spark_wsp</workspace>
+			<geoLocation>hdfs://gnosis-01-01-01.crl.samsung.com:8020/apps/vddil/DUID-GeoLocation</geoLocation>
+      		<workspace>hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/yin.zhou/rec_spark_wsp/</workspace>
 		</resourceLocation>
 		<trainDates>
 			<date>20140522</date>
