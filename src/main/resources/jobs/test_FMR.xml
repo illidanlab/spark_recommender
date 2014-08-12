@@ -42,10 +42,23 @@
 				<name>fm_l2_reg</name>
 				<param>
 					<regParam>1.5</regParam>
-					<minUFCoverage>0.8</minUFCoverage>
-					<minIFCoverage>0.8</minIFCoverage>
+					<minUFCoverage>0.1</minUFCoverage>
+					<minIFCoverage>0.1</minIFCoverage>
 					<numIterations>1</numIterations>
 					<stepSize>0.0001</stepSize>
+					<latentFactor>10</latentFactor>
+				</param>
+			</model>
+			<model>
+				<type>score_reg</type>
+				<name>fm_l2_reg</name>
+				<param>
+					<regParam>1.5</regParam>
+					<minUFCoverage>0.1</minUFCoverage>
+					<minIFCoverage>0.1</minIFCoverage>
+					<numIterations>1</numIterations>
+					<stepSize>0.0001</stepSize>
+					<latentFactor>5</latentFactor>
 				</param>
 			</model>
 		</models>
@@ -54,33 +67,33 @@
 		      <type>futureNotColdstart</type>
 		      <name>NonColdstart</name>
 		      <param>
-		          <key>val</key>
+		          <UserSampleSize>3</UserSampleSize>
 		      </param>
+		      <metrics>
+				  <metric>
+				      <type>mse</type>
+				      <name>MeanSquareError</name>
+				      <param>
+				          <key>val</key>
+				      </param>
+				  </metric>
+				  <metric>
+		              <type>rmse</type>
+		              <name>RootMeanSquareError</name>
+		              <param>
+		                  <key>val</key>
+		              </param>
+		          </metric>
+		          <metric>
+		              <type>hr</type>
+		              <name>HitRate</name>
+		              <param>
+		                  <key>val</key>
+		              </param>
+		          </metric>
+			  </metrics>
 		  </test>
 		</tests>
-		<metrics>
-		  <metric>
-		      <type>mse</type>
-		      <name>MeanSquareError</name>
-		      <param>
-		          <key>val</key>
-		      </param>
-		  </metric>
-		  <metric>
-              <type>rmse</type>
-              <name>RootMeanSquareError</name>
-              <param>
-                  <key>val</key>
-              </param>
-          </metric>
-          <metric>
-              <type>hr</type>
-              <name>HitRate</name>
-              <param>
-                  <UserSampleSize>3</UserSampleSize>
-              </param>
-          </metric>
-		</metrics>
 		<ensembles>
 			<ensemble>
 				<type>max</type>

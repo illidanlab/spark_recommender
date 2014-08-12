@@ -102,8 +102,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     /** a list of test procedures to be performed for each model */
     val testList:Array[RecJobTest] = populateTests()
     
-    /** a list of test metrics to be used in test procedures */
-    val metricList:Array[RecJobMetric] = populateMetric()
+    
     
     /**
      * Data splitting information 
@@ -174,22 +173,25 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	DataProcess.prepareTest(this)
     	
     	Logger.info("**evaluating the models")
-    	 jobStatus.testWatchTime foreach { testData =>
+    	jobStatus.testWatchTime foreach { testData =>
     		//size of test data
     		Logger.info("Size of test data: " + testData.count)
     		
-        //evaluate regression models on test data
+            //evaluate regression models on test data
+    		Logger.info("Regression model num: " + jobStatus.resourceLocation_RegressModel.size)
     		jobStatus.resourceLocation_RegressModel.map{
     		    case (modelStr, model) =>
-    		        testList.map{_.run(this, model, metricList)}
+    		        Logger.info("Evaluating model: "+ modelStr)
+    		        testList.map{_.run(this, model)}
     	 	}
     		
     		//evaluate classification models on test data
+    		Logger.info("Classification model num: " + jobStatus.resourceLocation_ClassifyModel.size)
     		jobStatus.resourceLocation_ClassifyModel.map{
     		    case (modelStr, model) =>
     		        //TODO: evaluate classification models. 
     	 	}
-      }
+        }
     }
     
     /**
@@ -506,14 +508,14 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      * 
      * @return a set of metrics to be computed in evaluation. 
      */
-    def populateMetric():Array[RecJobMetric] = {
+    def populateMetric( node:Node ):Array[RecJobMetric] = {
     	var metricList:Array[RecJobMetric] = Array()
-    	var nodeList = jobNode \ JobTag.RecJobMetricList
+    	var nodeList = node \ JobTag.RecJobMetricUnit
     	if (nodeList.size == 0) {
             Logger.warn("No metrics found!")
             metricList
         } else {
-        	nodeList = nodeList(0) \ JobTag.RecJobMetricUnit
+        	
         	//populate each metric
         	for (node <- nodeList) {
         	    val metricType = (node \ JobTag.RecJobMetricUnitType).text
@@ -533,11 +535,11 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         	    
         	    //create metrics by type
         	    metricType match {
-        	    	case JobTag.RecJobMetricType_MSE => metricList = metricList :+ RecJobMetricMSE(metricName, paramList)
-        	    	case JobTag.RecJobMetricType_RMSE => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
-        	    	case JobTag.RecJobMetricType_HR => metricList = metricList :+ RecJobMetricHR(metricName, paramList)
-                case JobTag.RecJobMetricType_ColdRecall => metricList = metricList:+ RecJobMetricColdRecall(metricName, paramList)
-                case _ => Logger.warn(s"Metric type $metricType not found or ignored.")
+        	    	case JobTag.RecJobMetricType_MSE        => metricList = metricList :+ RecJobMetricMSE(metricName, paramList)
+        	    	case JobTag.RecJobMetricType_RMSE       => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
+        	    	case JobTag.RecJobMetricType_HR         => metricList = metricList :+ RecJobMetricHR(metricName, paramList)
+        	    	case JobTag.RecJobMetricType_ColdRecall => metricList = metricList :+ RecJobMetricColdRecall(metricName, paramList)
+        	    	case _ => Logger.warn(s"Metric type $metricType not found or ignored.")
         	    }
         	}
         }
@@ -567,6 +569,16 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     			val testParam = node \ JobTag.RecJobTestUnitParam
     			var paramList:HashMap[String, String] = HashMap()
     			
+    			val testMetricNode = node \ JobTag.RecJobMetricList
+    			
+    			// a list of test metrics to be used in test procedures 
+    			val metricList:Array[RecJobMetric] = if (testMetricNode.size == 0){
+    			    Array()
+    			}else{
+    				populateMetric(testMetricNode(0))
+    				testMetricNode.flatMap{metricNode => populateMetric(metricNode)}.toArray
+    			}
+    			
     			//populate test parameters
     			for (param <- testParam) {
     			    val paraPairList = param.child
@@ -576,14 +588,16 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     			    	paramList += (paraPair._1 -> paraPair._2)
     			    }
     			}
-    			
-    			//create tests by type
+    		
+    		    //create tests by type
     			testType match {
-    				case JobTag.RecJobTestType_NotCold => testList = testList :+ RecJobTestNoCold(testName, paramList)
-            case JobTag.RecJobTestType_ColdItems => testList = testList :+ RecJobTestColdItem(testName, paramList)
-            case _ => Logger.warn(s"Test type $testType not found or ignored.")
+    				case JobTag.RecJobTestType_NotCold   => testList = testList :+ RecJobTestNoCold  (testName, paramList, metricList)
+    				case JobTag.RecJobTestType_ColdItems => testList = testList :+ RecJobTestColdItem(testName, paramList, metricList)
+    				case _ => Logger.warn(s"Test type $testType not found or ignored.")
     			}
     		}
+    		
+    		
     	}
     	testList
     }

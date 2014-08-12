@@ -14,19 +14,7 @@ import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.model.PartializableModel
 
 
-object RegNotColdHitTestHandler extends NotColdTestHandler 
-                                with LinearRegTestHandler {
-  
-  def resourceIdentity(
-          testParams:HashMap[String, String], 
-          metricParams:HashMap[String, String], 
-          modelStr:String
-          ):String = {
-        IdenPrefix + "_" + 
-        		HashString.generateHash(testParams.toString) + "_" + 
-        		HashString.generateHash(metricParams.toString)  + "_" +
-        		modelStr
-  }
+object TestResourceRegNotColdHit{
   
   val IdenPrefix = "RegNotColdHit"
   
@@ -59,34 +47,30 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    * @param model
    * @return a RDD of hit rate. 
    */
-  def performTest(jobInfo:RecJob, testName: String,
+  def generateResource(jobInfo:RecJob, 
               testParams:HashMap[String, String],
-              metricParams:HashMap[String, String],
-              model: ModelStruct): 
-                  RDD[HitSet] = {
+              model: ModelStruct,
+              testResourceDir:String
+              ):RDD[HitSet] = {
 
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
    
     //get percentage of user sample to predict on as it takes really long to
     //compute on all users
-    val userSampleParam:Double = metricParams.getOrElseUpdate("UserSampleSize",
+    val userSampleParam:Double = testParams.getOrElseUpdate("UserSampleSize",
                                                   "0.2").toDouble
     Logger.info("User sample parameter: " + userSampleParam)
     
     //seed parameter needed for sampling test users
     val seed = testParams.getOrElseUpdate("seed", "3").toInt
-
-    val resourceIden = resourceIdentity(testParams, metricParams, model.resourceStr)
-    
-    val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 
     
     //cache intermediate files, helpful in case of crash  
-    val itemFeatObjFile         = testResourceDir + "/itemFeat"   
-    val userFeatObjFile         = testResourceDir + "/userFeat" 
-    val sampledUserFeatObjFile  = testResourceDir + "/sampledUserFeat" 
-    val sampledItemUserFeatFile = testResourceDir + "/sampledUserItemFeat"
-    val sampledPredBlockFiles   = testResourceDir + "/sampledPred/BlockFiles"
+    val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/itemFeat"   
+    val userFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/userFeat" 
+    val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
+    val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
+    val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
     //get spark context
     val sc = jobInfo.sc
     
