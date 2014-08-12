@@ -121,10 +121,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
         val demographicsDescriptionMap    = ((0 until lenDescription) zip demographicsDescription.collect).toMap
         val demographicsDescriptionMapRDD = sc.makeRDD(demographicsDescriptionMap.toList)
         
-        for (tt <- (0 until lenDescription))
-        	println(tt + " -> " + demographicsDescriptionMap(tt))
-        
-        
+               
     	//save demographic user features as ObjectFile
         /*
         if (jobInfo.outputResource(featureFileName)){
@@ -132,7 +129,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
         	userFeatureMap.saveAsObjectFile(featureFileName) //directly use object + serialization. 
         }		
         *  */
-        */
+        
 
         if (jobInfo.outputResource(featureFileName)){
         	Logger.logger.info("Dumping feature resource: " + featureFileName)
