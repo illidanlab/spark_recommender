@@ -28,10 +28,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
         for (tt <- line) {
             if (tt.isEmpty()) {
                 return false
-            }
-            //var temp = tt.toDouble
-            //if (!temp.isInstanceOf[Double])
-            //    return false                
+            }           
         }
         return true
     }
@@ -40,10 +37,12 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
 		//Logger.error("%s has not been implmented.".format(getClass.getName()))
 		
 		// 1. Load defined parameters or use default parameters
+        // No pre-defined parameters
     	
 	    // 2. Generate resource identity using resouceIdentity()
-		val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
-		val resourceIden   = resourceIdentity(featureParams, dataHashingStr)
+		val dataHashingStr     = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+		
+		val resourceIden       = resourceIdentity(featureParams, dataHashingStr)
 
         val featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
         							"/" + resourceIden
@@ -53,18 +52,19 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
 		val sc:SparkContext = jobInfo.sc
 				
 		val geoLoc:String   = jobInfo.resourceLocAddon(RecJob.ResourceLocAddon_GeoLoc)
+		Logger.info("Geo data location: " + geoLoc)
 		
 		val trainDate       = jobInfo.trainDates        
 		
-		val demogrphicsLoc:String = "/user/yin.zhou/recsys_offline_data" // "data/Demographics"
-		    
-		Logger.info("Geo data location: " + geoLoc)
+		// Predefined address for off-data (demographics information and feature descriptions)
+		val demogrphicsLoc:String = "/user/yin.zhou/recsys_offline_data" // "data/Demographics"		    
 
 		val demographicsinfo = sc.textFile(demogrphicsLoc + "/" + "demographics_zipcode_new_full.txt") // change to full version		
-		Logger.info("We have found " + demographicsinfo.count() + " lines in demographics.")			
+		Logger.info("We have found " + demographicsinfo.count() + " lines in demographics information table.")			
 		
 		var accum = sc.accumulator(0)
 		
+		// Load the demographics information and convert it to a hashmap
 		var demographicHashTable = demographicsinfo.filter{
 		    line => hasAllFields(line.split("\t"),line.split("\t").size == 55)
 		}.map{
@@ -75,15 +75,11 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
             accum += 1
             (zipcode,demoFeature)
         }.collectAsMap
-        println("The demographic HashTable contains " + accum + " records.")
-        val demographicHashTableRDD = sc.broadcast(demographicHashTable)
+        Logger.info("The demographic HashTable contains " + accum + " records.")
         
-        /*
-		Logger.info("Lets start to build geo features on " + trainDate.mkString(","))
-		val geoDataOneDay = sc.textFile(geoLoc + "/" + trainDate(0))
-		Logger.info("We have found " + geoDataOneDay.count() + " lines in day " + trainDate(0) + " .")
-		* */
+        val demographicHashTableRDD = sc.broadcast(demographicHashTable) // broadcast the hash table for fast generating user feature
 		
+        // Load the duid_geo.tsv at each date and use the zipcode to hash the demographics information
 		val userFeatureMap = trainDate.map{
             date => 
 			val geoDataOneDay = sc.textFile(geoLoc + "/" + date + "/duid_geo.tsv")		
@@ -116,11 +112,12 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
         println("featureMapFileName : " + featureMapFileName)
         
        
-        //save user geo demographic features as textfile
-        val demographicsDescription = sc.textFile(demogrphicsLoc + "/" + "demographics_description.txt")
-        val lenDescription = demographicsDescription.count.toInt
-        val demographicsDescriptionMap = ((0 until lenDescription) zip demographicsDescription.collect).toMap
+        //save user geo demographic features as textfile and load off-line feature descriptions
+        val demographicsDescription       = sc.textFile(demogrphicsLoc + "/" + "demographics_description.txt")
+        val lenDescription                = demographicsDescription.count.toInt
+        val demographicsDescriptionMap    = ((0 until lenDescription) zip demographicsDescription.collect).toMap
         val demographicsDescriptionMapRDD = sc.makeRDD(demographicsDescriptionMap.toList)
+        
         for (tt <- (0 until lenDescription))
         	println(tt + " -> " + demographicsDescriptionMap(tt))
         
