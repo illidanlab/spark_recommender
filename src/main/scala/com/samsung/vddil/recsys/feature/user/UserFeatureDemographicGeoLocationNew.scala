@@ -79,7 +79,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
         Logger.info("The demographic HashTable contains " + accum + " records.")
         
         val demographicHashTableRDD = sc.broadcast(demographicHashTable) // broadcast the hash table for fast generating user feature
-		val userIDMapRDD = sc.broadcast(jobInfo.jobStatus.userIdMap)
+		//val userIDMapRDD = sc.broadcast(jobInfo.jobStatus.userIdMap)
         
         // Load the duid_geo.tsv at each date and use the zipcode to hash the demographics information
 		val userFeatureMap = trainDate.map{
@@ -111,7 +111,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
         }.distinct
         
         val userFeatureMap2Sparse = userFeatureMap.map{
-            t => (userIDMapRDD.value(t._1),Vectors.sparse(t._2))
+            t => (jobInfo.jobStatus.userIdMap(t._1),Vectors.sparse(t._2))
         }
         
         
