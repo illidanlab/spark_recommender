@@ -98,7 +98,7 @@ object UserFeatureDemographicGeoLocationNew extends FeatureProcessingUnit {
 			    var duid    = fields(0)
 			    var zipcode = fields(5)		    
 			    //(jobInfo.jobStatus.userIdMap(duid),Vectors.sparse(demographicHashTableRDD.value(zipcode)))
-			    (jobInfo.jobStatus.userIdMap(duid),demographicHashTableRDD.value(zipcode))
+			    (duid,Vectors.sparse(demographicHashTableRDD.value(zipcode)))
 			}
 			userFeatureMapOneDay
         }.reduce{ (a,b) =>
