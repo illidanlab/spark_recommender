@@ -1,12 +1,14 @@
 package com.samsung.vddil.recsys.testing
 
 import scala.collection.mutable.HashMap
+import org.apache.spark.rdd.RDD
+import org.apache.hadoop.fs.Path
+import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.evaluation.RecJobMetric
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.utils.Logger
-import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.evaluation.RecJobMetricSE
 import com.samsung.vddil.recsys.evaluation.RecJobMetricHR
 import com.samsung.vddil.recsys.evaluation.RecJobMetricColdRecall
@@ -34,6 +36,29 @@ trait TestUnit {
      * Run tests on different metrics
      */
     def performTest(jobInfo: RecJob, model:ModelStruct):TestUnit.TestResults
+    
+    /**
+     * Returns the directory in which the results are to be stored.
+     */
+    def testDirectory(jobInfo: RecJob, model: ModelStruct):String = {
+        jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + 
+        		"/" + model.resourceStr + "/" + this.resourceIdentity
+    }
+    
+    /**
+     * Returns the directory in which the temporary resources related 
+     * 	    to tests are stored.
+     */
+    def testResourceDirectory(jobInfo: RecJob, model: ModelStruct):String = {
+        testDirectory(jobInfo, model) + "/resources" 
+    }
+    
+    /**
+     * Returns the metric result location for a specific model and this test.  
+     */
+    def testMetricFile(jobInfo: RecJob, model: ModelStruct, metric:RecJobMetric):String = {
+        testDirectory(jobInfo, model)  + "/Metric_" + metric.resourceIdentity 
+    }
 }
 
 /**
@@ -46,7 +71,7 @@ object TestUnit{
      * 
      * For example ["Precision", 0.4] and ["Recall", 0.4]
      */
-    type TestResults = HashMap[RecJobMetric, Map[String, Double]]  
+    type TestResults = HashMap[RecJobMetric, RecJobMetric.MetricResult]  
     
     /**
      * Perform test without cold start
@@ -80,67 +105,73 @@ case class TestUnitNoCold(
     val IdenPrefix = "Test_NoColdStart"
         
     def performTest(jobInfo: RecJob, model:ModelStruct):TestUnit.TestResults = {
+        Logger.info("Performing NoCold test on model: " + model.resourceStr)
+        
         
         //1. the test result to be returned. 
         val result:TestUnit.TestResults = new TestUnit.TestResults()
-        				
-        Logger.info("Performing NoCold test on model: " + model.resourceStr)
         
-        //2. 
-        //work directories 
-        val testDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + 
-        		"/" + model.resourceStr + "/" + this.resourceIdentity
-        //the directory in which the temporary resources related to tests are stored. 
-        val testResourceDir = testDir + "/resources"
+        //2. Set up directories. 
+        val testDir         = testDirectory(jobInfo, model) 
+        val testResourceDir = testResourceDirectory(jobInfo, model)
         		
         //3. A list of resources to be reused throughout the metrics
-        //squared error
-		var testHandlerRes:Option[RDD[(Int, Int, Double, Double)]] = None
-		//hit ranking
-		var hitTestHandlerRes:Option[RDD[HitSet]] = None
+		var testHandlerRes:Option[RDD[(Int, Int, Double, Double)]] = None   //squared error
+		var hitTestHandlerRes:Option[RDD[HitSet]] = None                    //hit ranking
 		
 		//4. Run each metric. 
 		metricList.map { metric =>
-	    		
-	    	metric match {
-	    		case metricSE:RecJobMetricSE => {
-	    		    //1 Generate necessary resources. 
-	    		    //The squared error (SE) requires the computation of numerical prediction. 
-	    			if (!testHandlerRes.isDefined){
-	    			    //Runs model on test data and return RDD of (user, item, actual label, predicted label) 
-	    			    testHandlerRes = Some(TestResourceLinearRegNotCold.generateResource(jobInfo, 
-    		                           testParams, model, testResourceDir))
-	    			}
-	    			
-	    			//2. Compute metric scores. 
-	    			val score = metricSE.run(testHandlerRes.get.map{x => (x._3, x._4)})
-	    			
-	    			//3. Save 
-	    			result(metricSE) = Map("SquaredError" -> score)
-
-    				Logger.info(s"Evaluated $model Not Coldstart $metric = $score")
-	    		}
-	    		
-	    		case metricHR:RecJobMetricHR => {
-	    		    //TODO: check if results are available, if so load it. 
-	    		    
-	    			//1 Generate necessary resources.
-	    			if (!hitTestHandlerRes.isDefined){
-	    			    hitTestHandlerRes = Some(TestResourceRegNotColdHit.generateResource(jobInfo, 
-			                     		  testParams, model, testResourceDir))
-	    			}
-	    			
-	    			val scores  = metricHR.run(hitTestHandlerRes.get)
-	    			result(metricHR) = Map("avgCombHR" -> scores._1, "avgTestHR" -> scores._2)
-	    			
-                    Logger.info(s"Evaluated $model Not Coldstart  $metric = $scores")
-	    		}
-	    		
-	    		case _ => Logger.warn(s"$metric not known metric")
-	    	}
+		    
+	        val metricFile:String = testMetricFile(jobInfo, model, metric)
+	        //see if we need to recompute the metric results. 
+	        if(jobInfo.outputResource(metricFile)){
+	            //recompute the metric. 
+		    	val computedMetricResult: RecJobMetric.MetricResult = metric match {
+		    	    
+		    		case metricSE:RecJobMetricSE => {	    
+		    		    //1 Generate necessary resources. 
+		    		    //The squared error (SE) requires the computation of numerical prediction. 
+		    			if (!testHandlerRes.isDefined){
+		    			    //Runs model on test data and return RDD of (user, item, actual label, predicted label) 
+		    			    testHandlerRes = Some(TestResourceLinearRegNotCold.generateResource(jobInfo, 
+	    		                           testParams, model, testResourceDir))
+		    			}
+		    			
+		    			//2. Compute metric scores. 
+		    			val score = metricSE.run(testHandlerRes.get.map{x => (x._3, x._4)})
+		    			Logger.info(s"Evaluated $model Not Coldstart $metric = $score")
+		    			
+		    			//3. Save 
+		    			Map("SquaredError" -> score)
+		    		}
+		    		
+		    		case metricHR:RecJobMetricHR => {
+		    			//1 Generate necessary resources.
+		    			if (!hitTestHandlerRes.isDefined){
+		    			    hitTestHandlerRes = Some(TestResourceRegNotColdHit.generateResource(jobInfo, 
+				                     		  testParams, model, testResourceDir))
+		    			}
+		    			
+		    			val scores  = metricHR.run(hitTestHandlerRes.get)
+		    			Logger.info(s"Evaluated $model Not Coldstart  $metric = $scores")
+		    			
+		    			Map("avgCombHR" -> scores._1, "avgTestHR" -> scores._2)                    
+		    		}
+		    		
+		    		case _ => 
+		    		    Logger.warn(s"$metric not known metric")
+		    		    RecJobMetric.emptyResult
+		    	}
+		    	//save the metric result file. 
+		    	RecJobMetric.saveMetricResult(metricFile, computedMetricResult)
+	        }
+	        //read metric result file.
+	        result(metric) = RecJobMetric.loadMetricResult(metricFile)
 		}
+        //5. Write summary file. 
         
-        //5. Save the results. 
+        
+        //6. Return the results. 
         result
     }
 }
@@ -153,36 +184,53 @@ case class TestUnitColdItem(
     val IdenPrefix = "Test_ColdItem"
     
     def performTest(jobInfo: RecJob, model:ModelStruct):TestUnit.TestResults = {
-        //the results to be returned. 
-        val result:TestUnit.TestResults = new TestUnit.TestResults()
-        
         Logger.info("Performing NoCold test on model: " + model.resourceStr)
         
-        val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + 
-        		"/" + model.resourceStr + "/" + this.resourceIdentity + "/resources"
+        //1. the results to be returned. 
+        val result:TestUnit.TestResults = new TestUnit.TestResults()
         
+        //2. Set up directories. 
+        val testDir         = testDirectory(jobInfo, model) 
+        val testResourceDir = testResourceDirectory(jobInfo, model)
+        
+        //3. Resource variables. 
         var coldItemTestResource:Option[RDD[(Int, (List[String], Int))]] = None
         
+        //4. Run each metric. 
         metricList.map {metric =>
-            metric match{
-                case metricRecall:RecJobMetricColdRecall => {
-                	
-                	if (!coldItemTestResource.isDefined) {
-			    		coldItemTestResource =
-			    				Some(TestResourceRegItemColdHit.generateResource(jobInfo,
-			    						testParams, model, testResourceDir))
-			    	}                	
-                	
-                	val scores = metricRecall.run(coldItemTestResource.get)
-                	result(metricRecall) = Map("ColdStartHitRate"->scores)
-                	
-                	Logger.info(s"Evaluated $model coldstart $metric = $scores")
-                }
-                
-                case _ => Logger.warn(s"$metric not known for cold item")
-            }
+            
+            val metricFile:String = testMetricFile(jobInfo, model, metric)
+            //see if we need to recompute the metric results. 
+	        if(jobInfo.outputResource(metricFile)){
+	            val computedMetricResult: RecJobMetric.MetricResult = metric match {
+	                case metricRecall:RecJobMetricColdRecall => {
+	                	
+	                	if (!coldItemTestResource.isDefined) {
+				    		coldItemTestResource =
+				    				Some(TestResourceRegItemColdHit.generateResource(jobInfo,
+				    						testParams, model, testResourceDir))
+				    	}                	
+	                	
+	                	val scores = metricRecall.run(coldItemTestResource.get)
+	                	Logger.info(s"Evaluated $model coldstart $metric = $scores")
+	                	
+	                	Map("ColdStartHitRate"->scores)
+	                }
+	                case _ => 
+	                    Logger.warn(s"$metric not known for cold item")
+	                    RecJobMetric.emptyResult
+	            }
+	            //save the metric result file. 
+		    	RecJobMetric.saveMetricResult(metricFile, computedMetricResult)
+	        }
+            //read metric result file.
+	        result(metric) = RecJobMetric.loadMetricResult(metricFile)
         }
         
+        //5. Write summary file.  
+        
+        
+        //6. Return the results.
         result
     }
 }

@@ -4,6 +4,9 @@ import scala.collection.mutable.HashMap
 import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.testing.HitSet
 import com.samsung.vddil.recsys.utils.Logger
+import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.Pipeline
+import org.apache.hadoop.fs.Path
 
 /**
  * Defines the type of metric to be used in evaluation
@@ -14,6 +17,54 @@ sealed trait RecJobMetric{
     
     /** Parameters of the metric */
     def metricParams: HashMap[String, String]
+    
+    /** An identity prefix*/
+    def IdenPrefix:String
+    
+    /**
+     * Generate an unique identity for metric. 
+     */
+    def resourceIdentity():String = {
+        IdenPrefix + "_" + HashString.generateHash(metricParams.toString)
+    }
+}
+
+object RecJobMetric{
+    type MetricResult = Map[String, Double]
+    
+    def emptyResult(): MetricResult = {
+        Map[String, Double]()
+    }
+    
+    /**
+     * Serialize the metric to a specific file. 
+     */
+    private[recsys] def saveMetricResult(
+            metricFile:String, 
+            computedMetricResult:RecJobMetric.MetricResult) = {
+        
+        Logger.info("Save metric file: "+ metricFile)
+		val out = Pipeline.instance.get.fs.create(new Path(metricFile))
+		val ser2 = Pipeline.instance.get.kryo.serializeStream(out).writeObject(computedMetricResult)
+        ser2.close()
+        out.close()
+    }
+    
+    /**
+     * Deserialize the metric from a specified file. 
+     */
+    private[recsys] def loadMetricResult(
+            	metricFile:String
+            ):RecJobMetric.MetricResult = {
+        
+        Logger.info("Load metric file: "+ metricFile)
+	    val in = Pipeline.instance.get.fs.open(new Path(metricFile))
+        val metricResult = Pipeline.instance.get.kryo.deserializeStream(in).
+            		readObject[RecJobMetric.MetricResult]()
+        in.close()
+        
+        metricResult
+    }
 }
 
 /** Generic metric type of squared error */
@@ -24,6 +75,10 @@ trait RecJobMetricSE extends RecJobMetric {
 /** Metric type of hit rate */
 case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, String])
     extends RecJobMetric {
+    
+    
+    val IdenPrefix = "MetricHitRate"
+    
 	//will calculate average hit rate across passed user hits for all items
     // and new items 
     def run(hitSets:RDD[HitSet]):(Double, Double) = {
@@ -61,6 +116,9 @@ case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, Stri
 /** metric type of recall for cold items recommendation**/
 case class RecJobMetricColdRecall(metricName:String, metricParams: HashMap[String,
   String]) extends RecJobMetric {
+    
+  val IdenPrefix = "MetricColdRecall" 
+      
   /**
    * @param topNPredColdItems RDD of topN predicted set and size of 
    * intersection with cold items
@@ -86,6 +144,9 @@ case class RecJobMetricColdRecall(metricName:String, metricParams: HashMap[Strin
 /** Metric type of mean squared error */
 case class RecJobMetricMSE(metricName: String, metricParams: HashMap[String, String])
     extends RecJobMetricSE {
+    
+    val IdenPrefix = "MetricMSE"
+    
 	def run(labelNPred: RDD[(Double, Double)]): Double = {
 		//NOTE: can be further extended to use metricName and metricParams like test and model
 		ContinuousPrediction.computeMSE(labelNPred)
@@ -95,6 +156,9 @@ case class RecJobMetricMSE(metricName: String, metricParams: HashMap[String, Str
 /** Metric type of root mean squared error */
 case class RecJobMetricRMSE(metricName: String, metricParams: HashMap[String, String])
     extends RecJobMetricSE {
+    
+    val IdenPrefix = "MetricRMSE"
+    
     def run(labelNPred: RDD[(Double, Double)]): Double = {
         //NOTE: can be further extended to use metricName and metricParams like test and model
         ContinuousPrediction.computeRMSE(labelNPred)
