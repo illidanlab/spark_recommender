@@ -234,7 +234,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     
     
     def writeSummaryFile(){
-        val summaryFile = new Path(resourceLoc(RecJob.ResourceLoc_Workspace) + "/Summary.txt")
+        val summaryFile = new Path(resourceLoc(RecJob.ResourceLoc_Workspace) + "/Summary_" + this.jobName + ".txt")
         
         //always overwrite existing summary file. 
         if (fs.exists(summaryFile)) fs.delete(summaryFile, true)
