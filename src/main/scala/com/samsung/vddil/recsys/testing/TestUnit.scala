@@ -134,12 +134,12 @@ object TestUnit{
         writer.write("Model:                       " + testUnit.model.resourceStr); writer.newLine()
         writer.write("Model Param:                 " + testUnit.model.modelParams.toString); writer.newLine()
         
-        
+        writer.write("Metric List:                 "); writer.newLine()
         for((metric, metricResult )<- results){
             writer.write("  Metric Resource Identity: " + metric.resourceIdentity); writer.newLine()
             writer.write("  Metric Parameters:        " + metric.metricParams.toString); writer.newLine()
             for((resultStr, resultVal) <- metricResult) {
-                writer.write("    [" + resultStr + "]" + resultVal.formatted("%.4g")); writer.newLine()
+                writer.write("    [" + resultStr + "] " + resultVal.formatted("%.4g")); writer.newLine()
             }
         }
         
