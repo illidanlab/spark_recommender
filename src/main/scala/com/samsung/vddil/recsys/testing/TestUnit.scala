@@ -12,6 +12,11 @@ import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.evaluation.RecJobMetricSE
 import com.samsung.vddil.recsys.evaluation.RecJobMetricHR
 import com.samsung.vddil.recsys.evaluation.RecJobMetricColdRecall
+import org.apache.hadoop.fs.FSDataOutputStream
+import org.apache.hadoop.fs.FileSystem
+import scala.io.Source
+import java.io.BufferedWriter
+import java.io.OutputStreamWriter
 
 /**
  * The test unit, each test should implement this trait and create a factory method 
@@ -23,6 +28,10 @@ trait TestUnit {
     
     def metricList: Array[RecJobMetric]
     
+    def model:ModelStruct
+    
+    def jobInfo:RecJob
+    
     /** A prefix string */
     def IdenPrefix:String
     
@@ -32,32 +41,40 @@ trait TestUnit {
         		HashString.generateHash(testParams.toString)
     }
     
-    /**
-     * Run tests on different metrics
-     */
-    def performTest(jobInfo: RecJob, model:ModelStruct):TestUnit.TestResults
+    /** Run tests on different metrics */
+    def performTest():TestUnit.TestResults
     
-    /**
-     * Returns the directory in which the results are to be stored.
-     */
-    def testDirectory(jobInfo: RecJob, model: ModelStruct):String = {
+    /** Returns the directory in which the results are to be stored. */
+    def testDirectory():String = {
         jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + 
         		"/" + model.resourceStr + "/" + this.resourceIdentity
     }
     
-    /**
-     * Returns the directory in which the temporary resources related 
-     * 	    to tests are stored.
-     */
-    def testResourceDirectory(jobInfo: RecJob, model: ModelStruct):String = {
-        testDirectory(jobInfo, model) + "/resources" 
+    /** Returns the directory in which the temporary resources related to tests are stored. */
+    def testResourceDirectory():String = {
+        testDirectory + "/resources" 
     }
     
-    /**
-     * Returns the metric result location for a specific model and this test.  
-     */
-    def testMetricFile(jobInfo: RecJob, model: ModelStruct, metric:RecJobMetric):String = {
-        testDirectory(jobInfo, model)  + "/Metric_" + metric.resourceIdentity 
+    /** Returns the metric result location for a specific model and this test. */
+    def testMetricFile(metric:RecJobMetric):String = {
+        testDirectory  + "/Metric_" + metric.resourceIdentity 
+    }
+    
+    /** Write plain text summary file*/
+    def writeSummaryFile(results:TestUnit.TestResults){
+        
+    	val summaryFileStr = 
+        	  jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + 
+        		"/" + model.resourceStr + "/Summary_" + this.resourceIdentity
+        		
+        val summaryFile = new Path(summaryFileStr)
+        
+        //remove the previous one if found. 
+        //may consider rename it later on. 
+        val fs = Pipeline.instance.get.fs
+        if (fs.exists(summaryFile)) fs.delete(summaryFile, true)
+        
+        TestUnit.writeSummaryFile(fs, summaryFile, results, this)
     }
 }
 
@@ -81,7 +98,7 @@ object TestUnit{
             testParams:HashMap[String, String],  
             metricList: Array[RecJobMetric], 
             model:ModelStruct):TestResults = {
-        new TestUnitNoCold(testParams, metricList).performTest(jobInfo, model)
+        new TestUnitNoCold(testParams, metricList,jobInfo, model).performTest()
     }
     
     /**
@@ -92,19 +109,58 @@ object TestUnit{
             testParams:HashMap[String, String],  
             metricList: Array[RecJobMetric], 
             model:ModelStruct):TestResults = {
-        new TestUnitColdItem(testParams, metricList).performTest(jobInfo, model)
+        new TestUnitColdItem(testParams, metricList,jobInfo, model).performTest()
+    }
+    
+    /**
+     * Writes the plain text summary file to target file. 
+     * 
+     * This method assumes the summaryFile does not exist. 
+     */
+    def writeSummaryFile(
+            fs:FileSystem, 
+            summaryFile:Path, 
+            results:TestResults, 
+            testUnit:TestUnit){
+        
+        val out = fs.create(summaryFile);
+        val writer = new BufferedWriter(new OutputStreamWriter(out))
+        
+        //write 
+        writer.write("===Test Unit Summary START==="); writer.newLine()
+        writer.write("Test Unit Class:             " + testUnit.getClass().getName()); writer.newLine()
+        writer.write("Test Unit Resource Identity: " + testUnit.resourceIdentity); writer.newLine()
+        writer.write("Test Unit Parameters:        " + testUnit.testParams.toString); writer.newLine()
+        writer.write("Model:                       " + testUnit.model.resourceStr); writer.newLine()
+        writer.write("Model Param:                 " + testUnit.model.modelParams.toString); writer.newLine()
+        
+        
+        for((metric, metricResult )<- results){
+            writer.write("  Metric Resource Identity: " + metric.resourceIdentity); writer.newLine()
+            writer.write("  Metric Parameters:        " + metric.metricParams.toString); writer.newLine()
+            for((resultStr, resultVal) <- metricResult) {
+                writer.write("    [" + resultStr + "]" + resultVal.formatted("%.4g")); writer.newLine()
+            }
+        }
+        
+        writer.write("===Test Unit Summary END==="); writer.newLine()
+        writer.close()
+        
+        out.close()
     }
 }
 
 
-case class TestUnitNoCold(
+case class TestUnitNoCold private[testing] (
         	testParams:HashMap[String, String],  
-        	metricList: Array[RecJobMetric]
+        	metricList: Array[RecJobMetric],
+        	jobInfo: RecJob,
+        	model:ModelStruct
         ) extends TestUnit{
      
     val IdenPrefix = "Test_NoColdStart"
         
-    def performTest(jobInfo: RecJob, model:ModelStruct):TestUnit.TestResults = {
+    def performTest():TestUnit.TestResults = {
         Logger.info("Performing NoCold test on model: " + model.resourceStr)
         
         
@@ -112,8 +168,8 @@ case class TestUnitNoCold(
         val result:TestUnit.TestResults = new TestUnit.TestResults()
         
         //2. Set up directories. 
-        val testDir         = testDirectory(jobInfo, model) 
-        val testResourceDir = testResourceDirectory(jobInfo, model)
+        val testDir         = testDirectory
+        val testResourceDir = testResourceDirectory
         		
         //3. A list of resources to be reused throughout the metrics
 		var testHandlerRes:Option[RDD[(Int, Int, Double, Double)]] = None   //squared error
@@ -122,7 +178,7 @@ case class TestUnitNoCold(
 		//4. Run each metric. 
 		metricList.map { metric =>
 		    
-	        val metricFile:String = testMetricFile(jobInfo, model, metric)
+	        val metricFile:String = testMetricFile(metric)
 	        //see if we need to recompute the metric results. 
 	        if(jobInfo.outputResource(metricFile)){
 	            //recompute the metric. 
@@ -169,29 +225,31 @@ case class TestUnitNoCold(
 	        result(metric) = RecJobMetric.loadMetricResult(metricFile)
 		}
         //5. Write summary file. 
-        
+        writeSummaryFile(result)
         
         //6. Return the results. 
         result
     }
 }
 
-case class TestUnitColdItem(
+case class TestUnitColdItem private[testing](
         	testParams:HashMap[String, String],  
-        	metricList: Array[RecJobMetric]
+        	metricList: Array[RecJobMetric],
+        	jobInfo: RecJob,
+        	model:ModelStruct
         ) extends TestUnit{
     
     val IdenPrefix = "Test_ColdItem"
     
-    def performTest(jobInfo: RecJob, model:ModelStruct):TestUnit.TestResults = {
+    def performTest():TestUnit.TestResults = {
         Logger.info("Performing NoCold test on model: " + model.resourceStr)
         
         //1. the results to be returned. 
         val result:TestUnit.TestResults = new TestUnit.TestResults()
         
         //2. Set up directories. 
-        val testDir         = testDirectory(jobInfo, model) 
-        val testResourceDir = testResourceDirectory(jobInfo, model)
+        val testDir         = testDirectory
+        val testResourceDir = testResourceDirectory
         
         //3. Resource variables. 
         var coldItemTestResource:Option[RDD[(Int, (List[String], Int))]] = None
@@ -199,7 +257,7 @@ case class TestUnitColdItem(
         //4. Run each metric. 
         metricList.map {metric =>
             
-            val metricFile:String = testMetricFile(jobInfo, model, metric)
+            val metricFile:String = testMetricFile(metric)
             //see if we need to recompute the metric results. 
 	        if(jobInfo.outputResource(metricFile)){
 	            val computedMetricResult: RecJobMetric.MetricResult = metric match {
@@ -228,7 +286,7 @@ case class TestUnitColdItem(
         }
         
         //5. Write summary file.  
-        
+        writeSummaryFile(result)
         
         //6. Return the results.
         result
