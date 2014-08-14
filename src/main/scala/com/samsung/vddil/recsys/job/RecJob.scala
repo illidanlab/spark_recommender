@@ -30,6 +30,7 @@ object RecJob{
 	val ResourceLoc_JobData    = "jobData"
 	val ResourceLoc_JobModel   = "jobModel"
 	val ResourceLoc_JobTest    = "jobTest"
+	val ResourceLoc_JobDir     = "job"
 	    
 	val ResourceLocAddon_GeoLoc = "geoLocation"
 	    
@@ -234,7 +235,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     
     
     def writeSummaryFile(){
-        val summaryFile = new Path(resourceLoc(RecJob.ResourceLoc_Workspace) + "/Summary_" + this.jobName + ".txt")
+        val summaryFile = new Path(resourceLoc(RecJob.ResourceLoc_JobDir) + "/Summary.txt")
         
         //always overwrite existing summary file. 
         if (fs.exists(summaryFile)) fs.delete(summaryFile, true)
@@ -468,10 +469,12 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        if ((nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).size > 0){ 
 	       resourceLoc(RecJob.ResourceLoc_Workspace)  = (nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).text
 	       //derivative
-	       resourceLoc(RecJob.ResourceLoc_JobData)    = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/data"
-	       resourceLoc(RecJob.ResourceLoc_JobFeature) = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/feature"
-	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/model"
-	       resourceLoc(RecJob.ResourceLoc_JobTest)    = resourceLoc(RecJob.ResourceLoc_Workspace) + "/"  + jobName + "/test"
+	       resourceLoc(RecJob.ResourceLoc_JobDir)     = resourceLoc(RecJob.ResourceLoc_Workspace) + "/"  + jobName
+	       resourceLoc(RecJob.ResourceLoc_JobData)    = resourceLoc(RecJob.ResourceLoc_JobDir) + "/data"
+	       resourceLoc(RecJob.ResourceLoc_JobFeature) = resourceLoc(RecJob.ResourceLoc_JobDir) + "/feature"
+	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_JobDir) + "/model"
+	       resourceLoc(RecJob.ResourceLoc_JobTest)    = resourceLoc(RecJob.ResourceLoc_JobDir) + "/test"
+	       
        }
        
        Logger.info("Resource WATCHTIME:   " + resourceLoc(RecJob.ResourceLoc_WatchTime))
