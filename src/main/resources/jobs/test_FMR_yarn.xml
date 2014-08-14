@@ -53,8 +53,8 @@
         <name>fm_l2_reg</name>
         <param>
           <regParam>1.5</regParam>
-          <minUFCoverage>0.8</minUFCoverage>
-          <minIFCoverage>0.8</minIFCoverage>
+          <minUFCoverage>0.1</minUFCoverage>
+          <minIFCoverage>0.1</minIFCoverage>
           <numIterations>2</numIterations>
           <stepSize>0.0001</stepSize>
           <latentFactor>20</latentFactor>
@@ -65,8 +65,8 @@
         <name>fm_l2_reg</name>
         <param>
           <regParam>1.5</regParam>
-          <minUFCoverage>0.8</minUFCoverage>
-          <minIFCoverage>0.8</minIFCoverage>
+          <minUFCoverage>0.1</minUFCoverage>
+          <minIFCoverage>0.1</minIFCoverage>
           <numIterations>2</numIterations>
           <stepSize>0.0001</stepSize>
           <latentFactor>10</latentFactor>
