@@ -13,6 +13,9 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.feature.{RecJobFeature, RecJobItemFeature, RecJobUserFeature, RecJobFactFeature}
 import com.samsung.vddil.recsys.evaluation._
+import org.apache.hadoop.fs.Path
+import java.io.BufferedWriter
+import java.io.OutputStreamWriter
 
 /**
  * The constant variables of recommendation job.
@@ -192,6 +195,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     		        //TODO: evaluate classification models. 
     	 	}
         }
+    	
+    	Logger.info("Writing summary file")
+    	writeSummaryFile()
     }
     
     /**
@@ -225,6 +231,135 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     def generateXML():Option[Elem] = {
        None
     }
+    
+    
+    def writeSummaryFile(){
+        val summaryFile = new Path(resourceLoc(RecJob.ResourceLoc_Workspace) + "/Summary.txt")
+        
+        //always overwrite existing summary file. 
+        if (fs.exists(summaryFile)) fs.delete(summaryFile, true)
+        
+        val out = fs.create(summaryFile)
+        val writer = new BufferedWriter(new OutputStreamWriter(out))
+        
+        var headnum_lv1 = 0
+        var headnum_lv2 = 0
+        
+        def writeline(str:String) = {
+        		writer.write(str); writer.newLine() }
+        def writehead(str:String, level:Int){
+            if(level == 1){
+                headnum_lv1 += 1
+                headnum_lv2 = 0
+                writer.write(headnum_lv1 + ". ");
+            	writer.write(str); writer.newLine()
+            	writer.write("======="); writer.newLine()
+            	writer.newLine()
+            }else if(level == 2){
+                headnum_lv2 += 1
+                writer.write(headnum_lv1 + "." + headnum_lv2 + ". ")
+            	writer.write(str); writer.newLine()
+            	writer.write("-------"); writer.newLine()
+            }else if(level ==3){
+                writer.write("###" + str); writer.newLine()
+            }
+        }
+        
+        
+        // start writing files
+        writeline("===RecJob Summary START===")
+        writer.newLine()
+        
+        writehead("Job Properties", 1)
+        
+        writeline("Job name:"        + this.jobName)
+        writeline("Job description:" + this.jobDesc)
+        writeline("Train Dates: " + this.trainDates.mkString("[", ",", "]"))
+        writeline("  User number: " + this.jobStatus.users.size)
+        writeline("  Item number: " + this.jobStatus.items.size)
+        writeline("Test Dates: "  + this.testDates.mkString("[", ",", "]"))
+        writer.newLine()
+        
+        /// features
+        writehead("Features", 1)
+        
+        writehead("User Features", 2)
+        for ((featureId, feature) <- this.jobStatus.resourceLocation_UserFeature){
+            writeline("  Feature Identity:   " + feature.resrouceStr)
+            writeline("  Feature Parameters: " + feature.featureParams.toString)
+            writeline("  Feature File:       " + feature.featureFileName)
+            writer.newLine()
+        }
+        writer.newLine()
+        writehead("Item Features", 2)
+        for ((featureId, feature) <- this.jobStatus.resourceLocation_ItemFeature){
+            writeline("  Feature Identity:   " + feature.resrouceStr)
+            writeline("  Feature Parameters: " + feature.featureParams.toString)
+            writeline("  Feature File:       " + feature.featureFileName)
+            writer.newLine()
+        }
+        writer.newLine()
+        
+        /// models 
+        writehead("Models", 1)
+        
+        writehead("Regression Models", 2)
+        for ((modelId, model) <- this.jobStatus.resourceLocation_RegressModel){
+            writeline("  Model Name:     " + model.modelName)
+            writeline("  Model Identity: " + modelId)
+            writeline("  Model Param:    " + model.modelParams.toString)
+            if (model.isInstanceOf[SerializableModel[_]])
+            	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
+            writer.newLine()
+        }
+        writer.newLine()
+        writehead("Classification Models", 2)
+        for ((modelId, model) <- this.jobStatus.resourceLocation_ClassifyModel){
+            writeline("  Model Name:     " + model.modelName)
+            writeline("  Model Identity: " + modelId)
+            writeline("  Model Param:    " + model.modelParams.toString)
+            if (model.isInstanceOf[SerializableModel[_]])
+            	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
+            writer.newLine()
+        }
+        writer.newLine()
+        
+        /// tests
+        writehead("Tests", 1)
+        
+        for ((model, testList) <- this.jobStatus.completedTests){
+            writehead("Model: " + model.resourceStr, 2)
+            
+            writeline("  Model Name:     " + model.modelName)
+            writeline("  Model Param:    " + model.modelParams.toString)
+            writeline("  Model Test List: ")
+            
+            for ((testUnit, results) <- testList){
+                writeline("    Test Unit Class:      " + testUnit.getClass().getName())
+                writeline("    Test Unit Identity:   " + testUnit.resourceIdentity)
+                writeline("    Test Unit Parameters: " + testUnit.testParams.toString)
+                
+                writeline("    Test Metric List: ")
+                for((metric, metricResult )<- results){
+		            writer.write("      Metric Resource Identity: " + metric.resourceIdentity); writer.newLine()
+		            writer.write("      Metric Parameters:        " + metric.metricParams.toString); writer.newLine()
+		            for((resultStr, resultVal) <- metricResult) {
+		                writer.write("        [" + resultStr + "] " + resultVal.formatted("%.4g")); writer.newLine()
+		            }
+		        }
+            }
+            
+            writer.newLine()
+        }
+        writer.newLine()
+        
+        writeline("===RecJob Summary END===")
+
+        //clean
+        writer.close()
+        out.close()
+    }
+    
     
     /**
      * Creates an instance of SparkContext

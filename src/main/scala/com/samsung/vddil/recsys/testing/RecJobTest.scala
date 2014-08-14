@@ -20,20 +20,26 @@ sealed trait RecJobTest {
     def metricList: Array[RecJobMetric]
     
     /**
-     * Runs model on test data and returns results in the form 
-     * of (user, item, actual label, predicted label)
-     * 
-     * @return RDD of (user, item, actual label, predicted label)
+     * Runs model on test data and stores results in jobStatus
      */
-	def run(jobInfo: RecJob, model:ModelStruct):TestUnit.TestResults = {
-        this match {
-        	case RecJobTestNoCold(testName, testParams, metricList) => 
-            	TestUnit.testNoCold(jobInfo, testParams, metricList, model)
-        	case RecJobTestColdItem(testName, testParams, metricList) => 
-        	    TestUnit.testColdItem(jobInfo, testParams, metricList, model)
-        	case _ => 
-        	    Logger.error("Test type not supported")
-        	    new TestUnit.TestResults()
+	def run(jobInfo: RecJob, model:ModelStruct) = {
+        val (testUnit, testReuslts) =
+	        this match {
+	        	case RecJobTestNoCold(testName, testParams, metricList) => 
+	            	TestUnit.testNoCold(jobInfo, testParams, metricList, model)
+	        	case RecJobTestColdItem(testName, testParams, metricList) => 
+	        	    TestUnit.testColdItem(jobInfo, testParams, metricList, model)
+	        	case _ => 
+	        	    Logger.error("Test type not supported")
+	        	    (null, new TestUnit.TestResults())
+	        }
+        
+        if (!jobInfo.jobStatus.completedTests.isDefinedAt(model))
+            jobInfo.jobStatus.completedTests(model) = new HashMap()
+        val testMap = jobInfo.jobStatus.completedTests(model)
+        
+        if (testUnit != null){
+        	testMap(testUnit) = testReuslts
         }
     }
 }

@@ -97,8 +97,9 @@ object TestUnit{
             jobInfo:RecJob, 
             testParams:HashMap[String, String],  
             metricList: Array[RecJobMetric], 
-            model:ModelStruct):TestResults = {
-        new TestUnitNoCold(testParams, metricList,jobInfo, model).performTest()
+            model:ModelStruct):(TestUnit, TestResults) = {
+        val test = new TestUnitNoCold(testParams, metricList,jobInfo, model)
+        (test, test.performTest())
     }
     
     /**
@@ -108,8 +109,9 @@ object TestUnit{
             jobInfo:RecJob, 
             testParams:HashMap[String, String],  
             metricList: Array[RecJobMetric], 
-            model:ModelStruct):TestResults = {
-        new TestUnitColdItem(testParams, metricList,jobInfo, model).performTest()
+            model:ModelStruct):(TestUnit, TestResults) = {
+        val test = new TestUnitColdItem(testParams, metricList,jobInfo, model) 
+        (test, test.performTest())
     }
     
     /**

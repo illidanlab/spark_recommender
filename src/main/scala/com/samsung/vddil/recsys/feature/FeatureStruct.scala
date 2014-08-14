@@ -10,6 +10,7 @@ trait FeatureStruct {
 	def resrouceStr:String
 	def featureFileName:String
 	def featureMapFileName:String
+	def featureParams:HashMap[String, String]
 }
 
 case class UserFeatureStruct(

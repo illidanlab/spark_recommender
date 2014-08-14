@@ -76,6 +76,9 @@ trait SerializableModel [M <: Serializable ] extends ModelStruct{
  *  applyItemFeature, where the item feature vector is enclosed.  
  */
 trait PartializableModel extends ModelStruct{
+    
+    def modelFileName:String
+    
     /**
      * Apply the item feature first to form a partial model.  
      * 
@@ -109,7 +112,7 @@ case class GeneralizedLinearModelStruct(
 		    var modelName:String, 
 		    var resourceStr:String, 
 		    override var learnDataResourceStr:String, 
-		    var modelFileName:String,
+		    override var modelFileName:String,
 		    var modelParams:HashMap[String, String] = new HashMap(), 
 		    override var model:GeneralizedLinearModel
 	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) 
@@ -142,7 +145,7 @@ case class CustomizedModelStruct[M >: Null <: CustomizedModel](
         	var modelName:String, 
         	var resourceStr:String, 
         	override var learnDataResourceStr:String, 
-        	var modelFileName:String,
+        	override var modelFileName:String,
 			var modelParams:HashMap[String, String] = new HashMap(), 
 			override var model:M
         )(implicit val ev: ClassTag[M]) extends SerializableModel[M] with PartializableModel{
