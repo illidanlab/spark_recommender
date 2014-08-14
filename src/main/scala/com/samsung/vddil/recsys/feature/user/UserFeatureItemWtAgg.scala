@@ -126,7 +126,7 @@ trait UserFeatureItemWtAgg extends Serializable {
     
     // 4. Generate and return a FeatureResource that includes all resources.
     val featureStruct:UserFeatureStruct = 
-          	new UserFeatureStruct(idenPrefix, resourceIden, featureFilePath, itemFeatureMapFile.get)
+          	new UserFeatureStruct(idenPrefix, resourceIden, featureFilePath, itemFeatureMapFile.get, featureParams)
     val resourceMap:HashMap[String, Any] = new HashMap()
 		resourceMap(FeatureResource.ResourceStr_UserFeature) = featureStruct
 
