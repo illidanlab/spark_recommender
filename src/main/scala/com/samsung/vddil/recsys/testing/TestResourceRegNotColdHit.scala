@@ -125,8 +125,7 @@ object TestResourceRegNotColdHit{
     Logger.info("Preparing item features...")
     if (jobInfo.outputResource(itemFeatObjFile)) {
       //item features file don't exist, we generate and save
-      val iFRDD = getOrderedFeatures(trainItems, itemFeatureOrder, 
-                    jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+      val iFRDD = getOrderedFeatures(trainItems, itemFeatureOrder, sc)
       iFRDD.saveAsObjectFile(itemFeatObjFile)
     } 
     val itemFeaturesRDD:RDD[(Int, Vector)] =  sc.objectFile[(Int, Vector)](itemFeatObjFile)                    
@@ -135,8 +134,7 @@ object TestResourceRegNotColdHit{
     Logger.info("Preparing user features...")
     if (jobInfo.outputResource(userFeatObjFile)) {
       //item features file don't exist, we generate and save
-      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
-                    jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, sc)
       uFRDD.saveAsObjectFile(userFeatObjFile)
     }  
     val userFeaturesRDD:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)                    

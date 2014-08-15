@@ -233,7 +233,10 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
         }
         
         val featureStruct:ItemFeatureStruct = 
-          	new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName, featureParams)
+          	new ItemFeatureStruct(
+          	        IdenPrefix, resourceIden, featureFileName, 
+          	        featureMapFileName, featureParams, ItemFeatureGenre)
+        
         // 4. Generate and return a FeatureResource that includes all resources.  
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct

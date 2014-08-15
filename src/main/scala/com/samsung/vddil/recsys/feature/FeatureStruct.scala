@@ -1,6 +1,7 @@
 package com.samsung.vddil.recsys.feature
 
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
 
 /**
  * This data structure stores the information of feature
@@ -27,6 +28,7 @@ case class ItemFeatureStruct(
 				val resrouceStr:String,
 				val featureFileName:String, 
 				val featureMapFileName:String,
-				val featureParams:HashMap[String, String]
+				val featureParams:HashMap[String, String],
+				val extractor:ItemFeatureExtractor
 			) extends FeatureStruct{
 }

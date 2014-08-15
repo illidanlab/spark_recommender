@@ -13,6 +13,7 @@ import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 
 object TestResourceRegItemColdHit{
   
@@ -84,7 +85,7 @@ object TestResourceRegItemColdHit{
     val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
                                         .userFeatureOrder
     val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                        .itemFeatureOrder
+                                        .itemFeatureOrder.map{feature => feature.asInstanceOf[ItemFeatureStruct]}
       
     //get cold item features
     Logger.info("Preparing item features..")
@@ -159,8 +160,7 @@ object TestResourceRegItemColdHit{
     //get user features
     Logger.info("Preparing user features...")
     if (jobInfo.outputResource(userFeatObjFile)){
-      val userFeatures:RDD[(Int, Vector)] = getOrderedFeatures(coldItemUsers, userFeatureOrder, 
-        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      val userFeatures:RDD[(Int, Vector)] = getOrderedFeatures(coldItemUsers, userFeatureOrder, sc)
       userFeatures.saveAsObjectFile(userFeatObjFile)
     }
     val userFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)

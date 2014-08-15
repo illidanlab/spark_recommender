@@ -15,6 +15,7 @@ import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
 import org.apache.spark.mllib.regression.LabeledPoint
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import org.apache.spark.RangePartitioner 
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 
 /**
  * The testing package includes a set of test units. Each test unit 
@@ -82,7 +83,7 @@ package object testing {
    * @param featureSources
    */
   def getColdItemFeatures(items:Set[String], jobInfo:RecJob,
-    featureOrder:List[String], dates:List[String]
+    featureOrder:List[ItemFeatureStruct], dates:List[String]
     ):RDD[(String, Vector)] = {
     
     //get feature resource location map
@@ -91,11 +92,13 @@ package object testing {
     //get spark context
     val sc = jobInfo.sc
 
-    val itemFeatures:List[RDD[(String, Vector)]] = featureOrder.map{featureResStr =>
+    val itemFeatures:List[RDD[(String, Vector)]] = featureOrder.map{feature =>
       val itemFeatureExtractor:ItemFeatureExtractor =
-        ItemFeatureHandler.revItemFeatureMap(featureResStr)
+           feature.extractor
+        
       val featMapFileName:String =
-        featureResourceMap(featureResStr).featureMapFileName
+           featureResourceMap(feature.resrouceStr).featureMapFileName
+        
       val featParams = itemFeatureExtractor.trFeatureParams
       val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)
       itemFeatureExtractor.extractFeature(items, featureSources, featParams,
@@ -128,22 +131,22 @@ package object testing {
      */
 
     //get features of user or item
-    def getOrderedFeatures(idSet: RDD[Int], featureOrder: List[String], 
-    		                    featureResourceMap: HashMap[String, FeatureStruct],
+    def getOrderedFeatures(idSet: RDD[Int], featureOrder: List[FeatureStruct], 
     		                    sc:SparkContext, isPartition:Boolean = false): RDD[(Int, Vector)] = {
       
       //create parallel RDDs of ids to be used in join
       val idRDDs = idSet.map((_,1))
 
     	//initialize list of RDD of format (id,features)
-      val headFeatures = sc.objectFile[(Int, Vector)](
-                          featureResourceMap(featureOrder.head).featureFileName) 
+      val headFeatures = sc.objectFile[(Int, Vector)](featureOrder.head.featureFileName)
+      
       Logger.info("Starting partitioning features...") 
       val partedFeatures = if(isPartition) {
                             headFeatures.partitionBy(new
                               RangePartitioner(Pipeline.getPartitionNum,
                                                 idRDDs)) 
                            } else headFeatures
+                           
       Logger.info("Features partitioned successfully, joining features...")
       var featureJoin = partedFeatures.join(idRDDs).map{x => 
                                                       val id:Int = x._1
@@ -153,7 +156,7 @@ package object testing {
       //add remaining features
       for (usedFeature <- featureOrder.tail) {
         featureJoin  = featureJoin.join(
-                          sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName)
+                          sc.objectFile[(Int, Vector)](usedFeature.featureFileName)
                         ).map{x => // (ID, (prevFeatureVector, newFeatureVector))
                             val ID = x._1
                             val feature:Vector = x._2._1 ++ x._2._2

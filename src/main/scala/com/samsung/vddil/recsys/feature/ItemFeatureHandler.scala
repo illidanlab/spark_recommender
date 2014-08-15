@@ -19,8 +19,8 @@ object ItemFeatureHandler extends FeatureHandler{
 	val IFSynopsisTFIDF:String = "syn_tfidf"
 	val IFGenre:String = "genre"
 
-  //this will contain reverse mapping from resource string to Feature object 
-  val revItemFeatureMap:MMap[String, ItemFeatureExtractor] = MMap.empty
+    //this will contain reverse mapping from resource string to Feature object 
+    //val revItemFeatureMap:MMap[String, ItemFeatureExtractor] = MMap.empty
 
 	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean = {
 		Logger.logger.info("Processing item feature [%s:%s]".format(featureName, featureParams))
@@ -42,11 +42,11 @@ object ItemFeatureHandler extends FeatureHandler{
 		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
 		   }
 
-       featureName match{
-		    case IFSynopsisTFIDF => revItemFeatureMap(resource.resourceIden) = ItemFeatureSynopsisTFIDF
-		    case IFGenre =>         revItemFeatureMap(resource.resourceIden) = ItemFeatureGenre
-		    case _ => Logger.logger.warn("Unknown item feature type for reverse feature map [%s]".format(featureName))
-		  }
+//       featureName match{
+//		    case IFSynopsisTFIDF => revItemFeatureMap(resource.resourceIden) = ItemFeatureSynopsisTFIDF
+//		    case IFGenre =>         revItemFeatureMap(resource.resourceIden) = ItemFeatureGenre
+//		    case _ => Logger.logger.warn("Unknown item feature type for reverse feature map [%s]".format(featureName))
+//		  }
 
 		}
 		

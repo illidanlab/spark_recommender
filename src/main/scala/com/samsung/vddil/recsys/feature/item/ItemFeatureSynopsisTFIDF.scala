@@ -252,7 +252,8 @@ ItemFeatureExtractor {
     }
     
     val featureStruct:ItemFeatureStruct = 
-        new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName, featureParams)
+        new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, 
+                featureMapFileName, featureParams, ItemFeatureSynopsisTFIDF)
 
     // 4. Generate and return a FeatureResource that includes all resources.  
 		val resourceMap:HashMap[String, Any] = new HashMap()
