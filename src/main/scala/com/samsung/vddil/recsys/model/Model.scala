@@ -30,14 +30,33 @@ import com.samsung.vddil.recsys.linalg.Vector
  * @param modelParams the parameters of model
  */
 trait ModelStruct extends Serializable{
-	var modelName:String //IdenPrefix 
-	var resourceStr:String //or resourceIden
+    
+    /** the name of the model, typically used as the identity prefix */
+	var modelName:String 
+	
+	/** the resource string, including the identity prefix and a hash string identifying the parameter.  */
+	var resourceStr:String
+	
+	/** the parameters of the model. */
 	var modelParams:HashMap[String, String]
-	var performance:HashMap[String, Double] //each key corresponds to one type of performance
-	var learnDataResourceStr:String
-	/**
-	 * Predicts the result 
+	
+	/** 
+	 *  Performance of this model on the testing data
+	 *  
+	 *  This performance is merely measured by objective value of the formulation and 
+	 *  not related to the performance on the recommendation.  
 	 */
+	var performance:HashMap[String, Double] //each key corresponds to one type of performance
+	
+	/** 
+	 *  The resourceStr of the data, used to learn this model
+	 *  
+	 *  Note that all information about the data/assemble can be accessed by 
+	 *  this. 
+	 */
+	var learnDataResourceStr:String
+	
+	/** Predicts the result, given a data point */
 	def predict(testData: Vector): Double
 }
 

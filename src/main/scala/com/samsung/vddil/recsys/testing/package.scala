@@ -16,11 +16,14 @@ import org.apache.spark.mllib.regression.LabeledPoint
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import org.apache.spark.RangePartitioner 
 
+/**
+ * The testing package includes a set of test units. Each test unit 
+ * is a work flow that defines the testing scenario, e.g., on which set of 
+ * users the test is being done. Also each test unit supports the 
+ * computation of a set of metrics.  
+ */
 package object testing {
 	
-  
-    
-    
     /**
 	 * remove new users and items from test
 	 */
@@ -49,9 +52,6 @@ package object testing {
               Rating(user, item, rating)
             }
   }
-    
-  
-    
     
   /**
    * get new items not seen during training from test
@@ -114,12 +114,6 @@ package object testing {
 
     combItemFeatures
   }
-  
-  
-  
-  
-  
-  
   
    /**
      *  Concatenate features according to a given order. 

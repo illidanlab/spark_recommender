@@ -233,7 +233,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        None
     }
     
-    
+    /**
+     * Generates a summary file under the job workspace folder.  
+     */
     def writeSummaryFile(){
         val summaryFile = new Path(resourceLoc(RecJob.ResourceLoc_JobDir) + "/Summary.txt")
         
@@ -265,7 +267,6 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
                 writer.write("###" + str); writer.newLine()
             }
         }
-        
         
         // start writing files
         writeline("===RecJob Summary START===")
