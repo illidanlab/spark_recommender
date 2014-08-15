@@ -196,11 +196,11 @@ case class TestUnitNoCold private[testing] (
 		    			}
 		    			
 		    			//2. Compute metric scores. 
-		    			val score = metricSE.run(testHandlerRes.get.map{x => (x._3, x._4)})
-		    			Logger.info(s"Evaluated $model Not Coldstart $metric = $score")
+		    			val metricResult = metricSE.run(testHandlerRes.get.map{x => (x._3, x._4)})
+		    			Logger.info(s"Evaluated $model Not Coldstart $metric = $metricResult")
 		    			
 		    			//3. Save 
-		    			Map("SquaredError" -> score)
+		    			metricResult
 		    		}
 		    		
 		    		case metricHR:RecJobMetricHR => {
@@ -210,10 +210,12 @@ case class TestUnitNoCold private[testing] (
 				                     		  testParams, model, testResourceDir))
 		    			}
 		    			
-		    			val scores  = metricHR.run(hitTestHandlerRes.get)
-		    			Logger.info(s"Evaluated $model Not Coldstart  $metric = $scores")
+		    			//2. Compute metric scores. 
+		    			val metricResult = metricHR.run(hitTestHandlerRes.get)
+		    			Logger.info(s"Evaluated $model Not Coldstart  $metric = $metricResult")
 		    			
-		    			Map("avgCombHR" -> scores._1, "avgTestHR" -> scores._2)                    
+		    			//3. Save 
+		    			metricResult    
 		    		}
 		    		
 		    		case _ => 
@@ -271,10 +273,10 @@ case class TestUnitColdItem private[testing](
 				    						testParams, model, testResourceDir))
 				    	}                	
 	                	
-	                	val scores = metricRecall.run(coldItemTestResource.get)
-	                	Logger.info(s"Evaluated $model coldstart $metric = $scores")
+	                	val metricResult = metricRecall.run(coldItemTestResource.get)
+	                	Logger.info(s"Evaluated $model coldstart $metric = $metricResult")
 	                	
-	                	Map("ColdStartHitRate"->scores)
+	                	metricResult
 	                }
 	                case _ => 
 	                    Logger.warn(s"$metric not known for cold item")

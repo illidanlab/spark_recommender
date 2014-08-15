@@ -67,10 +67,6 @@ object RecJobMetric{
     }
 }
 
-/** Generic metric type of squared error */
-trait RecJobMetricSE extends RecJobMetric {
-	def run(labelNPred: RDD[(Double, Double)]): Double
-}
 
 /** Metric type of hit rate */
 case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, String])
@@ -81,8 +77,9 @@ case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, Stri
     
 	//will calculate average hit rate across passed user hits for all items
     // and new items 
-    def run(hitSets:RDD[HitSet]):(Double, Double) = {
-    	Logger.info("Count of hit sets: " + hitSets.count)
+    def run(hitSets:RDD[HitSet]):RecJobMetric.MetricResult = {
+        
+      Logger.info("Count of hit sets: " + hitSets.count)
       //get hit-rate on combined train and test 
       val combHR = hitSets.map {hitSet =>
             val allHRInters = (hitSet.topNPredAllItem.toSet & 
@@ -108,8 +105,7 @@ case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, Stri
       val numTestUsers = testHR._2
       val avgTestHR = testHR._1/numTestUsers
       
-      val avgHitRate = (avgCombHR, avgTestHR)
-      avgHitRate
+      Map("AvgCombHitRate" -> avgCombHR,  "AvgTestHitRate" -> avgTestHR)
     }
 }
 
@@ -123,7 +119,7 @@ case class RecJobMetricColdRecall(metricName:String, metricParams: HashMap[Strin
    * @param topNPredColdItems RDD of topN predicted set and size of 
    * intersection with cold items
    */
-  def run(topNPredColdItems:RDD[(Int, (List[String], Int))]):Double = {
+  def run(topNPredColdItems:RDD[(Int, (List[String], Int))]):RecJobMetric.MetricResult = {
     val (recallSum, count) = topNPredColdItems.map{x =>
       //ideally it should be N, but some times the number of cold items can be
       //less than N for a user
@@ -135,11 +131,19 @@ case class RecJobMetricColdRecall(metricName:String, metricParams: HashMap[Strin
     }.reduce{(a,b) =>
       (a._1+b._1, a._2+b._2)    
     }
-    (recallSum*1.0)/count
+    val recall = (recallSum*1.0)/count
+    
+    Map("Recall" -> recall)
   }
 }
 
 
+
+
+/** Generic metric type of squared error */
+trait RecJobMetricSE extends RecJobMetric {
+	def run(labelNPred: RDD[(Double, Double)]): RecJobMetric.MetricResult
+}
 
 /** Metric type of mean squared error */
 case class RecJobMetricMSE(metricName: String, metricParams: HashMap[String, String])
@@ -147,9 +151,9 @@ case class RecJobMetricMSE(metricName: String, metricParams: HashMap[String, Str
     
     val IdenPrefix = "MetricMSE"
     
-	def run(labelNPred: RDD[(Double, Double)]): Double = {
-		//NOTE: can be further extended to use metricName and metricParams like test and model
-		ContinuousPrediction.computeMSE(labelNPred)
+	def run(labelNPred: RDD[(Double, Double)]): RecJobMetric.MetricResult = {
+		val mse = ContinuousPrediction.computeMSE(labelNPred)
+		Map("MSE" -> mse)
 	}
 }
 
@@ -159,8 +163,8 @@ case class RecJobMetricRMSE(metricName: String, metricParams: HashMap[String, St
     
     val IdenPrefix = "MetricRMSE"
     
-    def run(labelNPred: RDD[(Double, Double)]): Double = {
-        //NOTE: can be further extended to use metricName and metricParams like test and model
-        ContinuousPrediction.computeRMSE(labelNPred)
+    def run(labelNPred: RDD[(Double, Double)]): RecJobMetric.MetricResult = {
+        val rmse = ContinuousPrediction.computeRMSE(labelNPred)
+        Map("RMSE" -> rmse)
     }
 }
