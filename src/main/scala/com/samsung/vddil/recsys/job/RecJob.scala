@@ -13,6 +13,9 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.feature.{RecJobFeature, RecJobItemFeature, RecJobUserFeature, RecJobFactFeature}
 import com.samsung.vddil.recsys.evaluation._
+import org.apache.hadoop.fs.Path
+import java.io.BufferedWriter
+import java.io.OutputStreamWriter
 
 /**
  * The constant variables of recommendation job.
@@ -27,6 +30,7 @@ object RecJob{
 	val ResourceLoc_JobData    = "jobData"
 	val ResourceLoc_JobModel   = "jobModel"
 	val ResourceLoc_JobTest    = "jobTest"
+	val ResourceLoc_JobDir     = "job"
 	    
 	val ResourceLocAddon_GeoLoc = "geoLocation"
 	    
@@ -102,8 +106,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     /** a list of test procedures to be performed for each model */
     val testList:Array[RecJobTest] = populateTests()
     
-    /** a list of test metrics to be used in test procedures */
-    val metricList:Array[RecJobMetric] = populateMetric()
+    
     
     /**
      * Data splitting information 
@@ -174,22 +177,28 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	DataProcess.prepareTest(this)
     	
     	Logger.info("**evaluating the models")
-    	 jobStatus.testWatchTime foreach { testData =>
+    	jobStatus.testWatchTime foreach { testData =>
     		//size of test data
     		Logger.info("Size of test data: " + testData.count)
     		
-        //evaluate regression models on test data
+            //evaluate regression models on test data
+    		Logger.info("Regression model num: " + jobStatus.resourceLocation_RegressModel.size)
     		jobStatus.resourceLocation_RegressModel.map{
     		    case (modelStr, model) =>
-    		        testList.map{_.run(this, model, metricList)}
+    		        Logger.info("Evaluating model: "+ modelStr)
+    		        testList.map{_.run(this, model)}
     	 	}
     		
     		//evaluate classification models on test data
+    		Logger.info("Classification model num: " + jobStatus.resourceLocation_ClassifyModel.size)
     		jobStatus.resourceLocation_ClassifyModel.map{
     		    case (modelStr, model) =>
     		        //TODO: evaluate classification models. 
     	 	}
-      }
+        }
+    	
+    	Logger.info("Writing summary file")
+    	writeSummaryFile()
     }
     
     /**
@@ -223,6 +232,135 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     def generateXML():Option[Elem] = {
        None
     }
+    
+    
+    def writeSummaryFile(){
+        val summaryFile = new Path(resourceLoc(RecJob.ResourceLoc_JobDir) + "/Summary.txt")
+        
+        //always overwrite existing summary file. 
+        if (fs.exists(summaryFile)) fs.delete(summaryFile, true)
+        
+        val out = fs.create(summaryFile)
+        val writer = new BufferedWriter(new OutputStreamWriter(out))
+        
+        var headnum_lv1 = 0
+        var headnum_lv2 = 0
+        
+        def writeline(str:String) = {
+        		writer.write(str); writer.newLine() }
+        def writehead(str:String, level:Int){
+            if(level == 1){
+                headnum_lv1 += 1
+                headnum_lv2 = 0
+                writer.write(headnum_lv1 + ". ");
+            	writer.write(str); writer.newLine()
+            	writer.write("======="); writer.newLine()
+            	writer.newLine()
+            }else if(level == 2){
+                headnum_lv2 += 1
+                writer.write(headnum_lv1 + "." + headnum_lv2 + ". ")
+            	writer.write(str); writer.newLine()
+            	writer.write("-------"); writer.newLine()
+            }else if(level ==3){
+                writer.write("###" + str); writer.newLine()
+            }
+        }
+        
+        
+        // start writing files
+        writeline("===RecJob Summary START===")
+        writer.newLine()
+        
+        writehead("Job Properties", 1)
+        
+        writeline("Job name:"        + this.jobName)
+        writeline("Job description:" + this.jobDesc)
+        writeline("Train Dates: " + this.trainDates.mkString("[", ",", "]"))
+        writeline("  User number: " + this.jobStatus.users.size)
+        writeline("  Item number: " + this.jobStatus.items.size)
+        writeline("Test Dates: "  + this.testDates.mkString("[", ",", "]"))
+        writer.newLine()
+        
+        /// features
+        writehead("Features", 1)
+        
+        writehead("User Features", 2)
+        for ((featureId, feature) <- this.jobStatus.resourceLocation_UserFeature){
+            writeline("  Feature Identity:   " + feature.resrouceStr)
+            writeline("  Feature Parameters: " + feature.featureParams.toString)
+            writeline("  Feature File:       " + feature.featureFileName)
+            writer.newLine()
+        }
+        writer.newLine()
+        writehead("Item Features", 2)
+        for ((featureId, feature) <- this.jobStatus.resourceLocation_ItemFeature){
+            writeline("  Feature Identity:   " + feature.resrouceStr)
+            writeline("  Feature Parameters: " + feature.featureParams.toString)
+            writeline("  Feature File:       " + feature.featureFileName)
+            writer.newLine()
+        }
+        writer.newLine()
+        
+        /// models 
+        writehead("Models", 1)
+        
+        writehead("Regression Models", 2)
+        for ((modelId, model) <- this.jobStatus.resourceLocation_RegressModel){
+            writeline("  Model Name:     " + model.modelName)
+            writeline("  Model Identity: " + modelId)
+            writeline("  Model Param:    " + model.modelParams.toString)
+            if (model.isInstanceOf[SerializableModel[_]])
+            	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
+            writer.newLine()
+        }
+        writer.newLine()
+        writehead("Classification Models", 2)
+        for ((modelId, model) <- this.jobStatus.resourceLocation_ClassifyModel){
+            writeline("  Model Name:     " + model.modelName)
+            writeline("  Model Identity: " + modelId)
+            writeline("  Model Param:    " + model.modelParams.toString)
+            if (model.isInstanceOf[SerializableModel[_]])
+            	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
+            writer.newLine()
+        }
+        writer.newLine()
+        
+        /// tests
+        writehead("Tests", 1)
+        
+        for ((model, testList) <- this.jobStatus.completedTests){
+            writehead("Model: " + model.resourceStr, 2)
+            
+            writeline("  Model Name:     " + model.modelName)
+            writeline("  Model Param:    " + model.modelParams.toString)
+            writeline("  Model Test List: ")
+            
+            for ((testUnit, results) <- testList){
+                writeline("    Test Unit Class:      " + testUnit.getClass().getName())
+                writeline("    Test Unit Identity:   " + testUnit.resourceIdentity)
+                writeline("    Test Unit Parameters: " + testUnit.testParams.toString)
+                
+                writeline("    Test Metric List: ")
+                for((metric, metricResult )<- results){
+		            writer.write("      Metric Resource Identity: " + metric.resourceIdentity); writer.newLine()
+		            writer.write("      Metric Parameters:        " + metric.metricParams.toString); writer.newLine()
+		            for((resultStr, resultVal) <- metricResult) {
+		                writer.write("        [" + resultStr + "] " + resultVal.formatted("%.4g")); writer.newLine()
+		            }
+		        }
+            }
+            
+            writer.newLine()
+        }
+        writer.newLine()
+        
+        writeline("===RecJob Summary END===")
+
+        //clean
+        writer.close()
+        out.close()
+    }
+    
     
     /**
      * Creates an instance of SparkContext
@@ -331,10 +469,12 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        if ((nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).size > 0){ 
 	       resourceLoc(RecJob.ResourceLoc_Workspace)  = (nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).text
 	       //derivative
-	       resourceLoc(RecJob.ResourceLoc_JobData)    = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/data"
-	       resourceLoc(RecJob.ResourceLoc_JobFeature) = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/feature"
-	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_Workspace) + "/" +  jobName + "/model"
-	       resourceLoc(RecJob.ResourceLoc_JobTest)    = resourceLoc(RecJob.ResourceLoc_Workspace) + "/"  + jobName + "/test"
+	       resourceLoc(RecJob.ResourceLoc_JobDir)     = resourceLoc(RecJob.ResourceLoc_Workspace) + "/"  + jobName
+	       resourceLoc(RecJob.ResourceLoc_JobData)    = resourceLoc(RecJob.ResourceLoc_JobDir) + "/data"
+	       resourceLoc(RecJob.ResourceLoc_JobFeature) = resourceLoc(RecJob.ResourceLoc_JobDir) + "/feature"
+	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_JobDir) + "/model"
+	       resourceLoc(RecJob.ResourceLoc_JobTest)    = resourceLoc(RecJob.ResourceLoc_JobDir) + "/test"
+	       
        }
        
        Logger.info("Resource WATCHTIME:   " + resourceLoc(RecJob.ResourceLoc_WatchTime))
@@ -506,14 +646,14 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      * 
      * @return a set of metrics to be computed in evaluation. 
      */
-    def populateMetric():Array[RecJobMetric] = {
+    def populateMetric( node:Node ):Array[RecJobMetric] = {
     	var metricList:Array[RecJobMetric] = Array()
-    	var nodeList = jobNode \ JobTag.RecJobMetricList
+    	var nodeList = node \ JobTag.RecJobMetricUnit
     	if (nodeList.size == 0) {
             Logger.warn("No metrics found!")
             metricList
         } else {
-        	nodeList = nodeList(0) \ JobTag.RecJobMetricUnit
+        	
         	//populate each metric
         	for (node <- nodeList) {
         	    val metricType = (node \ JobTag.RecJobMetricUnitType).text
@@ -533,11 +673,11 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         	    
         	    //create metrics by type
         	    metricType match {
-        	    	case JobTag.RecJobMetricType_MSE => metricList = metricList :+ RecJobMetricMSE(metricName, paramList)
-        	    	case JobTag.RecJobMetricType_RMSE => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
-        	    	case JobTag.RecJobMetricType_HR => metricList = metricList :+ RecJobMetricHR(metricName, paramList)
-                case JobTag.RecJobMetricType_ColdRecall => metricList = metricList:+ RecJobMetricColdRecall(metricName, paramList)
-                case _ => Logger.warn(s"Metric type $metricType not found or ignored.")
+        	    	case JobTag.RecJobMetricType_MSE        => metricList = metricList :+ RecJobMetricMSE(metricName, paramList)
+        	    	case JobTag.RecJobMetricType_RMSE       => metricList = metricList :+ RecJobMetricRMSE(metricName, paramList)
+        	    	case JobTag.RecJobMetricType_HR         => metricList = metricList :+ RecJobMetricHR(metricName, paramList)
+        	    	case JobTag.RecJobMetricType_ColdRecall => metricList = metricList :+ RecJobMetricColdRecall(metricName, paramList)
+        	    	case _ => Logger.warn(s"Metric type $metricType not found or ignored.")
         	    }
         	}
         }
@@ -567,6 +707,16 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     			val testParam = node \ JobTag.RecJobTestUnitParam
     			var paramList:HashMap[String, String] = HashMap()
     			
+    			val testMetricNode = node \ JobTag.RecJobMetricList
+    			
+    			// a list of test metrics to be used in test procedures 
+    			val metricList:Array[RecJobMetric] = if (testMetricNode.size == 0){
+    			    Array()
+    			}else{
+    				populateMetric(testMetricNode(0))
+    				testMetricNode.flatMap{metricNode => populateMetric(metricNode)}.toArray
+    			}
+    			
     			//populate test parameters
     			for (param <- testParam) {
     			    val paraPairList = param.child
@@ -576,14 +726,16 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     			    	paramList += (paraPair._1 -> paraPair._2)
     			    }
     			}
-    			
-    			//create tests by type
+    		
+    		    //create tests by type
     			testType match {
-    				case JobTag.RecJobTestType_NotCold => testList = testList :+ RecJobTestNoCold(testName, paramList)
-            case JobTag.RecJobTestType_ColdItems => testList = testList :+ RecJobTestColdItem(testName, paramList)
-            case _ => Logger.warn(s"Test type $testType not found or ignored.")
+    				case JobTag.RecJobTestType_NotCold   => testList = testList :+ RecJobTestNoCold  (testName, paramList, metricList)
+    				case JobTag.RecJobTestType_ColdItems => testList = testList :+ RecJobTestColdItem(testName, paramList, metricList)
+    				case _ => Logger.warn(s"Test type $testType not found or ignored.")
     			}
     		}
+    		
+    		
     	}
     	testList
     }

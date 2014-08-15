@@ -1,21 +1,127 @@
-package com.samsung.vddil.recsys.testing
+package com.samsung.vddil.recsys
 
-import com.samsung.vddil.recsys.feature.FeatureStruct
+import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
+import com.samsung.vddil.recsys.feature.ItemFeatureHandler
 import com.samsung.vddil.recsys.job.Rating
+import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.job.RecJobStatus
 import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.Logger
-import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.RangePartitioner 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
+import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
+import org.apache.spark.mllib.regression.LabeledPoint
+import com.samsung.vddil.recsys.feature.FeatureStruct
+import org.apache.spark.RangePartitioner 
 
-trait LinearRegTestHandler {
+package object testing {
 	
+  
+    
+    
     /**
+	 * remove new users and items from test
+	 */
+	def filterTestRatingData(testData: RDD[Rating], jobStatus: RecJobStatus,
+			                    sc:SparkContext): RDD[Rating] = {
+		var filtTestData = testData  
+    
+    //get userMap and itemMap
+    val userMap = jobStatus.userIdMap 
+    val itemMap = jobStatus.itemIdMap   
+                  
+    val usersRDD = sc.parallelize(userMap.values.toList).map((_,1))
+
+    //broadcast item sets to worker nodes
+    val itemIdSet = itemMap.values.toSet
+    val bISet = sc.broadcast(itemIdSet)
+    
+    testData.filter(rating => bISet.value(rating.item))
+            .map{rating => 
+              (rating.user, (rating.item, rating.rating))
+            }.join(usersRDD
+            ).map {x =>
+              val user = x._1
+              val item = x._2._1._1
+              val rating = x._2._1._2
+              Rating(user, item, rating)
+            }
+  }
+    
+  
+    
+    
+  /**
+   * get new items not seen during training from test
+   * @param testData RDD of ratings in test data
+   * @param trainItems contains set of train items
+   * @param sc spark context
+   * @return set of new items not appeared in training
+   */
+  def getColdItems(testData:RDD[(String, String, Double)], trainItems:Set[String], 
+    sc:SparkContext): Set[String] = {
+  
+    //broadcast trainItems
+    val bTrItems = sc.broadcast(trainItems)
+
+    //get test items
+    val testItems:Set[String] = testData.map(_._2 //item string id
+                                            ).filter(
+                                              item => !(bTrItems.value(item))
+                                            ).distinct.collect.toSet
+    testItems
+  }
+
+  /**
+   * return features for passed items  
+   * @param items set of items for which we need to generate feature
+   * @param jobInfo
+   * @param featureOrder
+   * @param featureSources
+   */
+  def getColdItemFeatures(items:Set[String], jobInfo:RecJob,
+    featureOrder:List[String], dates:List[String]
+    ):RDD[(String, Vector)] = {
+    
+    //get feature resource location map
+    val featureResourceMap = jobInfo.jobStatus.resourceLocation_ItemFeature  
+    
+    //get spark context
+    val sc = jobInfo.sc
+
+    val itemFeatures:List[RDD[(String, Vector)]] = featureOrder.map{featureResStr =>
+      val itemFeatureExtractor:ItemFeatureExtractor =
+        ItemFeatureHandler.revItemFeatureMap(featureResStr)
+      val featMapFileName:String =
+        featureResourceMap(featureResStr).featureMapFileName
+      val featParams = itemFeatureExtractor.trFeatureParams
+      val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)
+      itemFeatureExtractor.extractFeature(items, featureSources, featParams,
+        featMapFileName, sc)
+    }
+
+    //combine feature in order
+    val headItemFeatures:RDD[(String, Vector)] = itemFeatures.head 
+    val combItemFeatures:RDD[(String, Vector)] =
+      itemFeatures.tail.foldLeft(headItemFeatures){ (itemFeat1, itemFeat2) =>
+        val joinedItemFeat:RDD[(String, (Vector, Vector))] = itemFeat1.join(itemFeat2)
+        joinedItemFeat.mapValues{featVecs =>
+          featVecs._1 ++ featVecs._2
+        }
+      }
+
+    combItemFeatures
+  }
+  
+  
+  
+  
+  
+  
+  
+   /**
      *  Concatenate features according to a given order. 
      * 
      *  @param idSet ids for which features need to be generated

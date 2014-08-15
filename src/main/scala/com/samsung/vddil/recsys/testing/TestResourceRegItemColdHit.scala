@@ -14,30 +14,9 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
 
-object RegItemColdHitTestHandler extends ColdTestHandler with
-LinearRegTestHandler {
-
-
-  def resourceIdentity(
-          testParams:HashMap[String, String], 
-          metricParams:HashMap[String, String], 
-          modelStr:String
-          ):String = {
-        IdenPrefix + "_" + 
-        		HashString.generateHash(testParams.toString) + "_" + 
-        		HashString.generateHash(metricParams.toString)  + "_" +
-        		modelStr
-  }
+object TestResourceRegItemColdHit{
   
   val IdenPrefix = "RegItemColdHit"
-  
-  //  /**
-  //   * In case the partial models are used, this parameter 
-  //   * determines how many models we compute together. A 
-  //   * larger number can accelerate the batch computing 
-  //   * performance but may cause memory issue.  
-  //   */
-  //  val partialModelBatchSize = 400
   
   /**
    * In case the partial models are used, this parameter 
@@ -59,17 +38,18 @@ LinearRegTestHandler {
    * @return RDD of user, his topN predicted cold items and size of intersection
    * with actual preferred cold items
    */
-  def performTest(jobInfo:RecJob, testName: String,
+  def generateResource(jobInfo:RecJob,
     testParams:HashMap[String, String], 
-    metricParams:HashMap[String, String],
-    model: ModelStruct):RDD[(Int, (List[String], Int))]  = {
+    model: ModelStruct, 
+    testResourceDir:String):
+    RDD[(Int, (List[String], Int))]  = {
 
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
     
     //get percentage of user sample to predict on as it takes really long to
     //compute on all users
-    val userSampleParam:Double = metricParams.getOrElseUpdate("UserSampleSize",
+    val userSampleParam:Double = testParams.getOrElseUpdate("UserSampleSize",
                                                   "0.2").toDouble
     Logger.info("User sample parameter: " + userSampleParam)
     
@@ -79,17 +59,13 @@ LinearRegTestHandler {
 
     //get spark context
     val sc = jobInfo.sc
-  
-    val resourceIden = resourceIdentity(testParams, metricParams, model.resourceStr)
-    
-    val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 
     
     //cache intermediate files, helpful in case of crash  
-    val itemFeatObjFile         = testResourceDir + "/itemFeat"   
-    val userFeatObjFile         = testResourceDir + "/userFeat" 
-    val sampledUserFeatObjFile  = testResourceDir + "/sampledUserFeat" 
-    val sampledItemUserFeatFile = testResourceDir + "/sampledUserItemFeat"
-    val sampledPredBlockFiles   = testResourceDir + "/sampledPred/BlockFiles"
+    val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/itemFeat"   
+    val userFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/userFeat" 
+    val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
+    val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
+    val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
    
     //get test dates
     val testDates = jobInfo.testDates

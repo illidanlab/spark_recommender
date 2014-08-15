@@ -8,39 +8,27 @@ import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.model.ModelStruct
 
-object LinearRegNotColdTestHandler extends NotColdTestHandler 
-                                    with LinearRegTestHandler{
-	
-    def resourceIdentity(
-          testParams:HashMap[String, String], 
-          metricParams:HashMap[String, String], 
-          modelStr:String
-          ):String = {
-        IdenPrefix + "_" + 
-        		HashString.generateHash(testParams.toString) + "_" + 
-        		HashString.generateHash(metricParams.toString)  + "_" +
-        		modelStr
-    }
+object TestResourceLinearRegNotCold {
   
     val IdenPrefix = "LinearRegNotCold"
 	
 	/**
 	 * perform predictions on test data and return result as
 	 * (user, item, actual rating, predicted rating)
+	 * 
+	 * TODO: use subsample. 
 	 */
-	def performTest(jobInfo:RecJob, testName: String, 
+	def generateResource(jobInfo:RecJob, 
 			            testParams: HashMap[String, String],
-			            metricParams: HashMap[String, String],
-			            model: ModelStruct
+			            model: ModelStruct,
+			            testResourceDir:String
 			             ): RDD[(Int, Int, Double, Double)] = {
-    
+        
+        
 		//hash string to cache intermediate files, helpful in case of crash    
-		val resourceIden = resourceIdentity(testParams, metricParams, model.resourceStr)
-        val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 		
-		
-        val itemFeatObjFile     = testResourceDir + "/itemFeat"
-	    val userFeatObjFile     = testResourceDir + "/userFeat"
-	    val userItemFeatObjFile = testResourceDir + "/userItemFeat" 
+        val itemFeatObjFile     = testResourceDir + "/" + IdenPrefix + "/itemFeat"
+	    val userFeatObjFile     = testResourceDir + "/" + IdenPrefix + "/userFeat"
+	    val userItemFeatObjFile = testResourceDir + "/" + IdenPrefix + "/userItemFeat" 
 	    
     	//get test data
 		var testData = jobInfo.jobStatus.testWatchTime.get
@@ -100,18 +88,12 @@ object LinearRegNotColdTestHandler extends NotColdTestHandler
 	    val userItemFeatWRating = sc.objectFile[(Int, Int, Vector, Double)](userItemFeatObjFile)
 	
 	    //get prediction on test data
-	    //conv to label points
+	    //convert to label points
 	    Logger.info("Converting to testlabel point")
 	    val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
 	    
 	    //NOTE: user-item pair in test can appear more than once
 	    Logger.info("Getting prediction on test label points")
-//	    val testLabelNPred = testLabelPoints.map { point =>
-//	                              (point._1, //user
-//	                               point._2, //item
-//	                                point._3.label, //actual label
-//	                               model.predict(point._3.features))
-//	                            }
 	    
 	    val testLabelNPred = userItemFeatWRating.map{tuple =>
 	        	val userID:Int      = tuple._1

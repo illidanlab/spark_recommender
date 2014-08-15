@@ -14,6 +14,7 @@ import com.samsung.vddil.recsys.feature.RecJobItemFeature
 import com.samsung.vddil.recsys.feature.RecJobUserFeature
 import com.samsung.vddil.recsys.feature.RecJobFactFeature
 import com.samsung.vddil.recsys.model.RecJobModel
+import com.samsung.vddil.recsys.testing.TestUnit
 
 /** 
  * Stores the location of different types of resources (prepared data, features, models). 
@@ -72,7 +73,10 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	val completedFactFeatures:HashSet[RecJobFactFeature] = new HashSet()
 	val completedRegressModels:HashSet[RecJobModel] = new HashSet()
 	val completedClassifyModels:HashSet[RecJobModel] = new HashSet()
-
+	val completedTests:HashMap[ModelStruct, HashMap[TestUnit, TestUnit.TestResults]] = new HashMap()
+	
+	
+	
 	/*
 	 * test data in RDD[Rating] form
 	 */

@@ -10,6 +10,7 @@ trait FeatureStruct {
 	def resrouceStr:String
 	def featureFileName:String
 	def featureMapFileName:String
+	def featureParams:HashMap[String, String]
 }
 
 case class UserFeatureStruct(
@@ -17,7 +18,7 @@ case class UserFeatureStruct(
 				val resrouceStr:String,
 				val featureFileName:String, 
 				val featureMapFileName:String,
-				val featureParams:HashMap[String, String] = new HashMap()
+				val featureParams:HashMap[String, String]
 			) extends FeatureStruct {
 }
 
@@ -26,6 +27,6 @@ case class ItemFeatureStruct(
 				val resrouceStr:String,
 				val featureFileName:String, 
 				val featureMapFileName:String,
-				val featureParams:HashMap[String, String] = new HashMap()
+				val featureParams:HashMap[String, String]
 			) extends FeatureStruct{
 }
