@@ -32,9 +32,11 @@ object DataSplitting {
  	 *  @param testingPerc      testing data percentage
  	 *  @param validationPerc   validation data percentage
  	 *  
+ 	 *  @return split name 
      */	 
-    def splitContinuousData(jobInfo:RecJob, resourceStr:String, 
-			trainingPerc:Double, testingPerc:Double, validationPerc:Double) = {
+    def splitContinuousData(jobInfo:RecJob, allData:AssembledDataSet, 
+			trainingPerc:Double, testingPerc:Double, validationPerc:Double):String = {
+        
     	require(trainingPerc>=0   && trainingPerc<=1)
     	require(testingPerc>=0    && testingPerc<=1)
     	require(validationPerc>=0 && validationPerc<=1)
@@ -43,89 +45,20 @@ object DataSplitting {
     	//TODO: do we need also enforce the entire data to be used? see the require below. 
     	//require(trainingPerc + testingPerc + validationPerc >= 0.99)
     	
+    	val splitName = HashString.generateHash("split1_" + trainingPerc.toString + testingPerc.toString + validationPerc.toString)
+    	
     	// check if the resource has already implemented. 
-    	if ( ! jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train.isDefinedAt(resourceStr)){
-    		//construct file names (locations). 
-	    	val trDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_tr"
-	    	val teDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_te"
-	    	val vaDataFilename = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + resourceStr + "_va"
-	    	
-	    	if(jobInfo.skipProcessing(Array(trDataFilename, teDataFilename, vaDataFilename))){
-	    	    //if all resources are available, we don't need to re-generate it. 
-	    		Logger.info("All resources exist, and processing skipped.")
-	    		//TODO: load them to RDD references and store somewhere. 
-	    	}else{
-	    	    //Generate resources.
-	    	    val sc = jobInfo.sc
-	    	    
-	    	    //get the data file
-		    	val assembleContinuousDataFile = 
-		    	    jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr).location
-		    	
-		    	//get partitioner.
-		    	val numPartitions = Pipeline.getPartitionNum
-		    	val partitioner = Pipeline.getHashPartitioner()
-		    	
-		    	//randomize the passed data
-		    	val randData = sc.objectFile[(Int, Int, Vector, Double)](assembleContinuousDataFile
-		    	        ).map { tuple =>
-				    		//generate a random id for splitting 
-				    		//First, get a random int, in current case get the first 
-				    		//field of this data
-				    		//generate a number between 0 to 9 by dividing last character by 10
-				    		var randId = tuple._1 % 10
-				    		//divide it by 10 to make it lie between 0 to 1, 
-				    		//to make it comparable to split percentages
-				    		(randId.toDouble / 10, tuple)
-		    	}
-		    	//now the RDD becomes (Double (Int, Int, Vector, Double))
-
-		    	
-          val partedRandData = randData//.partitionBy(new RangePartitioner(numPartitions/4, randData)) 
-
-		    	//persist the randomize data for faster split generation
-		    	partedRandData.persist
-		    	
-		    	Logger.info("Number of partitions: " + partedRandData.partitions.length)
-
-
-		    	//split the data based on specified percentage
-		    	
-		    	//get the train data, i.e all random id < trainPc
-		    	val trainData = partedRandData.filter(_._1 < trainingPerc)
-                                        .values //remove the random id get only the data
-          //val trainSize = trainData.count
-		    	
-		    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
-		    	val testData = partedRandData.filter(x => x._1 >= trainingPerc 
-		    	                                && x._1 < (trainingPerc + testingPerc))
-                                       .values //remove the random id get only the data
-          //val testSize = testData.count
-		        
-		        //get the validation data i.e. all randomId > (trainPc+testPc)
-		    	val valData = partedRandData.filter(x => x._1 >= (trainingPerc + testingPerc))
-                                      .values //remove the random id get only the data
-          //val validSize = valData.count
-		    	
-		    	
-		    	//save data into files
-		    	if (jobInfo.outputResource(trDataFilename)) trainData.saveAsObjectFile(trDataFilename)
-		    	if (jobInfo.outputResource(teDataFilename)) testData.saveAsObjectFile(teDataFilename)
-		    	if (jobInfo.outputResource(vaDataFilename)) valData.saveAsObjectFile(vaDataFilename)
-		    	
-		    	//unpersist the persisted data to free up memory associated
-		    	randData.unpersist(false)
-		    	//Logger.info("Training sample size: " + trainSize)
-		    	//Logger.info("Testing sample size: " + testSize )
-		    	//Logger.info("Validation sample size: " + validSize)
-	    	}
-	    	
-	    	//save resource to jobStatus
-		    jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train(resourceStr) = trDataFilename
-		    jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Test(resourceStr)  = teDataFilename
-		    jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Valid(resourceStr) = vaDataFilename
-		    
+    	if ( ! allData.getSplit(splitName).isDefined){
+    	    
+    		splitDataByPercentage(
+    				splitName, jobInfo.sc, allData, 
+    				(resourceLoc:String) => jobInfo.outputResource(resourceLoc),
+    				trainingPerc, 
+    				testingPerc, 
+    				validationPerc)
     	}
+    	
+    	splitName
     }
     
      /**
@@ -142,11 +75,108 @@ object DataSplitting {
  	 *  
  	 *  @param trainingBalance  if we balance strategy, in case the training is not balance.   
      */
-	def splitBinaryData(jobInfo:RecJob, dataResourceStr:String, 
-			trainingPerc:Double, testingPerc:Double, validationPerc:Double, trainingBalance:Boolean) = {
+	def splitBinaryData(jobInfo:RecJob, allData:AssembledDataSet, 
+			trainingPerc:Double, testingPerc:Double, validationPerc:Double, trainingBalance:Boolean):String = {
 		Logger.logger.error("Not implemented")
 		throw new NotImplementedError("Not implemented")
 	    //TODO: implement
 	  
 	}
+	
+	
+	
+	def splitDataByPercentage(
+	        splitName:String, 
+	        sc:SparkContext,
+	        allData:AssembledDataSet, 
+	        outputResource:String=>Boolean,
+			trainingPerc:Double, 
+			testingPerc:Double, 
+			validationPerc:Double) = {
+	    
+		require(trainingPerc>=0   && trainingPerc<=1)
+		require(testingPerc>=0    && testingPerc<=1)
+		require(validationPerc>=0 && validationPerc<=1)
+		require(trainingPerc + testingPerc + validationPerc <= 1)
+	
+		//NOTE: do we need also enforce the entire data to be used? see the require below. 
+		//require(trainingPerc + testingPerc + validationPerc >= 0.99)
+	    
+	    val resourceStr = allData.resourceIden
+
+		//construct file names (locations). 
+	    val trDataResId    = allData.resourceIden + "_" + splitName + "_tr"
+    	val trDataFilename = allData.resourceLoc  + "_" + splitName + "_tr"
+    	val trDataStruct   = allData.createSplitStruct(trDataResId, trDataFilename)
+    	
+    	val teDataFilename = allData.resourceLoc  + "_" + splitName + "_te"
+    	val teDataResId    = allData.resourceIden + "_" + splitName + "_te"
+    	val teDataStruct   = allData.createSplitStruct(teDataResId, teDataFilename)
+    	
+    	val vaDataFilename = allData.resourceLoc  + "_" + splitName + "_va"
+    	val vaDataResId    = allData.resourceIden + "_" + splitName + "_va"
+    	val vaDataStruct   = allData.createSplitStruct(vaDataResId, vaDataFilename)
+    	
+    	
+    	// check if the resource has already implemented. 
+    	if(trDataStruct.resourceExist && teDataStruct.resourceExist && vaDataStruct.resourceExist){
+    	    //if all resources are available, we don't need to re-generate it. 
+    		Logger.info("All resources exist, and processing skipped.")
+    	}else{
+    	    //Generate resources.
+	    	
+	    	//get partitioner.
+	    	val numPartitions = Pipeline.getPartitionNum
+	    	val partitioner = Pipeline.getHashPartitioner()
+	    	
+	    	//randomize the passed data
+	    	val randData = sc.objectFile[(Int, Int, Vector, Double)](allData.resourceLoc
+	    	        ).map { tuple =>
+			    		//generate a random id for splitting 
+			    		//First, get a random int, in current case get the first 
+			    		//field of this data
+			    		//generate a number between 0 to 9 by dividing last character by 10
+			    		var randId = tuple._1 % 10
+			    		//divide it by 10 to make it lie between 0 to 1, 
+			    		//to make it comparable to split percentages
+			    		(randId.toDouble / 10, tuple)
+	    	}
+	    	//now the RDD becomes (Double (Int, Int, Vector, Double))
+
+	    	
+            val partedRandData = randData//.partitionBy(new RangePartitioner(numPartitions/4, randData)) 
+
+	    	//persist the randomize data for faster split generation
+	    	partedRandData.persist
+	    	
+	    	Logger.info("Number of partitions: " + partedRandData.partitions.length)
+
+
+	    	//split the data based on specified percentage
+	    	
+	    	//get the train data, i.e all random id < trainPc
+	    	val trainData = partedRandData.filter(_._1 < trainingPerc)
+                                    .values //remove the random id get only the data
+	    	
+	    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
+	    	val testData = partedRandData.filter(x => x._1 >= trainingPerc 
+	    	                                && x._1 < (trainingPerc + testingPerc))
+                                   .values //remove the random id get only the data
+	        
+	        //get the validation data i.e. all randomId > (trainPc+testPc)
+	    	val valData = partedRandData.filter(x => x._1 >= (trainingPerc + testingPerc))
+                                  .values //remove the random id get only the data
+	    	
+	    	//save data into files
+	    	if (outputResource(trDataFilename)) trainData.saveAsObjectFile(trDataFilename)
+	    	if (outputResource(teDataFilename)) testData.saveAsObjectFile(teDataFilename)
+	    	if (outputResource(vaDataFilename)) valData.saveAsObjectFile(vaDataFilename)
+	    	
+	    	//unpersist the persisted data to free up memory associated
+	    	randData.unpersist(false)
+    	}
+		
+		//set split
+		allData.putSplit(splitName, trDataStruct, teDataStruct, vaDataStruct)
+    }
 }

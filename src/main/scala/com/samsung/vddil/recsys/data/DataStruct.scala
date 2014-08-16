@@ -1,11 +1,14 @@
 package com.samsung.vddil.recsys.data
 
 import com.samsung.vddil.recsys.feature.FeatureStruct
+import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.utils.Logger
+import com.samsung.vddil.recsys.ResourceStruct
 
 /**
  * This is the data structure for data
  */
-trait DataStruct {
+trait DataStruct extends ResourceStruct{
 
 }
 
@@ -18,15 +21,69 @@ trait DataStruct {
  * @param itemFeatureOrder Order of item feature, each element is the resource identity of a specific user feature
  */
 class AssembledDataSet(
-    val location: String, 
+    val resourceStr: String,
+    val resourceLoc: String, 
     val userFeatureOrder: List[FeatureStruct],
     val itemFeatureOrder: List[FeatureStruct]
-)
-
-class SplittedAssembledDataSet(
-        override val location:String,
-        override val userFeatureOrder: List[FeatureStruct],
-        override val itemFeatureOrder: List[FeatureStruct]
-        ) extends AssembledDataSet(location, userFeatureOrder, itemFeatureOrder){
+    ) extends DataStruct{
     
+    val resourcePrefix = "AssembledData"
+    
+    /**
+     * Splitting information e.g, ("test_001"->DataSplitting, "test_002"->DataSplitting) 
+     */
+    val splittings:HashMap[String, DataSplit] = HashMap()
+    
+    /**
+     * Set a splitting of this dataset.
+     */
+    def putSplit(splitName: String, 
+            tr: AssembledDataSet, 
+            te: AssembledDataSet, 
+            va: AssembledDataSet):Unit = {
+        
+        putSplit(splitName, DataSplit(tr, te, va))
+    }
+    
+    /**
+     * Set a splitting of this dataset.
+     */
+    def putSplit(splitName: String, split: DataSplit ):Unit = {
+        if(splittings.isDefinedAt(splitName)){
+            Logger.warn(s"The splitting $splitName already exists for $resourceIden, will be overwritten." )
+        }
+        
+        splittings(splitName) = split
+    }
+    
+    /**
+     * Get a splitting from this dataset.
+     */
+    def getSplit(splitName: String):Option[DataSplit] = {
+        if (splittings.isDefinedAt(splitName))
+        	Some(splittings(splitName))
+        else
+            None
+    }
+    
+    def createSplitStruct(resourceIden:String, resourceLoc:String): AssembledDataSet = {
+        new AssembledDataSet(resourceIden, resourceLoc, userFeatureOrder, itemFeatureOrder)
+    }
 }
+
+case class DataSplit(
+        training:AssembledDataSet,
+        testing:AssembledDataSet,
+        validation:AssembledDataSet
+     )
+
+
+//class SplittedAssembledDataSet(
+//        override val resourceIden: String,
+//        override val resourceLoc: String, 
+//        override val userFeatureOrder: List[FeatureStruct],
+//        override val itemFeatureOrder: List[FeatureStruct],
+//        val parentData: AssembledDataSet
+//        ) extends AssembledDataSet(resourceIden, resourceLoc, userFeatureOrder, itemFeatureOrder){
+//    
+//}

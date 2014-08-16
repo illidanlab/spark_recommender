@@ -134,7 +134,7 @@ object DataAssemble {
     * 
     * @return the resource identity of the assembled data
     */
-   def assembleContinuousData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double ):String = {
+   def assembleContinuousData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double ):AssembledDataSet = {
       require(minIFCoverage >= 0 && minIFCoverage <= 1)
       require(minUFCoverage >= 0 && minUFCoverage <= 1)
       
@@ -260,15 +260,15 @@ object DataAssemble {
         	  // join features and store in assembleFileName
         	  joinedUserItemFeatures.saveAsObjectFile(assembleFileName)
           }
-          //val sampleSize = joinedUserItemFeatures.count
           
-          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
-                    new AssembledDataSet(assembleFileName, userFeatureOrder, itemFeatureOrder)
+          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
+          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder)  
+                    
           Logger.info("assembled features: " + assembleFileName)
           //Logger.info("Total data size: " + sampleSize)
       }
       
-      resourceStr
+      jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr)
    }
    
    /**
@@ -303,7 +303,7 @@ object DataAssemble {
            "_" +  HashString.generateHash(userFeatureStr + "_" + itemFeatureStr) 
    }
 	
-  def assembleBinaryData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double):String = {
+  def assembleBinaryData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double):AssembledDataSet = {
       //see assembleContinuousData
      throw new NotImplementedError("This function is yet to be implemented. ")
   }

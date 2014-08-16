@@ -17,21 +17,23 @@ import com.samsung.vddil.recsys.model._
 import org.apache.spark.mllib.optimization.FactorizationMachineRegressionL2WithSGD
 import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
 import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.data.AssembledDataSet
 
 object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegCustomizedModel[FactorizationMachineRegressionModel] {
 	
     def ParamLatentFactor = "latentFactor"
     
 	//models...
-	def learnModel(modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob):ModelResource = {
+	def learnModel(modelParams:HashMap[String, String], allData:AssembledDataSet, splitName:String, jobInfo:RecJob):ModelResource = {
 		
+        val dataResourceStr = allData.resourceStr
 		
         // 1. Complete default parameters 
         val (numIterations, stepSizes, regParams) = getParameters(modelParams)
         val latentDim = Integer.valueOf(modelParams.getOrElseUpdate(ParamLatentFactor, "5"))
         
         // 2. Generate resource identity using resouceIdentity()
-        val resourceIden = resourceIdentity(modelParams, dataResourceStr)
+        val resourceIden = resourceIdentity(modelParams, dataResourceStr, splitName)
         var modelFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobModel) + "/" + resourceIden
         
         //if the model is already there, we can safely return a fail. 
@@ -44,17 +46,18 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
         	Logger.info("Training model...")
             
 	        // 3. Model learning algorithms (HDFS operations)
-	        val trDataFilename:String = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train(dataResourceStr)
-	        val teDataFilename:String = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Test(dataResourceStr)
-	        val vaDataFilename:String = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Valid(dataResourceStr)
+        	val splitData = allData.getSplit(splitName).get
+	        val trData = splitData.training
+	        val teData = splitData.testing
+	        val vaData = splitData.validation
 	        
 	        //get the spark context
 	        val sc = jobInfo.sc
 	        
 	        //parse the data to get Label and feature information in LabeledPoint form
-	        val trainData = parseDataObj(trDataFilename, sc)
-	        val testData = parseDataObj(teDataFilename, sc)
-	        val valData = parseDataObj(vaDataFilename, sc)
+	        val trainData = parseDataObj(trData.resourceLoc, sc)
+	        val testData  = parseDataObj(teData.resourceLoc, sc)
+	        val valData   = parseDataObj(vaData.resourceLoc, sc)
 	        
 	        //initial solution
 	        
