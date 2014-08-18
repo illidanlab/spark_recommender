@@ -35,7 +35,7 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	 */ 
 	val resourceLocation_AggregateData_Continuous:HashMap[String, AssembledDataSet]  = new HashMap() 
 	val resourceLocation_AggregateData_Binary:    HashMap[String, AssembledDataSet]  = new HashMap() 
-    
+  
 	/* 
 	 * Feature extraction resources
 	 */

@@ -262,7 +262,7 @@ object DataAssemble {
           }
           
           jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
-          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder)  
+          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder, joinedUserItemFeatures.count)  
                     
           Logger.info("assembled features: " + assembleFileName)
           //Logger.info("Total data size: " + sampleSize)

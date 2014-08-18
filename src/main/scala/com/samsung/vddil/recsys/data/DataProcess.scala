@@ -134,10 +134,10 @@ object DataProcess {
 	        sc:SparkContext, 
 	        outputResource: String=>Boolean,
 	        outputDataResLoc: String ): Option[CombinedDataSet] = {
-	    
-        val dataHashingStr = HashString.generateOrderedArrayHash(dataDates)
 	  
-	    val dataLocCombine  = outputDataResLoc + "/combineData_" + dataHashingStr
+        val resourceStr = CombinedDataSet.resourcePrefix + HashString.generateOrderedArrayHash(dataDates) 
+        
+	    val dataLocCombine  = outputDataResLoc + "/" + resourceStr
 	    val dataLocUserList = dataLocCombine + "_userList"
 	    val dataLocItemList = dataLocCombine + "_itemList"
 	    val dataLocUserMap  = dataLocCombine + "_userMap"
@@ -215,7 +215,7 @@ object DataProcess {
             
             //create a data structure maintaining all resources. 
             Some(new CombinedDataSet(
-                dataHashingStr, dataLocCombine,
+                resourceStr, dataLocCombine,
                 userListObj, itemListObj, userMapObj, itemMapObj,
                 dataDates))
 		}else{

@@ -107,16 +107,16 @@ object DataSplitting {
 		//construct file names (locations). 
 	    val trDataResId    = allData.resourceIden + "_" + splitName + "_tr"
     	val trDataFilename = allData.resourceLoc  + "_" + splitName + "_tr"
-    	val trDataStruct   = allData.createSplitStruct(trDataResId, trDataFilename)
     	
     	val teDataFilename = allData.resourceLoc  + "_" + splitName + "_te"
     	val teDataResId    = allData.resourceIden + "_" + splitName + "_te"
-    	val teDataStruct   = allData.createSplitStruct(teDataResId, teDataFilename)
     	
     	val vaDataFilename = allData.resourceLoc  + "_" + splitName + "_va"
     	val vaDataResId    = allData.resourceIden + "_" + splitName + "_va"
-    	val vaDataStruct   = allData.createSplitStruct(vaDataResId, vaDataFilename)
     	
+    	val trDataStruct   = allData.createSplitStruct(trDataResId, trDataFilename)
+    	val teDataStruct   = allData.createSplitStruct(teDataResId, teDataFilename)
+    	val vaDataStruct   = allData.createSplitStruct(vaDataResId, vaDataFilename)
     	
     	// check if the resource has already implemented. 
     	if(trDataStruct.resourceExist && teDataStruct.resourceExist && vaDataStruct.resourceExist){
@@ -171,6 +171,10 @@ object DataSplitting {
 	    	if (outputResource(trDataFilename)) trainData.saveAsObjectFile(trDataFilename)
 	    	if (outputResource(teDataFilename)) testData.saveAsObjectFile(teDataFilename)
 	    	if (outputResource(vaDataFilename)) valData.saveAsObjectFile(vaDataFilename)
+	    	
+	    	trDataStruct.size = trainData.count
+	    	teDataStruct.size = testData.count
+	    	vaDataStruct.size = valData.count
 	    	
 	    	//unpersist the persisted data to free up memory associated
 	    	randData.unpersist(false)

@@ -34,8 +34,11 @@ class CombinedDataSet(
         val dates: Array[String]
         ) extends DataStruct{
     
+    val resourcePrefix = CombinedDataSet.resourcePrefix
+}
+
+object CombinedDataSet{
     val resourcePrefix = "CombinedData"
-    
 }
 
 /**
@@ -65,15 +68,19 @@ case class CombinedDataEntityIdMap(
  * This is the data used to store an assembled feature, which includes 
  * features and their orders used in assembling them.  
  * 
- * @param location Resource location
+ * @param resourceStr Resource string
+ * @param resourceloc Resource location
  * @param userFeatureOrder Order of user feature, each element is the resource identity of a specific user feature
  * @param itemFeatureOrder Order of item feature, each element is the resource identity of a specific user feature
+ * @param size the size of current dataset (-1 means does not check).  
+ * 
  */
 class AssembledDataSet(
     val resourceStr: String,
     val resourceLoc: String, 
     val userFeatureOrder: List[FeatureStruct],
-    val itemFeatureOrder: List[FeatureStruct]
+    val itemFeatureOrder: List[FeatureStruct],
+    var size: Long = -1
     ) extends DataStruct{
     
     val resourcePrefix = "AssembledData"
