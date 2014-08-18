@@ -14,6 +14,15 @@ trait DataStruct extends ResourceStruct{
 
 /**
  * A data structure for combined data sets. 
+ * 
+ * @param resourceStr the unique identity of the dataset 
+ *        resourcePrefix + data hash string
+ * @param resourceLoc the location the dataset is stored. 
+ * @param userList a list of users
+ * @param itemList a list of items 
+ * @param userMap mapping from user ID string to integer
+ * @param itemMap mapping from item ID string to integer
+ * @param dates the dates from which the combined dataset is generated. 
  */
 class CombinedDataSet(
         val resourceStr: String,
@@ -111,19 +120,12 @@ class AssembledDataSet(
     }
 }
 
+/**
+ * Stores the splits of an AssembledDataset
+ */
 case class DataSplit(
         training:AssembledDataSet,
         testing:AssembledDataSet,
         validation:AssembledDataSet
      )
 
-
-//class SplittedAssembledDataSet(
-//        override val resourceIden: String,
-//        override val resourceLoc: String, 
-//        override val userFeatureOrder: List[FeatureStruct],
-//        override val itemFeatureOrder: List[FeatureStruct],
-//        val parentData: AssembledDataSet
-//        ) extends AssembledDataSet(resourceIden, resourceLoc, userFeatureOrder, itemFeatureOrder){
-//    
-//}

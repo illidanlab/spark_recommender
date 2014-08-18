@@ -113,25 +113,21 @@ object DataProcess {
 	        val comDataStruct = combData.get 
 		    val jobStatus:RecJobStatus = jobInfo.jobStatus
 		    
-//		    jobStatus.resourceLocation_CombineData = comDataStruct.resourceLoc
-//		    jobStatus.resourceLocation_UserList    = comDataStruct.userList.listLoc
-//		    jobStatus.resourceLocation_ItemList    = comDataStruct.itemList.listLoc
-//		    
-//		    jobStatus.resourceLocation_UserMap     = comDataStruct.userMap.mapLoc
-//		    jobStatus.resourceLocation_ItemMap     = comDataStruct.itemMap.mapLoc
-//		    
-//		    jobStatus.users                        = comDataStruct.userList.listObj
-//		    jobStatus.items                        = comDataStruct.itemList.listObj
-//		    jobStatus.userIdMap                    = comDataStruct.userMap.mapObj
-//		    jobStatus.itemIdMap                    = comDataStruct.itemMap.mapObj
-		    
 		    jobStatus.resourceLocation_CombinedData_train = combData
 	    }else{
 	        Logger.error("Failed to combine training data!")
 	    }
 	}
 	
-	
+	/**
+	 * Generates combined watch time data set. 
+	 * 
+	 * @param dataDates
+	 * @param watchTimeResLoc
+	 * @param sc the instance of Spark Context. 
+	 * @param outputResource whether the resource should be output. 
+	 * @param outputDataResLoc the directory in which data resources are output.
+	 */
 	def combineWatchTimeData(
 	        dataDates:Array[String], 
 	        watchTimeResLoc:String, 
