@@ -138,36 +138,36 @@ object DataAssemble {
       require(minIFCoverage >= 0 && minIFCoverage <= 1)
       require(minUFCoverage >= 0 && minUFCoverage <= 1)
       
+      val combData:CombinedDataSet = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+      val itemFeatureList = jobInfo.jobStatus.resourceLocation_ItemFeature
+      val userFeatureList = jobInfo.jobStatus.resourceLocation_UserFeature
+      
       //1. inspect all available features
       //   drop features have low coverage (which significant reduces our training due to missing)
-     
+      
       //get spark context
       val sc = jobInfo.sc
       
       //get num of users
-      val numUsers = jobInfo.jobStatus.users.length
+      val numUsers = combData.userList.size
       
       //get num of items
-      val numItems = jobInfo.jobStatus.items.length
+      val numItems = combData.itemList.size
       
       //set to keep keys of item feature having desired coverage
       val usedItemFeature:HashSet[FeatureStruct] = filterFeatures(
-                      jobInfo.jobStatus.resourceLocation_ItemFeature, 
-                                                       minIFCoverage, 
-                                                       sc, numItems)
+                      itemFeatureList, minIFCoverage, sc, numItems)
 
       //set to keep keys of user feature having desired coverage
       val usedUserFeature:HashSet[FeatureStruct] = filterFeatures(
-                            jobInfo.jobStatus.resourceLocation_UserFeature, 
-                                                             minUFCoverage, 
-                                                             sc, numItems)
+                      userFeatureList, minUFCoverage, sc, numItems)
     
       if (usedUserFeature.size == 0 || usedItemFeature.size == 0) {
           Logger.warn("Either user or item feature set is empty")
       }
                                                              
       //2. generate ID string 
-      val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+      val dataHashingStr = HashString.generateOrderedArrayHash(combData.dates)
       val resourceStr = assembleContinuousDataIden(dataHashingStr, usedUserFeature, usedItemFeature)
     
       val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
@@ -197,7 +197,7 @@ object DataAssemble {
           //5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
           //   and generate <intersectTuple>
           //filtering such that we have only user-item pairs such that for both features have been found
-          val allData = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
+          val allData = sc.textFile(combData.resourceLoc)
                         .map{lines => 
                             val fields = lines.split(',')
                             //user, item, watchtime

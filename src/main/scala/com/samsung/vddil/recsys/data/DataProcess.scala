@@ -96,51 +96,83 @@ object DataProcess {
      *   
      */
 	def prepareTrain(jobInfo:RecJob) {
-	    
-      val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
-	  
-	    val dataLocCombine  = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/combineData_" + dataHashingStr
-	    val dataLocUserList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList_" + dataHashingStr
-	    val dataLocItemList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemList_" + dataHashingStr
-	    val dataLocUserMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userMap_" + dataHashingStr
-      val dataLocItemMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemMap_" + dataHashingStr
-
-	    val jobStatus:RecJobStatus = jobInfo.jobStatus
-	    
-
-	    //get the spark context
+    	val dataDates = jobInfo.trainDates
+	    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
 	    val sc = jobInfo.sc
+	    val outputResource = (x:String) => jobInfo.outputResource(x)
+	    val outputDataResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData)
 	    
+	    val combData:Option[CombinedDataSet] = combineWatchTimeData(
+	        dataDates:Array[String], 
+	        watchTimeResLoc:String, 
+	        sc:SparkContext, 
+	        outputResource: String=>Boolean,
+	        outputDataResLoc: String ) 
+	        
+	    if (combData.isDefined){
+	        val comDataStruct = combData.get 
+		    val jobStatus:RecJobStatus = jobInfo.jobStatus
+		    
+//		    jobStatus.resourceLocation_CombineData = comDataStruct.resourceLoc
+//		    jobStatus.resourceLocation_UserList    = comDataStruct.userList.listLoc
+//		    jobStatus.resourceLocation_ItemList    = comDataStruct.itemList.listLoc
+//		    
+//		    jobStatus.resourceLocation_UserMap     = comDataStruct.userMap.mapLoc
+//		    jobStatus.resourceLocation_ItemMap     = comDataStruct.itemMap.mapLoc
+//		    
+//		    jobStatus.users                        = comDataStruct.userList.listObj
+//		    jobStatus.items                        = comDataStruct.itemList.listObj
+//		    jobStatus.userIdMap                    = comDataStruct.userMap.mapObj
+//		    jobStatus.itemIdMap                    = comDataStruct.itemMap.mapObj
+		    
+		    jobStatus.resourceLocation_CombinedData_train = combData
+	    }else{
+	        Logger.error("Failed to combine training data!")
+	    }
+	}
+	
+	
+	def combineWatchTimeData(
+	        dataDates:Array[String], 
+	        watchTimeResLoc:String, 
+	        sc:SparkContext, 
+	        outputResource: String=>Boolean,
+	        outputDataResLoc: String ): Option[CombinedDataSet] = {
+	    
+        val dataHashingStr = HashString.generateOrderedArrayHash(dataDates)
+	  
+	    val dataLocCombine  = outputDataResLoc + "/combineData_" + dataHashingStr
+	    val dataLocUserList = dataLocCombine + "_userList"
+	    val dataLocItemList = dataLocCombine + "_itemList"
+	    val dataLocUserMap  = dataLocCombine + "_userMap"
+        val dataLocItemMap  = dataLocCombine + "_itemMap"
+
 	    //1. aggregate the dates and generate sparse matrix in JobStatus
 	    //read
-	    val trainData = getDataFromDates(jobInfo.trainDates, 
-	    							jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
-	    							sc)
+	    val trainData = getDataFromDates(dataDates, watchTimeResLoc, sc)
 	    
-    	trainData foreach { data =>
+    	if(trainData.isDefined){ 
+    	    val data = trainData.get
+    	    
             //2. generate and maintain user list in JobStatus
             val users = data.map(_._1).distinct
+            val userList = users.collect
             users.persist 
-            jobStatus.users = users.collect
-            
+
             //3. generate and maintain item list in JobStatus
             val items = data.map(_._2).distinct
+            val itemList = items.collect
             items.persist 
-            jobStatus.items = items.collect
             
             //create mapping from string id to int
-            val userIdMap =  (jobStatus.users zip (1 to jobStatus.users.length)).toMap
-            jobStatus.userIdMap = userIdMap
-
-            val itemIdMap = (jobStatus.items zip (1 to jobStatus.items.length)).toMap
-            jobStatus.itemIdMap = itemIdMap
+            val userIdMap = (userList zip (1 to userList.length)).toMap
+            val itemIdMap = (itemList zip (1 to itemList.length)).toMap
 
             //broadcast only item map as its small to worker nodes
             val bIMap = sc.broadcast(itemIdMap)
 
             //save merged data
-            jobStatus.resourceLocation_CombineData = dataLocCombine
-            if(jobInfo.outputResource(dataLocCombine)) {
+            if(outputResource(dataLocCombine)) {
                 Logger.info("Dumping combined data")
                 val replacedItemIds =  data.map{record => 
                   (record._1, (bIMap.value(record._2), record._3))
@@ -153,34 +185,45 @@ object DataProcess {
             }
             
             //save users list
-            jobStatus.resourceLocation_UserList    = dataLocUserList
-            if(jobInfo.outputResource(dataLocUserList)){
-               Logger.info("Dumping user list")
-               users.saveAsTextFile(dataLocUserList)
+            if(outputResource(dataLocUserList)){
+                Logger.info("Dumping user list")
+                users.saveAsTextFile(dataLocUserList)
             }
 
             //save user map
-            if (jobInfo.outputResource(dataLocUserMap)) {
-              Logger.info("Dumping user map")
-              sc.parallelize(userIdMap.toList).saveAsTextFile(dataLocUserMap)
+            if (outputResource(dataLocUserMap)) {
+                Logger.info("Dumping user map")
+                sc.parallelize(userIdMap.toList).saveAsTextFile(dataLocUserMap)
             }
 
             //save items list
-            jobStatus.resourceLocation_ItemList    = dataLocItemList
-            if(jobInfo.outputResource(dataLocItemList)){
+            if(outputResource(dataLocItemList)){
                 Logger.info("Dumping item list")
                 items.saveAsTextFile(dataLocItemList)
             } 
 
             //save items map
-            if (jobInfo.outputResource(dataLocItemMap)) {
-              Logger.info("Dumping item map")
-              sc.parallelize(itemIdMap.toList).saveAsTextFile(dataLocItemMap)
+            if (outputResource(dataLocItemMap)) {
+                Logger.info("Dumping item map")
+                sc.parallelize(itemIdMap.toList).saveAsTextFile(dataLocItemMap)
             }
 
             //unpersist the persisted objects
             users.unpersist(false)
             items.unpersist(false)
+            
+            val userListObj = CombinedDataEntityList  (userList,  dataLocUserList)
+            val itemListObj = CombinedDataEntityList  (itemList,  dataLocItemList)
+            val userMapObj  = CombinedDataEntityIdMap (userIdMap, dataLocUserMap)
+            val itemMapObj  = CombinedDataEntityIdMap (itemIdMap, dataLocItemMap)
+            
+            //create a data structure maintaining all resources. 
+            Some(new CombinedDataSet(
+                dataHashingStr, dataLocCombine,
+                userListObj, itemListObj, userMapObj, itemMapObj,
+                dataDates))
+		}else{
+			None
 		}
 	}
 	
@@ -197,13 +240,15 @@ object DataProcess {
     
     val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
     val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
-	 
+	
+    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+    
     //get spark context
-	  val sc  = jobInfo.sc
+	val sc  = jobInfo.sc
 
     //get userMap and itemMap
-    val userMap = jobInfo.jobStatus.userIdMap 
-    val itemMap = jobInfo.jobStatus.itemIdMap   
+    val userMap = trainCombData.userMap.mapObj
+    val itemMap = trainCombData.itemMap.mapObj   
     
     //broadcast item map
     val bIMap = sc.broadcast(itemMap)
@@ -220,16 +265,17 @@ object DataProcess {
                                   ).map{record =>
                       (record._1, (bIMap.value(record._2), record._3))
                     }
-      val replacedUserIds = substituteIntId(userMap,
-                                            replacedItemIds, sc)    
+      val replacedUserIds = substituteIntId(userMap, replacedItemIds, sc)    
       jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
                                             Rating(x._1, x._2, x._3)
                                         })
+                                        
       jobInfo.jobStatus.testWatchTime foreach {testData=>
         if (jobInfo.outputResource(dataLocTest)) {
           testData.saveAsObjectFile(dataLocTest)
         }
       }
+      
       jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](dataLocTest))
     }
 

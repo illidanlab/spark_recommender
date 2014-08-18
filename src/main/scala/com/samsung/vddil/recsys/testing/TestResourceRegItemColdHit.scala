@@ -45,6 +45,8 @@ object TestResourceRegItemColdHit{
     testResourceDir:String):
     RDD[(Int, (List[String], Int))]  = {
 
+    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+      
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
     
@@ -74,7 +76,7 @@ object TestResourceRegItemColdHit{
     val testData:RDD[(String, String, Double)] = DataProcess.getDataFromDates(testDates, 
       jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), sc).get
     //get training items
-    val trainItems:Set[String] = jobInfo.jobStatus.itemIdMap.keySet
+    val trainItems:Set[String] = trainCombData.itemMap.mapObj.keySet
     //get cold items not seen in training
     val coldItems:Set[String] = getColdItems(testData, trainItems, sc)
     Logger.info("Cold items not seen in training: " + coldItems.size) 
@@ -109,7 +111,7 @@ object TestResourceRegItemColdHit{
         bColdItems.value(x._2)).map(_._1)
     
     //get users in training
-    val trainUsers:RDD[String] = sc.parallelize(jobInfo.jobStatus.userIdMap.keys.toList)
+    val trainUsers:RDD[String] = sc.parallelize(trainCombData.userMap.mapObj.keys.toList)
     
     //filter out training users
     val allColdUsers:RDD[String] = preferredUsers.intersection(trainUsers)
@@ -128,7 +130,7 @@ object TestResourceRegItemColdHit{
 
 
     //replace coldItemUsers from training with corresponding int id
-    val userIdMap:Map[String, Int] = jobInfo.jobStatus.userIdMap
+    val userIdMap:Map[String, Int] = trainCombData.userMap.mapObj
     val userMapRDD = sc.parallelize(userIdMap.toList)
     val coldItemUsers:RDD[Int] = sampledColdUsers.map(x =>
         (x,1)).join(userMapRDD).map{_._2._2}

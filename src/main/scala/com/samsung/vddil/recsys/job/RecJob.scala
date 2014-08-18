@@ -277,8 +277,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         writeline("Job name:"        + this.jobName)
         writeline("Job description:" + this.jobDesc)
         writeline("Train Dates: " + this.trainDates.mkString("[", ",", "]"))
-        writeline("  User number: " + this.jobStatus.users.size)
-        writeline("  Item number: " + this.jobStatus.items.size)
+        //writeline("  User number: " + this.jobStatus.users.size)
+        //writeline("  Item number: " + this.jobStatus.items.size)
         writeline("Test Dates: "  + this.testDates.mkString("[", ",", "]"))
         writer.newLine()
         
@@ -287,7 +287,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         
         writehead("User Features", 2)
         for ((featureId, feature) <- this.jobStatus.resourceLocation_UserFeature){
-            writeline("  Feature Identity:   " + feature.resrouceStr)
+            writeline("  Feature Identity:   " + feature.resourceStr)
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
             writer.newLine()
@@ -295,7 +295,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         writer.newLine()
         writehead("Item Features", 2)
         for ((featureId, feature) <- this.jobStatus.resourceLocation_ItemFeature){
-            writeline("  Feature Identity:   " + feature.resrouceStr)
+            writeline("  Feature Identity:   " + feature.resourceStr)
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
             writer.newLine()

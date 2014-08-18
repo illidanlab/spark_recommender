@@ -13,6 +13,46 @@ trait DataStruct extends ResourceStruct{
 }
 
 /**
+ * A data structure for combined data sets. 
+ */
+class CombinedDataSet(
+        val resourceStr: String,
+        val resourceLoc: String,
+        val userList: CombinedDataEntityList,
+        val itemList: CombinedDataEntityList,
+        val userMap:  CombinedDataEntityIdMap,
+        val itemMap:  CombinedDataEntityIdMap,
+        val dates: Array[String]
+        ) extends DataStruct{
+    
+    val resourcePrefix = "CombinedData"
+    
+}
+
+/**
+ * Store the list of users/items in the combined data set
+ */
+case class CombinedDataEntityList(
+        listObj:Array[String],
+        listLoc: String
+    ){
+    
+    def size = listObj.size
+}
+
+/**
+ * Stores the list of user mapping/item mapping in the combined data sets
+ */
+case class CombinedDataEntityIdMap(
+        mapObj: Map[String, Int],
+        mapLoc: String
+    ){
+    
+    def size = mapObj.size
+}
+
+
+/**
  * This is the data used to store an assembled feature, which includes 
  * features and their orders used in assembling them.  
  * 

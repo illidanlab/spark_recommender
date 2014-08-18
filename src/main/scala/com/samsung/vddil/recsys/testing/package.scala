@@ -14,8 +14,9 @@ import scala.collection.mutable.HashMap
 import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
 import org.apache.spark.mllib.regression.LabeledPoint
 import com.samsung.vddil.recsys.feature.FeatureStruct
-import org.apache.spark.RangePartitioner 
+import org.apache.spark.RangePartitioner
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.data.CombinedDataSet
 
 /**
  * The testing package includes a set of test units. Each test unit 
@@ -28,21 +29,23 @@ package object testing {
     /**
 	 * remove new users and items from test
 	 */
-	def filterTestRatingData(testData: RDD[Rating], jobStatus: RecJobStatus,
+	def filterTestRatingData(testData: RDD[Rating], trainCombData:CombinedDataSet,
 			                    sc:SparkContext): RDD[Rating] = {
 		var filtTestData = testData  
     
-    //get userMap and itemMap
-    val userMap = jobStatus.userIdMap 
-    val itemMap = jobStatus.itemIdMap   
-                  
-    val usersRDD = sc.parallelize(userMap.values.toList).map((_,1))
-
-    //broadcast item sets to worker nodes
-    val itemIdSet = itemMap.values.toSet
-    val bISet = sc.broadcast(itemIdSet)
-    
-    testData.filter(rating => bISet.value(rating.item))
+		
+		
+	    //get userMap and itemMap
+	    val userMap = trainCombData.userMap.mapObj 
+	    val itemMap = trainCombData.itemMap.mapObj
+	                  
+	    val usersRDD = sc.parallelize(userMap.values.toList).map((_,1))
+	
+	    //broadcast item sets to worker nodes
+	    val itemIdSet = itemMap.values.toSet
+	    val bISet = sc.broadcast(itemIdSet)
+	    
+	    testData.filter(rating => bISet.value(rating.item))
             .map{rating => 
               (rating.user, (rating.item, rating.rating))
             }.join(usersRDD
@@ -97,7 +100,7 @@ package object testing {
            feature.extractor
         
       val featMapFileName:String =
-           featureResourceMap(feature.resrouceStr).featureMapFileName
+           featureResourceMap(feature.resourceStr).featureMapFileName
         
       val featParams = itemFeatureExtractor.trFeatureParams
       val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)

@@ -128,6 +128,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
 
     def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
     		
+    	val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+       
     	  //get spark context
         val sc = jobInfo.sc
         
@@ -153,7 +155,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
         // 3. Feature generation algorithms (HDFS operations)
         
         //get set of items
-        val itemSet = jobInfo.jobStatus.items.toSet
+        val itemSet = trainCombData.itemList.listObj.toSet
         
         
         //get RDDs of genres only for param_GenreLang if exists
@@ -202,7 +204,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
        
         Logger.info("Created itemGenres list: ")
         
-        val itemIdMap = jobInfo.jobStatus.itemIdMap
+        val itemIdMap = trainCombData.itemMap.mapObj 
         val bItemMap = sc.broadcast(itemIdMap)
         //generate feature vector for each items    
         val itemFeature:RDD[(Int, Vector)] =

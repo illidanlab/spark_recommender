@@ -37,7 +37,7 @@ object TestResourceLinearRegNotCold {
 		val sc = jobInfo.sc
 	    
 		//process test data
-		testData = filterTestRatingData(testData, jobInfo.jobStatus, sc)
+		testData = filterTestRatingData(testData, jobInfo.jobStatus.resourceLocation_CombinedData_train.get, sc)
 		
 		val testItems = testData.map{ _.item}
                             .distinct

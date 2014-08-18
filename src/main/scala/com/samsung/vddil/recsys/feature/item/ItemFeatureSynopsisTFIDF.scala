@@ -157,113 +157,115 @@ ItemFeatureExtractor {
 
 	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
     
-    //assign feature params
-    trFeatureParams = featureParams
-    
-    //get spark context
-    val sc = jobInfo.sc
-
-    // 1. Complete default parameters
-    val N:Int = featureParams.getOrElse("N",  "500").toInt
-	  val MinTermLen:Int = featureParams.getOrElse("MINTERMLEN", "2").toInt
-
-    // 2. Generate resource identity using resouceIdentity()
-    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
-    val resourceIden = resourceIdentity(featureParams, dataHashingStr)
-    
-    val featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
-                  "/" + resourceIden
-    var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
-                  "/" + resourceIden + "_Map"
-    
-    //broadcast item map to workers to workonly on items relevant to training
-    val itemIdMap = jobInfo.jobStatus.itemIdMap
-    val bItemIdMap = sc.broadcast(itemIdMap)
-      
-    // 3. Feature generation algorithms (HDFS operations)
-    val featureSources:List[String] = getFeatureSources(
-        jobInfo.trainDates.toList, jobInfo)      
-   
-    //get items and its description
-    val itemsText:RDD[(String, String)] = getItemsText(itemIdMap.keys.toSet,
-      featureSources, sc)
-  
-    //tokenize the item texts and apply filters
-    val itemTerms:RDD[(String, List[String])] = getItemTerms(itemsText,
-      MinTermLen)
-
-    //number of items
-    val numItems = itemTerms.map(_._1).distinct.count.toDouble
-    
-    //terms count
-    val termFreq:RDD[(String, Int)] = itemTerms.flatMap{_._2 map((_,1))}.reduceByKey(_+_)
-
-    //terms - document frequency, i.e. no. of documents the term occurs
-    val docFreq:RDD[(String, Double)] = itemTerms.flatMap{x =>
-                                                      val itemId = x._1
-                                                      val itemTerms = x._2
-                                                      itemTerms.map((_, itemId))
-                                                    }.groupByKey.map{x =>
-                                                      val term = x._1
-                                                      val numTermDocs =
-                                                        x._2.toList.length.toDouble
-                                                      (term, numTermDocs)
-                                                    }
- 
-    //tf-idf score of terms
-    val tfIdfs:RDD[(String, Double)] = termFreq.join(docFreq).map{x =>
-                                                               val term = x._1
-                                                               val freq =
-                                                                 x._2._1
-                                                               val docFreq =
-                                                                 x._2._2
-                                                               (term, freq*log(numItems/docFreq)) 
-                                                             }
- 
-    //get top N tf-idf terms sorted by decreasing score
-    val sortedTerms = tfIdfs.collect.sortBy(-_._2) 
-    val topTerms = sortedTerms.slice(0, N).map(_._1)
-
-    //get top term counts per item
-    val itemTermCounts:RDD[(String, Vector)] = getTermCounts(itemTerms,
-      topTerms, sc)
-    //replace string id with int id for items
-    val subItemTermCounts:RDD[(Int, Vector)] =
-      itemTermCounts.map{itemTermCount =>
-      val item:Int = bItemIdMap.value(itemTermCount._1)
-      val feature = itemTermCount._2
-      (item, feature)
-    }
-
-    //save these termcounts as item features
-    if (jobInfo.outputResource(featureFileName)) {
-      Logger.logger.info("Dumping feature resource: " + featureFileName)
-      subItemTermCounts.saveAsObjectFile(featureFileName)
-    }
-    
-    //save the terms with score
-    if (jobInfo.outputResource(featureMapFileName)){
-      Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
-      tfIdfs.map {x =>
-        val term = x._1
-        val score = x._2
-        term + "," + score
-      }.saveAsTextFile(featureMapFileName)
-    }
-    
-    val featureStruct:ItemFeatureStruct = 
-        new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, 
-                featureMapFileName, featureParams, ItemFeatureSynopsisTFIDF)
-
-    // 4. Generate and return a FeatureResource that includes all resources.  
-		val resourceMap:HashMap[String, Any] = new HashMap()
-    resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
-    
-    Logger.info("Saved item features and feature map")
-
-    new FeatureResource(true, Some(resourceMap), resourceIden)
-	}
+	  	val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+	    
+	    //assign feature params
+	    trFeatureParams = featureParams
+	    
+	    //get spark context
+	    val sc = jobInfo.sc
 	
-	val IdenPrefix:String = "ItemFeatureSynTFIDF"
-   
-}
+	    // 1. Complete default parameters
+	    val N:Int = featureParams.getOrElse("N",  "500").toInt
+		  val MinTermLen:Int = featureParams.getOrElse("MINTERMLEN", "2").toInt
+	
+	    // 2. Generate resource identity using resouceIdentity()
+	    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+	    val resourceIden = resourceIdentity(featureParams, dataHashingStr)
+	    
+	    val featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
+	                  "/" + resourceIden
+	    var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
+	                  "/" + resourceIden + "_Map"
+	    
+	    //broadcast item map to workers to workonly on items relevant to training
+	    val itemIdMap = trainCombData.itemMap.mapObj
+	    val bItemIdMap = sc.broadcast(itemIdMap)
+	      
+	    // 3. Feature generation algorithms (HDFS operations)
+	    val featureSources:List[String] = getFeatureSources(
+	        jobInfo.trainDates.toList, jobInfo)      
+	   
+	    //get items and its description
+	    val itemsText:RDD[(String, String)] = getItemsText(itemIdMap.keys.toSet,
+	      featureSources, sc)
+	  
+	    //tokenize the item texts and apply filters
+	    val itemTerms:RDD[(String, List[String])] = getItemTerms(itemsText,
+	      MinTermLen)
+	
+	    //number of items
+	    val numItems = itemTerms.map(_._1).distinct.count.toDouble
+	    
+	    //terms count
+	    val termFreq:RDD[(String, Int)] = itemTerms.flatMap{_._2 map((_,1))}.reduceByKey(_+_)
+	
+	    //terms - document frequency, i.e. no. of documents the term occurs
+	    val docFreq:RDD[(String, Double)] = itemTerms.flatMap{x =>
+	                                                      val itemId = x._1
+	                                                      val itemTerms = x._2
+	                                                      itemTerms.map((_, itemId))
+	                                                    }.groupByKey.map{x =>
+	                                                      val term = x._1
+	                                                      val numTermDocs =
+	                                                        x._2.toList.length.toDouble
+	                                                      (term, numTermDocs)
+	                                                    }
+	 
+	    //tf-idf score of terms
+	    val tfIdfs:RDD[(String, Double)] = termFreq.join(docFreq).map{x =>
+	                                                               val term = x._1
+	                                                               val freq =
+	                                                                 x._2._1
+	                                                               val docFreq =
+	                                                                 x._2._2
+	                                                               (term, freq*log(numItems/docFreq)) 
+	                                                             }
+	 
+	    //get top N tf-idf terms sorted by decreasing score
+	    val sortedTerms = tfIdfs.collect.sortBy(-_._2) 
+	    val topTerms = sortedTerms.slice(0, N).map(_._1)
+	
+	    //get top term counts per item
+	    val itemTermCounts:RDD[(String, Vector)] = getTermCounts(itemTerms,
+	      topTerms, sc)
+	    //replace string id with int id for items
+	    val subItemTermCounts:RDD[(Int, Vector)] =
+	      itemTermCounts.map{itemTermCount =>
+	      val item:Int = bItemIdMap.value(itemTermCount._1)
+	      val feature = itemTermCount._2
+	      (item, feature)
+	    }
+	
+	    //save these termcounts as item features
+	    if (jobInfo.outputResource(featureFileName)) {
+	      Logger.logger.info("Dumping feature resource: " + featureFileName)
+	      subItemTermCounts.saveAsObjectFile(featureFileName)
+	    }
+	    
+	    //save the terms with score
+	    if (jobInfo.outputResource(featureMapFileName)){
+	      Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
+	      tfIdfs.map {x =>
+	        val term = x._1
+	        val score = x._2
+	        term + "," + score
+	      }.saveAsTextFile(featureMapFileName)
+	    }
+	    
+	    val featureStruct:ItemFeatureStruct = 
+	        new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, 
+	                featureMapFileName, featureParams, ItemFeatureSynopsisTFIDF)
+	
+	    // 4. Generate and return a FeatureResource that includes all resources.  
+			val resourceMap:HashMap[String, Any] = new HashMap()
+	    resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
+	    
+	    Logger.info("Saved item features and feature map")
+	
+	    new FeatureResource(true, Some(resourceMap), resourceIden)
+		}
+		
+		val IdenPrefix:String = "ItemFeatureSynTFIDF"
+	   
+	}
