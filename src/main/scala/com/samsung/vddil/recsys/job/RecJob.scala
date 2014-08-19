@@ -16,6 +16,10 @@ import com.samsung.vddil.recsys.evaluation._
 import org.apache.hadoop.fs.Path
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
+import java.util.Date
+import java.util.Calendar
+import java.util.GregorianCalendar
+import java.text.SimpleDateFormat
 
 /**
  * The constant variables of recommendation job.
@@ -96,6 +100,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     
     /** a list of models */
     val modelList:Array[RecJobModel] = populateMethods()
+    
+    val dateParser = new SimpleDateFormat("yyyyMMdd") // a parser/formatter for date. 
     
     /** a list of dates used to generate training data/features */
     val trainDates:Array[String] = populateTrainDates()
@@ -573,38 +579,41 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     /**
      * Populates training dates.
      * 
-     * The dates are used to construct resource locations. The dates are unsorted.
+     * The dates are used to construct resource locations. The dates will be unique and sorted.
      * 
      * @return a list of date strings  
      */
     def populateTrainDates():Array[String] = {
       
-      var dateList:Seq[String] = Seq()
-     
+      var dateList:Array[String] = Array[String]()
+      
+      //the element by element. 
       var nodeList = jobNode \ JobTag.RecJobTrainDateList
       if (nodeList.size == 0){
         Logger.warn("No training dates given!")
         return dateList.toArray
       }
       
-      dateList = (nodeList(0) \ JobTag.RecJobTrainDateUnit).map(_.text)
-      
+      dateList = (nodeList(0) \ JobTag.RecJobTrainDateUnit).map(_.text).
+      			flatMap(expandDateList(_, dateParser)).  //expand the lists
+      			toSet.toArray.sorted                     //remove duplication and sort.
+      			
       Logger.info("Training dates: " + dateList.toArray.deep.toString 
           + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
-      return dateList.toArray
+          
+      return dateList
     }
-    
-    
+
     /**
      * Populates testing/evaluation dates.
      * 
-     * The dates are used to construct resource locations. The dates are unsorted.
+     * The dates are used to construct resource locations. The dates will be unique and sorted.
      * 
      * @return a list of date strings  
      */
     def populateTestDates():Array[String] = {
       
-      var dateList:Seq[String] = Seq()
+      var dateList:Array[String] = Array[String]()
      
       var nodeList = jobNode \ JobTag.RecJobTestDateList
       if (nodeList.size == 0){
@@ -612,13 +621,15 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         return dateList.toArray
       }
       
-      dateList = (nodeList(0) \ JobTag.RecJobTestDateUnit).map(_.text)
+      dateList = (nodeList(0) \ JobTag.RecJobTestDateUnit).map(_.text).
+      			flatMap(expandDateList(_, dateParser)).  //expand the lists
+      			toSet.toArray.sorted                     //remove duplication and sort.
       
       Logger.info("Testing dates: " + dateList.toArray.deep.toString 
           + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
-      return dateList.toArray
+          
+      return dateList
     }
-    
     
     /**
      * Populates features from XML.
@@ -840,8 +851,6 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     }
     
 }
-
-
 
 /** 
  *  a compact class to represent rating
