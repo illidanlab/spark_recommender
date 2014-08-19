@@ -21,7 +21,12 @@ import com.samsung.vddil.recsys.ResourceStruct
 /**
  * This is a trait for model. 
  * 
- * The necessary fields of a model 
+ * The necessary fields of a model. 
+ * 
+ * DESIGN NOTE: since the model data structure will be serialized and broadcasted
+ * to all notes. It is necessary to disconnect it from other data structures. 
+ * That is why we use the  learnDataResourceStr as a key to reference to data set that 
+ * trains the model instead of keeping a direct reference of AssembledDataSet.  
  * 
  * @param modelName       the model name (least squares, or so)
  * @param resourceStr     the resource key for this model  
