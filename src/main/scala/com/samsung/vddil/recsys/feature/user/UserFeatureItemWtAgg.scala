@@ -112,7 +112,7 @@ trait UserFeatureItemWtAgg extends Serializable {
       case None => throw new Exception("ERROR: Dependent item feature not ready")
            //TODO: if not found we need to generate it!
       case Some(itemFeatureFileName) => {
-        val ratingDataFileName = jobInfo.jobStatus.resourceLocation_CombineData 
+        val ratingDataFileName = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.resourceLoc
         val userFeatures:RDD[(Int, Vector)] =
           getAllUserFeatures(itemFeatureFileName, ratingDataFileName, sc)
         //save generated userFeatures at specified file path

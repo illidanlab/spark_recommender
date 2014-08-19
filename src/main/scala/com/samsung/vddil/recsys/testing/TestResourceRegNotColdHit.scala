@@ -53,6 +53,8 @@ object TestResourceRegNotColdHit{
               testResourceDir:String
               ):RDD[HitSet] = {
 
+    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+    
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
    
@@ -78,7 +80,7 @@ object TestResourceRegNotColdHit{
     val testData = jobInfo.jobStatus.testWatchTime.get
     
     //filter test data to remove new users/items
-    val filtTestData = filterTestRatingData(testData, jobInfo.jobStatus,
+    val filtTestData = filterTestRatingData(testData, trainCombData,
                           sc).map(x => 
                             (x.user, (x.item, x.rating))
                           )
@@ -112,7 +114,7 @@ object TestResourceRegNotColdHit{
                                       }
 
     //get train items
-    val trainItems = sc.parallelize(jobInfo.jobStatus.itemIdMap.values.toList)
+    val trainItems = sc.parallelize(trainCombData.itemMap.mapObj.values.toList)
     
     //get feature orderings
     val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
@@ -125,8 +127,7 @@ object TestResourceRegNotColdHit{
     Logger.info("Preparing item features...")
     if (jobInfo.outputResource(itemFeatObjFile)) {
       //item features file don't exist, we generate and save
-      val iFRDD = getOrderedFeatures(trainItems, itemFeatureOrder, 
-                    jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+      val iFRDD = getOrderedFeatures(trainItems, itemFeatureOrder, sc)
       iFRDD.saveAsObjectFile(itemFeatObjFile)
     } 
     val itemFeaturesRDD:RDD[(Int, Vector)] =  sc.objectFile[(Int, Vector)](itemFeatObjFile)                    
@@ -135,8 +136,7 @@ object TestResourceRegNotColdHit{
     Logger.info("Preparing user features...")
     if (jobInfo.outputResource(userFeatObjFile)) {
       //item features file don't exist, we generate and save
-      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
-                    jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, sc)
       uFRDD.saveAsObjectFile(userFeatObjFile)
     }  
     val userFeaturesRDD:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)                    
@@ -157,7 +157,7 @@ object TestResourceRegNotColdHit{
     //for each user get train/past/old items, require to know new items for user
     //NOTE: This will generate user item set map which can take y
     Logger.info("Get training users item sets")
-    val trainUserItem= sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData).map { x =>
+    val trainUserItem= sc.textFile(trainCombData.resourceLoc).map { x =>
                               val fields = x.split(',')
                               val user = fields(0).toInt
                               val item = fields(1).toInt

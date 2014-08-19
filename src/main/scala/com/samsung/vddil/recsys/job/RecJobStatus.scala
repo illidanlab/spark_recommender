@@ -15,6 +15,7 @@ import com.samsung.vddil.recsys.feature.RecJobUserFeature
 import com.samsung.vddil.recsys.feature.RecJobFactFeature
 import com.samsung.vddil.recsys.model.RecJobModel
 import com.samsung.vddil.recsys.testing.TestUnit
+import com.samsung.vddil.recsys.data.CombinedDataSet
 
 /** 
  * Stores the location of different types of resources (prepared data, features, models). 
@@ -26,32 +27,14 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	/*
 	 * Data processing resources   
 	 */ 
-	var resourceLocation_CombineData:String = ""
-	var resourceLocation_UserList:String = ""
-	var resourceLocation_ItemList:String = ""
-	var resourceLocation_ItemMap = ""
-	var resourceLocation_UserMap = ""
-	
-	/*
-	 * Persisted spark lists
-	 */
-	var users:Array[String] = Array[String]()
-	var items:Array[String] = Array[String]()
-	var userIdMap:Map[String, Int] = Map()
-	var itemIdMap:Map[String, Int] = Map()
-	
+    var resourceLocation_CombinedData_train: Option[CombinedDataSet] = None
+	var testWatchTime:Option[RDD[Rating]] = None
+    
 	/*
 	 * Data assembling resources   
 	 */ 
 	val resourceLocation_AggregateData_Continuous:HashMap[String, AssembledDataSet]  = new HashMap() 
-	val resourceLocation_AggregateData_Continuous_Train:HashMap[String, String] = new HashMap() 
-	val resourceLocation_AggregateData_Continuous_Test:HashMap[String, String]  = new HashMap() 
-	val resourceLocation_AggregateData_Continuous_Valid:HashMap[String, String] = new HashMap() 
-      
-	val resourceLocation_AggregateData_Binary:HashMap[String, String]       = new HashMap() 
-	val resourceLocation_AggregateData_Binary_Train:HashMap[String, String] = new HashMap() 
-	val resourceLocation_AggregateData_Binary_Test:HashMap[String, String]  = new HashMap() 
-	val resourceLocation_AggregateData_Binary_Valid:HashMap[String, String] = new HashMap() 
+	val resourceLocation_AggregateData_Binary:    HashMap[String, AssembledDataSet]  = new HashMap() 
   
 	/* 
 	 * Feature extraction resources
@@ -74,13 +57,6 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	val completedRegressModels:HashSet[RecJobModel] = new HashSet()
 	val completedClassifyModels:HashSet[RecJobModel] = new HashSet()
 	val completedTests:HashMap[ModelStruct, HashMap[TestUnit, TestUnit.TestResults]] = new HashMap()
-	
-	
-	
-	/*
-	 * test data in RDD[Rating] form
-	 */
-	var testWatchTime:Option[RDD[Rating]] = None
 	
     def allCompleted():Boolean = {
        true

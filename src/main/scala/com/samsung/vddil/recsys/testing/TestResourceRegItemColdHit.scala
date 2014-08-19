@@ -13,6 +13,7 @@ import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 
 object TestResourceRegItemColdHit{
   
@@ -44,6 +45,8 @@ object TestResourceRegItemColdHit{
     testResourceDir:String):
     RDD[(Int, (List[String], Int))]  = {
 
+    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+      
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
     
@@ -73,7 +76,7 @@ object TestResourceRegItemColdHit{
     val testData:RDD[(String, String, Double)] = DataProcess.getDataFromDates(testDates, 
       jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), sc).get
     //get training items
-    val trainItems:Set[String] = jobInfo.jobStatus.itemIdMap.keySet
+    val trainItems:Set[String] = trainCombData.itemMap.mapObj.keySet
     //get cold items not seen in training
     val coldItems:Set[String] = getColdItems(testData, trainItems, sc)
     Logger.info("Cold items not seen in training: " + coldItems.size) 
@@ -84,7 +87,7 @@ object TestResourceRegItemColdHit{
     val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
                                         .userFeatureOrder
     val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                        .itemFeatureOrder
+                                        .itemFeatureOrder.map{feature => feature.asInstanceOf[ItemFeatureStruct]}
       
     //get cold item features
     Logger.info("Preparing item features..")
@@ -108,7 +111,7 @@ object TestResourceRegItemColdHit{
         bColdItems.value(x._2)).map(_._1)
     
     //get users in training
-    val trainUsers:RDD[String] = sc.parallelize(jobInfo.jobStatus.userIdMap.keys.toList)
+    val trainUsers:RDD[String] = sc.parallelize(trainCombData.userMap.mapObj.keys.toList)
     
     //filter out training users
     val allColdUsers:RDD[String] = preferredUsers.intersection(trainUsers)
@@ -127,7 +130,7 @@ object TestResourceRegItemColdHit{
 
 
     //replace coldItemUsers from training with corresponding int id
-    val userIdMap:Map[String, Int] = jobInfo.jobStatus.userIdMap
+    val userIdMap:Map[String, Int] = trainCombData.userMap.mapObj
     val userMapRDD = sc.parallelize(userIdMap.toList)
     val coldItemUsers:RDD[Int] = sampledColdUsers.map(x =>
         (x,1)).join(userMapRDD).map{_._2._2}
@@ -159,8 +162,7 @@ object TestResourceRegItemColdHit{
     //get user features
     Logger.info("Preparing user features...")
     if (jobInfo.outputResource(userFeatObjFile)){
-      val userFeatures:RDD[(Int, Vector)] = getOrderedFeatures(coldItemUsers, userFeatureOrder, 
-        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      val userFeatures:RDD[(Int, Vector)] = getOrderedFeatures(coldItemUsers, userFeatureOrder, sc)
       userFeatures.saveAsObjectFile(userFeatObjFile)
     }
     val userFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)

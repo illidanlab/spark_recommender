@@ -15,20 +15,23 @@ import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.model._
 import org.apache.spark.mllib.regression.GeneralizedLinearModel
+import com.samsung.vddil.recsys.data.AssembledDataSet
 
 object RegressionModelLasso extends 
 	ModelProcessingUnit with RegLinearModel{
 	
 	
 	//models...
-	def learnModel(modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob):ModelResource = {
+	def learnModel(modelParams:HashMap[String, String], allData:AssembledDataSet, splitName:String, jobInfo:RecJob):ModelResource = {
 		
+	    val dataResourceStr = allData.resourceStr
+	    
 		// 1. Complete default parameters 
 		val (numIterations, stepSizes, regParams) = getParameters(modelParams)
 		
 		
 		// 2. Generate resource identity using resouceIdentity()
-		val resourceIden = resourceIdentity(modelParams, dataResourceStr)
+		val resourceIden = resourceIdentity(modelParams, dataResourceStr, splitName)
 		var modelFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobModel) + "/" + resourceIden
 		
 		//if the model is already there, we can safely return a fail. Will do that later.
@@ -36,18 +39,18 @@ object RegressionModelLasso extends
 			return ModelResource.fail
 		
 		// 3. Model learning algorithms (HDFS operations)
-		val trDataFilename:String = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Train(dataResourceStr)
-		val teDataFilename:String = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Test(dataResourceStr)
-		val vaDataFilename:String = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous_Valid(dataResourceStr)
-		
+		val splitData = allData.getSplit(splitName).get
+	    val trData = splitData.training
+	    val teData = splitData.testing
+	    val vaData = splitData.validation
+	        
 		//get the spark context
 		val sc = jobInfo.sc
 		
 		//parse the data to get Label and feature information in LabeledPoint form
-		val trainData = parseDataObj(trDataFilename, sc)
-		val testData = parseDataObj(teDataFilename, sc)
-		val valData = parseDataObj(vaDataFilename, sc)
-
+		val trainData = parseDataObj(trData.resourceLoc, sc)
+	    val testData  = parseDataObj(teData.resourceLoc, sc)
+	    val valData   = parseDataObj(vaData.resourceLoc, sc)
 		
 		//build model for each parameter combination
 		var bestParams:Option[(Double,Double,Double)] = None

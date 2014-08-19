@@ -2,8 +2,6 @@ package com.samsung.vddil.recsys.model
 
 import scala.reflect._
 import scala.collection.mutable.HashMap
-
-
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.Output
 import com.esotericsoftware.kryo.io.Input
@@ -17,22 +15,29 @@ import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
 import org.apache.spark.mllib.optimization.CustomizedModel
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.ResourceStruct
 
 
 /**
  * This is a trait for model. 
  * 
- * The necessary fields of a model 
+ * The necessary fields of a model. 
+ * 
+ * DESIGN NOTE: since the model data structure will be serialized and broadcasted
+ * to all notes. It is necessary to disconnect it from other data structures. 
+ * That is why we use the  learnDataResourceStr as a key to reference to data set that 
+ * trains the model instead of keeping a direct reference of AssembledDataSet.  
  * 
  * @param modelName       the model name (least squares, or so)
  * @param resourceStr     the resource key for this model  
  * @param resourceLoc     the location in HDFS where the model will be saved.
  * @param modelParams the parameters of model
  */
-trait ModelStruct extends Serializable{
+trait ModelStruct extends Serializable with ResourceStruct{
     
     /** the name of the model, typically used as the identity prefix */
 	var modelName:String 
+	def resourcePrefix = modelName
 	
 	/** the resource string, including the identity prefix and a hash string identifying the parameter.  */
 	var resourceStr:String
@@ -70,9 +75,14 @@ object ModelStruct{
  */
 trait SerializableModel [M <: Serializable ] extends ModelStruct{
     var model:M
-	var modelFileName:String
-    var performance:HashMap[String, Double] = new HashMap() 
+    
+	def modelFileName:String
+	def resourceLoc = modelFileName
+	
+    var performance:HashMap[String, Double] = new HashMap()
+    
     def ev: ClassTag[_] // record runtime. 
+    
     /**
      * Serialize the model using Kyro serializer and save the model in a specified 
      * location [[com.samsung.vddil.recsys.model.SerializableModel.modelFileName]]. 
@@ -95,8 +105,6 @@ trait SerializableModel [M <: Serializable ] extends ModelStruct{
  *  applyItemFeature, where the item feature vector is enclosed.  
  */
 trait PartializableModel extends ModelStruct{
-    
-    def modelFileName:String
     
     /**
      * Apply the item feature first to form a partial model.  
@@ -131,7 +139,7 @@ case class GeneralizedLinearModelStruct(
 		    var modelName:String, 
 		    var resourceStr:String, 
 		    override var learnDataResourceStr:String, 
-		    override var modelFileName:String,
+		    var modelFileName:String,
 		    var modelParams:HashMap[String, String] = new HashMap(), 
 		    override var model:GeneralizedLinearModel
 	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) 
@@ -164,7 +172,7 @@ case class CustomizedModelStruct[M >: Null <: CustomizedModel](
         	var modelName:String, 
         	var resourceStr:String, 
         	override var learnDataResourceStr:String, 
-        	override var modelFileName:String,
+        	var modelFileName:String,
 			var modelParams:HashMap[String, String] = new HashMap(), 
 			override var model:M
         )(implicit val ev: ClassTag[M]) extends SerializableModel[M] with PartializableModel{

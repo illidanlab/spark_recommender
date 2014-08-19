@@ -5,6 +5,7 @@ import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.data.DataAssemble
 import com.samsung.vddil.recsys.data.DataSplitting
+import com.samsung.vddil.recsys.data.AssembledDataSet
 
 /** 
  *  The learning to rank models
@@ -44,11 +45,12 @@ case class RecJobScoreRegModel(
 	    //1. prepare data with continuous labels (X, y). 
 		Logger.info("**assembling data")
     	
-		val dataResourceStr = DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
+		val allData:AssembledDataSet = 
+		    DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
 		
 		//2. divide training, testing, validation
 		Logger.info("**divide training/testing/validation")
-		DataSplitting.splitContinuousData(jobInfo, dataResourceStr, 
+		val splitName = DataSplitting.splitContinuousData(jobInfo, allData, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio)
@@ -58,7 +60,7 @@ case class RecJobScoreRegModel(
 		Logger.info("**building and testing models")
 		
 		jobInfo.jobStatus.completedRegressModels(this) = 
-		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
+		    RegressionModelHandler.buildModel(modelName, modelParams, allData, splitName, jobInfo) 
 	}
 }
 
@@ -74,11 +76,11 @@ case class RecJobBinClassModel(
 	   
 	   var balanceTraining = false
 	   
-	   val dataResourceStr = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
+	   val allData = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
 	   
 	   //2. divide training, testing, validation
 	   Logger.info("**divide training/testing/validation")
-	   DataSplitting.splitBinaryData(jobInfo, dataResourceStr, 
+	   val splitName = DataSplitting.splitBinaryData(jobInfo, allData, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio),
@@ -89,7 +91,7 @@ case class RecJobBinClassModel(
 	   Logger.info("**building and testing models")
 	   
 	   jobInfo.jobStatus.completedClassifyModels(this) = 
-	       ClassificationModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo)
+	       ClassificationModelHandler.buildModel(modelName, modelParams, allData, splitName, jobInfo)
        
 	}
 }

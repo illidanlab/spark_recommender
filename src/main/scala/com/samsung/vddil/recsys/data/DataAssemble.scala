@@ -1,5 +1,13 @@
 package com.samsung.vddil.recsys.data
 
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
+import org.apache.spark.HashPartitioner
+import org.apache.spark.RangePartitioner
+import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
+import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
@@ -7,14 +15,6 @@ import com.samsung.vddil.recsys.job.RecJobStatus
 import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
-import org.apache.spark.HashPartitioner
-import org.apache.spark.RangePartitioner
-import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.HashSet
-import com.samsung.vddil.recsys.utils.Logger
 
 /**
  * This is the object version of data assemble. During the data assembling, features are
@@ -27,7 +27,6 @@ object DataAssemble {
    * 
    * @param idSet the ID (user ID or item ID) to be used in join
    * @param usedFeature the feature resource identity
-   * @param featureResourceMap the resource map associated with this type of feature (item/user)
    * @param sc SparkContext the SparkContext used to 
    * 
    * @return a tuple of (joined features, used feature list), the former is an concatenated vector,
@@ -35,19 +34,19 @@ object DataAssemble {
    */
    def getCombinedFeatures(
 		   idSet: RDD[Int], 
-		   usedFeatures: HashSet[String], 
-           featureResourceMap: HashMap[String, FeatureStruct], 
+		   usedFeatures: HashSet[FeatureStruct], 
            sc: SparkContext
-       ): (RDD[(Int, Vector)], List[String]) = 
+       ): (RDD[(Int, Vector)], List[FeatureStruct]) = 
    {
        val usedFeaturesList = usedFeatures.toList
+       
        Logger.info("Length of used features: " + usedFeaturesList.length)       
        val idSetRDD = idSet.map(x => (x,1))
        
        //join all features RDD
        ///the first join. 
        var featureJoin = sc.objectFile[(Int, Vector)](
-               featureResourceMap(usedFeaturesList.head).featureFileName
+               usedFeaturesList.head.featureFileName
                ).join(idSetRDD
                ).map{x=>  // (ID, (feature, 1))
                    val ID = x._1 // could be both user ID and item ID
@@ -57,13 +56,14 @@ object DataAssemble {
        ///remaining
 	   for (usedFeature <- usedFeaturesList.tail){
 		   featureJoin = featureJoin.join(
-				sc.objectFile[(Int, Vector)](featureResourceMap(usedFeature).featureFileName)
+				sc.objectFile[(Int, Vector)](usedFeature.featureFileName)
 		   ).map{ x => // (ID, feature1, feature2)
 		      val ID = x._1
 		      val concatenateFeature:Vector = x._2._1 ++ x._2._2 
 		      (ID, concatenateFeature) //TODO: do we need to make sure this is a sparse vector? 
 		   }
 	   }
+	     
 	   (featureJoin, usedFeaturesList)
    }
   
@@ -76,12 +76,12 @@ object DataAssemble {
    * 
    * @return an RDD of IDs. 
    */
-  def getIntersectIds(usedFeatures: HashSet[String], 
-            featureResourceMap: HashMap[String, FeatureStruct], 
+  def getIntersectIds(
+            usedFeatures: HashSet[FeatureStruct], 
             sc: SparkContext):  RDD[Int] = {
       
       val intersectIds = usedFeatures.map{feature =>
-        sc.objectFile[(Int, Vector)](featureResourceMap(feature).featureFileName)
+        sc.objectFile[(Int, Vector)](feature.featureFileName)
           .map(_._1) //the first field is always id
       }.reduce((idSetA, idSetB) => idSetA.intersection(idSetB)) // reduce to get intersection of all sets
           
@@ -99,9 +99,10 @@ object DataAssemble {
    * @return the features with the specified minimum item/user coverage
    */
   def filterFeatures(featureResourceMap: HashMap[String, FeatureStruct], 
-      minCoverage: Double, sc: SparkContext, total: Int) :HashSet[String] = {
+      minCoverage: Double, sc: SparkContext, total: Int) 
+   		:HashSet[FeatureStruct] = {
     //set to keep keys of item feature having desired coverage
-        var usedFeatures:HashSet[String] = new HashSet()
+        var usedFeatures:HashSet[FeatureStruct] = new HashSet()
 
         //check each feature against minCoverage
         featureResourceMap foreach {
@@ -110,7 +111,7 @@ object DataAssemble {
                     val numFeatures = sc.objectFile[(Int, Vector)](v.featureFileName).count
                     if ( (numFeatures.toDouble/total)  > minCoverage) {
                       //coverage satisfy by feature add it to used set
-                        usedFeatures += k
+                        usedFeatures += v
                     }
                 }
         }
@@ -133,40 +134,40 @@ object DataAssemble {
     * 
     * @return the resource identity of the assembled data
     */
-   def assembleContinuousData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double ):String = {
+   def assembleContinuousData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double ):AssembledDataSet = {
       require(minIFCoverage >= 0 && minIFCoverage <= 1)
       require(minUFCoverage >= 0 && minUFCoverage <= 1)
       
+      val combData:CombinedDataSet = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+      val itemFeatureList = jobInfo.jobStatus.resourceLocation_ItemFeature
+      val userFeatureList = jobInfo.jobStatus.resourceLocation_UserFeature
+      
       //1. inspect all available features
       //   drop features have low coverage (which significant reduces our training due to missing)
-     
+      
       //get spark context
       val sc = jobInfo.sc
       
       //get num of users
-      val numUsers = jobInfo.jobStatus.users.length
+      val numUsers = combData.userList.size
       
       //get num of items
-      val numItems = jobInfo.jobStatus.items.length
+      val numItems = combData.itemList.size
       
       //set to keep keys of item feature having desired coverage
-      val usedItemFeature:HashSet[String] = filterFeatures(
-                      jobInfo.jobStatus.resourceLocation_ItemFeature, 
-                                                       minIFCoverage, 
-                                                       sc, numItems)
+      val usedItemFeature:HashSet[FeatureStruct] = filterFeatures(
+                      itemFeatureList, minIFCoverage, sc, numItems)
 
       //set to keep keys of user feature having desired coverage
-      val usedUserFeature:HashSet[String] = filterFeatures(
-                            jobInfo.jobStatus.resourceLocation_UserFeature, 
-                                                             minUFCoverage, 
-                                                             sc, numItems)
+      val usedUserFeature:HashSet[FeatureStruct] = filterFeatures(
+                      userFeatureList, minUFCoverage, sc, numItems)
     
       if (usedUserFeature.size == 0 || usedItemFeature.size == 0) {
           Logger.warn("Either user or item feature set is empty")
       }
                                                              
       //2. generate ID string 
-      val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+      val dataHashingStr = HashString.generateOrderedArrayHash(combData.dates)
       val resourceStr = assembleContinuousDataIden(dataHashingStr, usedUserFeature, usedItemFeature)
     
       val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
@@ -178,34 +179,25 @@ object DataAssemble {
       if (! jobInfo.jobStatus.resourceLocation_AggregateData_Continuous.isDefinedAt(resourceStr)) {
           
           //3. perform an intersection on selected item features, generate <intersectIF>
-          val itemIntersectIds = getIntersectIds(usedItemFeature, 
-                                               jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+          val itemIntersectIds = getIntersectIds(usedItemFeature, sc)
                                                
           //parse eligible features and extract only those with ids present in itemIntersectIds                  
           var (itemFeaturesRDD, itemFeatureOrder) =  
-              getCombinedFeatures(itemIntersectIds, 
-                                  usedItemFeature, 
-                                  jobInfo.jobStatus.resourceLocation_ItemFeature, 
-                                  sc)
+              getCombinedFeatures(itemIntersectIds, usedItemFeature, sc)
           
                                   
           //4. perform an intersection on selected user features, generate <intersectUF>
-          val userIntersectIds = getIntersectIds(usedUserFeature, 
-                    jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+          val userIntersectIds = getIntersectIds(usedUserFeature, sc)
           
           //parse eligible features and extract only those with IDs present in userIntersectIds
           var (userFeaturesRDD, userFeatureOrder) = 
-              getCombinedFeatures(
-                      			  userIntersectIds, 
-                                  usedUserFeature, 
-                                  jobInfo.jobStatus.resourceLocation_UserFeature, 
-                                  sc)
+              getCombinedFeatures(userIntersectIds, usedUserFeature, sc)
                                   
                                   
           //5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
           //   and generate <intersectTuple>
           //filtering such that we have only user-item pairs such that for both features have been found
-          val allData = sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData)
+          val allData = sc.textFile(combData.resourceLoc)
                         .map{lines => 
                             val fields = lines.split(',')
                             //user, item, watchtime
@@ -268,15 +260,15 @@ object DataAssemble {
         	  // join features and store in assembleFileName
         	  joinedUserItemFeatures.saveAsObjectFile(assembleFileName)
           }
-          //val sampleSize = joinedUserItemFeatures.count
           
-          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) =  
-                    AssembledDataSet(assembleFileName, userFeatureOrder, itemFeatureOrder)
+          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
+          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder, joinedUserItemFeatures.count)  
+                    
           Logger.info("assembled features: " + assembleFileName)
           //Logger.info("Total data size: " + sampleSize)
       }
       
-      resourceStr
+      jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr)
    }
    
    /**
@@ -296,13 +288,22 @@ object DataAssemble {
     */
    def assembleContinuousDataIden(
       dataIdentifier:String,
-      userFeature:HashSet[String], 
-      itemFeature:HashSet[String]):String = {
+      userFeature:HashSet[FeatureStruct], 
+      itemFeature:HashSet[FeatureStruct]):String = {
+       
+      val userFeatureStr = userFeature.map{featureStruct =>
+          featureStruct.featureIden
+      }.mkString("%")
+      
+      val itemFeatureStr = itemFeature.map{featureStruct =>
+          featureStruct.featureIden
+      }.mkString("%")
+       
     return "ContAggData_" + dataIdentifier+ 
-           "_" +  HashString.generateHash(userFeature.toString + "_" + itemFeature.toString) 
+           "_" +  HashString.generateHash(userFeatureStr + "_" + itemFeatureStr) 
    }
 	
-  def assembleBinaryData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double):String = {
+  def assembleBinaryData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double):AssembledDataSet = {
       //see assembleContinuousData
      throw new NotImplementedError("This function is yet to be implemented. ")
   }

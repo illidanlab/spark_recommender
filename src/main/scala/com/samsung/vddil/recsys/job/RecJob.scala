@@ -277,9 +277,23 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         writeline("Job name:"        + this.jobName)
         writeline("Job description:" + this.jobDesc)
         writeline("Train Dates: " + this.trainDates.mkString("[", ",", "]"))
-        writeline("  User number: " + this.jobStatus.users.size)
-        writeline("  Item number: " + this.jobStatus.items.size)
+        //writeline("  User number: " + this.jobStatus.users.size)
+        //writeline("  Item number: " + this.jobStatus.items.size)
         writeline("Test Dates: "  + this.testDates.mkString("[", ",", "]"))
+        writer.newLine()
+        
+        /// training watchtime data 
+        writehead("Combined Datasets", 1)
+        
+        writehead("Training watchtime data", 2)
+        if (this.jobStatus.resourceLocation_CombinedData_train.isDefined){
+            val trainCombData = this.jobStatus.resourceLocation_CombinedData_train.get
+            writeline(" Data Identity: " + trainCombData.resourceStr)
+            writeline(" Data File:     " + trainCombData.resourceLoc)
+            writeline(" Data Dates:    " + trainCombData.dates.mkString("[",", ","]"))
+            writeline("   User Number: " + trainCombData.userList.listObj.size)
+            writeline("   Item Number: " + trainCombData.itemList.listObj.size)
+        }
         writer.newLine()
         
         /// features
@@ -287,7 +301,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         
         writehead("User Features", 2)
         for ((featureId, feature) <- this.jobStatus.resourceLocation_UserFeature){
-            writeline("  Feature Identity:   " + feature.resrouceStr)
+            writeline("  Feature Identity:   " + feature.resourceStr)
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
             writer.newLine()
@@ -295,12 +309,33 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         writer.newLine()
         writehead("Item Features", 2)
         for ((featureId, feature) <- this.jobStatus.resourceLocation_ItemFeature){
-            writeline("  Feature Identity:   " + feature.resrouceStr)
+            writeline("  Feature Identity:   " + feature.resourceStr)
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
             writer.newLine()
         }
         writer.newLine()
+        
+        /// assembled data
+        writehead("Assembled Continuous Datasets", 1)
+        for((adataId, data) <- this.jobStatus.resourceLocation_AggregateData_Continuous){
+            writeline("  Data Identity:      " + data.resourceStr)
+            writeline("  Data File:          " + data.resourceLoc)
+            writeline("  Data Size:          " + data.size)
+            writeline("  User Features:")
+            for (feature <- data.userFeatureOrder){
+                writeline("     Feature Name: " + feature.featureIden)
+                writeline("     Feature Iden: " + feature.resourceStr)
+                writeline("     Feature Param: " + feature.featureParams.toString)
+            }
+            writeline("  Item Features:")
+            for (feature <- data.itemFeatureOrder){
+                writeline("     Feature Name: " + feature.featureIden)
+                writeline("     Feature Iden: " + feature.resourceStr)
+                writeline("     Feature Param: " + feature.featureParams.toString)
+            }
+            writer.newLine()
+        }
         
         /// models 
         writehead("Models", 1)
@@ -310,6 +345,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Model Name:     " + model.modelName)
             writeline("  Model Identity: " + modelId)
             writeline("  Model Param:    " + model.modelParams.toString)
+            writeline("  Model DataRI:   " + model.learnDataResourceStr)
             if (model.isInstanceOf[SerializableModel[_]])
             	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
             writer.newLine()
@@ -320,6 +356,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Model Name:     " + model.modelName)
             writeline("  Model Identity: " + modelId)
             writeline("  Model Param:    " + model.modelParams.toString)
+            writeline("  Model DataRI:   " + model.learnDataResourceStr)
             if (model.isInstanceOf[SerializableModel[_]])
             	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
             writer.newLine()
