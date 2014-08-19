@@ -8,134 +8,147 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.SparkContext
 import com.samsung.vddil.recsys.linalg.Vectors
+import org.apache.spark.SparkContext._
+import scala.util.control._
+import com.samsung.vddil.recsys.feature.UserFeatureStruct
+import scala.util.Marshal
+import scala.io.Source
+import scala.collection.immutable
+import java.io._
+import scala.collection.Parallel
+import org.apache.tools.ant.taskdefs.Parallel
+import scala.collection.immutable.Vector
 
 /*
- * User Feature: Geo Location features. 
+ * User Feature: Geo Location and Demographic features. 
  */
 object UserFeatureDemographicGeoLocation extends FeatureProcessingUnit {
+    def hasAllFields(line:Array[String],lengthCondition:Boolean):Boolean = {
+        if (lengthCondition == false)
+        	return false 
+        for (tt <- line) {
+            if (tt.isEmpty()) {
+                return false
+            }           
+        }
+        return true
+    }
     
-    val Param_numLatitudeSeg    = "numLatitudeSeg" 
-    val Param_numLongitudeSeg   = "numLongitudeSeg" 
-    val default_numLatitudeSeg  = 5 
-    val default_numLongitudeSeg = 12
-    // Define constants for the range of latitude and longitude of USA
-    val _MIN_Latitude           = 24
-    val _MAX_Latitude           = 50
-    val _MIN_Longitude          = 66
-    val _MAX_Longitude          = 125
-    
-    
-	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
+    def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
 		//Logger.error("%s has not been implmented.".format(getClass.getName()))
 		
 		// 1. Load defined parameters or use default parameters
-		// Take parameters, numLatitudeSeg, numLongitudeSeg
-        var numLatitudeSeg  = default_numLatitudeSeg
-        var numLongitudeSeg = default_numLongitudeSeg
-        if(featureParams.isDefinedAt(Param_numLatitudeSeg)){
-            numLatitudeSeg  = featureParams(Param_numLatitudeSeg).toInt
-        }
-        if(featureParams.isDefinedAt(Param_numLongitudeSeg)){
-            numLongitudeSeg = featureParams(Param_numLongitudeSeg).toInt
-        }
-
-		
+        // No pre-defined parameters
+    	
 	    // 2. Generate resource identity using resouceIdentity()
-		val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
-		val resourceIden   = resourceIdentity(featureParams, dataHashingStr)
+		val dataHashingStr     = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+		
+		val resourceIden       = resourceIdentity(featureParams, dataHashingStr)
 
         val featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
         							"/" + resourceIden
-        var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
-        							"/" + resourceIden + "_Map"		
-
-		
-		
-		
+        var featureMapFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + resourceIden + "_Map"	
+        
 	    // 3. Feature generation algorithms (HDFS operations)
 		val sc:SparkContext = jobInfo.sc
 				
 		val geoLoc:String   = jobInfo.resourceLocAddon(RecJob.ResourceLocAddon_GeoLoc)
-		
-		val trainDate       = jobInfo.trainDates
-		
 		Logger.info("Geo data location: " + geoLoc)
-		Logger.info("Lets start to build geo features on " + trainDate.mkString(","))
 		
-		val quantizationLatitude:Double  = (_MAX_Latitude - _MIN_Latitude).toDouble / numLatitudeSeg
-		val quantizationLongitude:Double = (_MAX_Longitude - _MIN_Longitude).toDouble / numLongitudeSeg
-		val totalSegments:Int            = numLatitudeSeg * numLongitudeSeg
-		println("quantizationLatitude : " + quantizationLatitude)
-		println("quantizationLongitude : " + quantizationLongitude)		
+		val trainDate       = jobInfo.trainDates        
 		
-		
-		val geoDataDay1 = sc.textFile(geoLoc + "/" + trainDate(0))		
-		Logger.info("We have found " + geoDataDay1.count() + " lines in day " + trainDate(0) + " .")	
-		
-		var geoFeatureMap = geoDataDay1.map{
-		    line => val fields = line.split('\t')
-		//for (line <- geoDataDay1) {
-		    //val fields = line.split('\t')
-		    //println("fields are " + fields.mkString(" "))
-		    
-		    val latitudeSegmentIndex:Int = ((fields(1).toDouble - _MIN_Latitude) / quantizationLatitude).toInt
-		    val longitudeSegmentIndex:Int = ((-1 * fields(2).toDouble - _MIN_Longitude) / quantizationLongitude).toInt		        
+		// Predefined address for off-data (demographics information and feature descriptions)
+		val demogrphicsLoc:String = "/user/yin.zhou/recsys_offline_data" // "data/Demographics"		    
 
-		    var overallIndex = 0
-		    if (latitudeSegmentIndex < 0 || longitudeSegmentIndex < 0) {
-		        overallIndex = 0 // out of the main continent of USA
-		    }
-		    else if (latitudeSegmentIndex > 4 || longitudeSegmentIndex > 11) {
-		        overallIndex = 59 // out of the main continent of USA
-		    }		
-		    else {
-    		    overallIndex = (latitudeSegmentIndex * numLongitudeSeg) + longitudeSegmentIndex // horizontally indexing		    		
-	    	}
-		    // generate sparse feature vector
-		    val featureVecPair = Array((overallIndex, 1.0))
-		    val featureVec = Vectors.sparse(totalSegments, featureVecPair)
-		    (fields(0), featureVec)
-		}
+		val demographicsinfo = sc.textFile(demogrphicsLoc + "/" + "demographics_zipcode_new_full.txt") // change to full version		
+		Logger.info("We have found " + demographicsinfo.count() + " lines in demographics information table.")			
 		
-		for (trDate <- trainDate.tail) {
-		    val geoDataDayRest = sc.textFile(geoLoc + "/" + trDate)	
-    		Logger.info("We have found " + geoDataDayRest.count() + " lines in day " + trDate + " .")	
-			val geoFeatureMapRest = geoDataDayRest.map{
-			    line => val fields = line.split('\t')
-			    
-			    val latitudeSegmentIndex:Int = ((fields(1).toDouble - _MIN_Latitude) / quantizationLatitude).toInt
-			    val longitudeSegmentIndex:Int = ((-1 * fields(2).toDouble - _MIN_Longitude) / quantizationLongitude).toInt		        
-	
-			    var overallIndex = 0
-			    if (latitudeSegmentIndex < 0 || longitudeSegmentIndex < 0) {
-			        overallIndex = 0 // out of the main continent of USA
-			    }
-			    else if (latitudeSegmentIndex > 4 || longitudeSegmentIndex > 11) {
-			        overallIndex = 59 // out of the main continent of USA
-			    }		
-			    else {
-	    		    overallIndex = (latitudeSegmentIndex * numLongitudeSeg) + longitudeSegmentIndex // horizontally indexing		    		
-		    	}
-			    // generate sparse feature vector
-			    val featureVecPair = Array((overallIndex, 1.0))
-			    val featureVec = Vectors.sparse(totalSegments, featureVecPair)
-			    (fields(0), featureVec)
-			}		    
-		    geoFeatureMap = geoFeatureMap.union(geoFeatureMapRest).distinct
-		}
+		var accum = sc.accumulator(0)
 		
-		
-	    // 4. Generate and return a FeatureResource that includes all resources.  
-        //save user geo features as textfile
+		// Load the demographics information and convert it to a hashmap
+		var demographicHashTable = demographicsinfo.filter{
+		    line => hasAllFields(line.split("\t"),line.split("\t").size == 55)
+		}.map{
+            line            => 
+            val fields      = line.split("\t")
+            var zipcode     = fields(0)
+            var demoFeature = fields.tail.map{_.toDouble}
+            accum += 1
+            (zipcode,demoFeature)
+        }.collectAsMap
+        Logger.info("The demographic HashTable contains " + accum + " records.")
+        
+        val demographicHashTableRDD = sc.broadcast(demographicHashTable) // broadcast the hash table for fast generating user feature
+        
+        // Load the duid_geo.tsv at each date and use the zipcode to hash the demographics information
+		val userFeatureMap = trainDate.map{
+            date => 
+			val geoDataOneDay = sc.textFile(geoLoc + "/" + date + "/duid_geo.tsv")		
+			Logger.info("We have found " + geoDataOneDay.count() + " lines in day " + date + " .")	
+			
+			var userFeatureMapOneDay = geoDataOneDay.filter{
+			    line        =>
+			    val fields  = line.split("\t")
+			    var duid    = fields(0)
+			    var zipcode = fields(5) // the sixth fields in the duid_geo.tsv
+			    demographicHashTableRDD.value.isDefinedAt(zipcode)
+			}.map{
+			    line        =>
+			    val fields   =             line.split("\t")
+			    var duid     =             fields(0)
+			    var zipcode  =             fields(5)		    
+			    (duid,demographicHashTableRDD.value(zipcode))
+			}
+			userFeatureMapOneDay
+        }.reduce{ (a,b) =>
+            a.union(b)
+        }.distinct
+        
+        val uMap   = sc.parallelize(jobInfo.jobStatus.userIdMap.toList)
+        val userF  = userFeatureMap.join(uMap)
+        val userFeatureMap2Sparse = userF.map{
+            x => (x._2._2, Vectors.sparse(x._2._1))
+        }
+  
+        
+        println("featureFileName : " + featureFileName)
+        println("resourceIden : " + resourceIden)
+        println("featureMapFileName : " + featureMapFileName)
+        
+       
+        //save user geo demographic features as textfile and load off-line feature descriptions
+        val demographicsDescription       = sc.textFile(demogrphicsLoc + "/" + "demographics_description.txt")
+        val lenDescription                = demographicsDescription.count.toInt
+        val demographicsDescriptionMap    = ((0 until lenDescription) zip demographicsDescription.collect).toMap
+        val demographicsDescriptionMapRDD = sc.makeRDD(demographicsDescriptionMap.toList)
+        
+               
+    	//save demographic user features as ObjectFile
         if (jobInfo.outputResource(featureFileName)){
         	Logger.logger.info("Dumping feature resource: " + featureFileName)
-        	geoFeatureMap.saveAsObjectFile(featureFileName) //directly use object + serialization. 
+        	userFeatureMap2Sparse.saveAsObjectFile(featureFileName) //directly use object + serialization. 
         }		
+                       
+        
+        //save feature description mapping to indexes
+        if (jobInfo.outputResource(featureMapFileName)){
+        	Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
+        	demographicsDescriptionMapRDD.map{
+        	    x => x._1 + "," + x._2
+        	}.saveAsTextFile(featureMapFileName)
+        }
+        
+        
+    	// 4. Generate and return a FeatureResource that includes all resources.  
+		val featureStruct:UserFeatureStruct = 
+  			new UserFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName)
+        	
+        val resourceMap:HashMap[String, Any] = new HashMap()
+        resourceMap(FeatureResource.ResourceStr_UserFeature) = featureStruct
+		Logger.info("Saved item features and feature map")	
 		
-		Logger.info("featureFileName is " + featureFileName)
-		FeatureResource.fail
-	}
-    
-    
-	val IdenPrefix:String = "UserFeatureGeo"
+		new FeatureResource(true, Some(resourceMap), resourceIden)
+	
+    }
+    val IdenPrefix:String = "UserFeatureGeo"
 }

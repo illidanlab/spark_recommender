@@ -28,7 +28,7 @@ object UserFeatureHandler extends FeatureHandler{
 	      case UFBehaviorZapping   => resource = UserFeatureBehaviorZapping.processFeature(featureParams, jobInfo)
 	      case UFBehaviorGenre     => resource = UserFeatureBehaviorGenre.processFeature(featureParams, jobInfo)
 	      case UFBehaviorTFIDF     => resource = UserFeatureBehaviorSynTFIDF.processFeature(featureParams, jobInfo)
-	      case UFDemoGeoLocation   => resource = UserFeatureDemographicGeoLocationNew.processFeature(featureParams, jobInfo)
+	      case UFDemoGeoLocation   => resource = UserFeatureDemographicGeoLocation.processFeature(featureParams, jobInfo)
 	      case _ => Logger.warn("Unknown item feature type [%s]".format(featureName))
 	    }
 	    
