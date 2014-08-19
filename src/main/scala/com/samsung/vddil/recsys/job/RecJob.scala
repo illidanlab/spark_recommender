@@ -324,13 +324,15 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Data Size:          " + data.size)
             writeline("  User Features:")
             for (feature <- data.userFeatureOrder){
-                writeline("     Feature Iden: " + feature.featureIden)
-                writeline("     Feature Name: " + feature.featureParams.toString)
+                writeline("     Feature Name: " + feature.featureIden)
+                writeline("     Feature Iden: " + feature.resourceStr)
+                writeline("     Feature Param: " + feature.featureParams.toString)
             }
             writeline("  Item Features:")
             for (feature <- data.itemFeatureOrder){
-                writeline("     Feature Iden: " + feature.featureIden)
-                writeline("     Feature Name: " + feature.featureParams.toString)
+                writeline("     Feature Name: " + feature.featureIden)
+                writeline("     Feature Iden: " + feature.resourceStr)
+                writeline("     Feature Param: " + feature.featureParams.toString)
             }
             writer.newLine()
         }
