@@ -32,14 +32,16 @@ object DataProcess {
      */
     def substituteIntId(idMap:Map[String, Int], 
                       dataRDD:RDD[(String, (Int,Double))],
-                      sc:SparkContext):RDD[(Int, Int, Double)] = {
+                      sc:SparkContext,
+                      partitionNum:Int
+                ):RDD[(Int, Int, Double)] = {
         val idMapList = idMap.toList
 
         val idMapRDD = sc.parallelize(idMap.toList)
         Logger.info("Parallelized idMap.toList")
 
-        idMapRDD.persist(StorageLevel.DISK_ONLY)
-        dataRDD. persist(StorageLevel.DISK_ONLY)
+        idMapRDD.persist(StorageLevel.MEMORY_AND_DISK_SER)
+        //dataRDD .repartition(partitionNum)
 
         val result = idMapRDD.join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
             val intID:Int = x._2._1 
@@ -69,7 +71,9 @@ object DataProcess {
      */
 	def getDataFromDates(dates:Array[String], 
 							pathPrefix: String,
-							sc: SparkContext):Option[RDD[(String, String, Double)]] = {
+							sc: SparkContext, 
+							unitParitionNum: Int
+						):Option[RDD[(String, String, Double)]] = {
 		//read all data mentioned in test dates l date
 		//get RDD of data of each individua
 		val arrRatingsRDD = dates.map{date => 
@@ -77,7 +81,7 @@ object DataProcess {
 										.map {line =>    //convert each line of file to rating
 										  	  val fields = line.split('\t')
 										  	  (fields(0), fields(1), fields(2).toDouble)
-										   }
+								      }.repartition(unitParitionNum)
 								  }
 		
 		//combine RDDs to get the full data
@@ -112,11 +116,13 @@ object DataProcess {
 	    val sc = jobInfo.sc
 	    val outputResource = (x:String) => jobInfo.outputResource(x)
 	    val outputDataResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData)
-	    
+	    val partitionNum = jobInfo.partitionNum_train 
+	        
 	    val combData:Option[CombinedDataSet] = combineWatchTimeData(
 	        dataDates:Array[String], 
 	        watchTimeResLoc:String, 
 	        sc:SparkContext, 
+	        partitionNum:Int,
 	        outputResource: String=>Boolean,
 	        outputDataResLoc: String ) 
 	        
@@ -143,6 +149,7 @@ object DataProcess {
 	        dataDates:Array[String], 
 	        watchTimeResLoc:String, 
 	        sc:SparkContext, 
+	        partitionNum:Int,
 	        outputResource: String=>Boolean,
 	        outputDataResLoc: String ): Option[CombinedDataSet] = {
 	  
@@ -156,7 +163,7 @@ object DataProcess {
 
 	    //1. aggregate the dates and generate sparse matrix in JobStatus
 	    //read
-	    val trainData = getDataFromDates(dataDates, watchTimeResLoc, sc)
+	    val trainData = getDataFromDates(dataDates, watchTimeResLoc, sc, partitionNum)
 	    
     	if(trainData.isDefined){ 
     	    val data = trainData.get.persist(StorageLevel.DISK_ONLY)
@@ -187,15 +194,16 @@ object DataProcess {
                 	  (record._1, (bIMap.value(record._2), record._3))
                       }.persist(StorageLevel.DISK_ONLY)
 
-                val replacesUserIds = substituteIntId(userIdMap,
-                      replacedItemIds, sc).map {x =>
+                val replacesUserIds = substituteIntId(userIdMap, 
+                      replacedItemIds, sc, partitionNum).map {x =>
                            x._1 + "," + x._2 + "," + x._3
                       }.persist(StorageLevel.DISK_ONLY)
 
                 replacesUserIds.saveAsTextFile(dataLocCombine)
 		
-		replacedItemIds.unpersist()
+                replacedItemIds.unpersist()
                 replacesUserIds.unpersist() 
+                data.unpersist()
             }
             
             //save users list
@@ -259,6 +267,7 @@ object DataProcess {
     
     //get spark context
 	val sc  = jobInfo.sc
+	val partitionNum = jobInfo.partitionNum_test
 
     //get userMap and itemMap
     val userMap = trainCombData.userMap.mapObj
@@ -271,7 +280,7 @@ object DataProcess {
     //get RDD of data of each individua
     val testData = getDataFromDates(jobInfo.testDates, 
                     jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
-                    sc)
+                    sc, partitionNum)
 
     //include only users and items seen in training
     testData foreach {data =>
@@ -281,7 +290,7 @@ object DataProcess {
                       (record._1, (bIMap.value(record._2), record._3))
                     }.persist(StorageLevel.DISK_ONLY)
 
-      val replacedUserIds = substituteIntId(userMap, replacedItemIds, sc).persist(StorageLevel.DISK_ONLY)
+      val replacedUserIds = substituteIntId(userMap, replacedItemIds, sc, partitionNum).persist(StorageLevel.DISK_ONLY)
     
       jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
                                             Rating(x._1, x._2, x._3)

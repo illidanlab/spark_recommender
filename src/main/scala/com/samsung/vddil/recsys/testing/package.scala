@@ -137,6 +137,8 @@ package object testing {
     def getOrderedFeatures(idSet: RDD[Int], featureOrder: List[FeatureStruct], 
     		                    sc:SparkContext, isPartition:Boolean = false): RDD[(Int, Vector)] = {
       
+      val partitionNum = Pipeline.getPartitionNum()
+        
       //create parallel RDDs of ids to be used in join
       val idRDDs = idSet.map((_,1))
 
@@ -146,8 +148,7 @@ package object testing {
       Logger.info("Starting partitioning features...") 
       val partedFeatures = if(isPartition) {
                             headFeatures.partitionBy(new
-                              RangePartitioner(Pipeline.getPartitionNum,
-                                                idRDDs)) 
+                              RangePartitioner(partitionNum, idRDDs)) 
                            } else headFeatures
                            
       Logger.info("Features partitioned successfully, joining features...")

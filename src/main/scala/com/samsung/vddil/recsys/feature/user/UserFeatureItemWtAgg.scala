@@ -118,7 +118,7 @@ trait UserFeatureItemWtAgg extends Serializable {
         //save generated userFeatures at specified file path
         if(jobInfo.outputResource(featureFilePath)) {
             Logger.info("Dumping feature resource: " + featureFilePath)
-            userFeatures.coalesce(Pipeline.getPartitionNum).saveAsObjectFile(featureFilePath)
+            userFeatures.coalesce(jobInfo.partitionNum_unit).saveAsObjectFile(featureFilePath)
         }
       }
     }

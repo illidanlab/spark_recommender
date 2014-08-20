@@ -11,6 +11,7 @@ import org.apache.spark.RangePartitioner
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
+import org.apache.hadoop.mapred.JobInfo
 
 
 /**
@@ -46,6 +47,7 @@ object DataSplitting {
     	//require(trainingPerc + testingPerc + validationPerc >= 0.99)
     	
     	val splitName = HashString.generateHash("split1_" + trainingPerc.toString + testingPerc.toString + validationPerc.toString)
+    	val partitionNum = jobInfo.partitionNum_train
     	
     	// check if the resource has already implemented. 
     	if ( ! allData.getSplit(splitName).isDefined){
@@ -53,6 +55,7 @@ object DataSplitting {
     		splitDataByPercentage(
     				splitName, jobInfo.sc, allData, 
     				(resourceLoc:String) => jobInfo.outputResource(resourceLoc),
+    				partitionNum,
     				trainingPerc, 
     				testingPerc, 
     				validationPerc)
@@ -90,6 +93,7 @@ object DataSplitting {
 	        sc:SparkContext,
 	        allData:AssembledDataSet, 
 	        outputResource:String=>Boolean,
+	        partitionNum:Int,
 			trainingPerc:Double, 
 			testingPerc:Double, 
 			validationPerc:Double) = {
@@ -126,8 +130,7 @@ object DataSplitting {
     	    //Generate resources.
 	    	
 	    	//get partitioner.
-	    	val numPartitions = Pipeline.getPartitionNum
-	    	val partitioner = Pipeline.getHashPartitioner()
+	    	val partitioner = Pipeline.getHashPartitioner(partitionNum)
 	    	
 	    	//randomize the passed data
 	    	val randData = sc.objectFile[(Int, Int, Vector, Double)](allData.resourceLoc

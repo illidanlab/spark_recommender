@@ -80,6 +80,7 @@ class AssembledDataSet(
     val resourceLoc: String, 
     val userFeatureOrder: List[FeatureStruct],
     val itemFeatureOrder: List[FeatureStruct],
+    val combData: CombinedDataSet,
     var size: Long = -1
     ) extends DataStruct{
     
@@ -123,7 +124,7 @@ class AssembledDataSet(
     }
     
     def createSplitStruct(resourceIden:String, resourceLoc:String): AssembledDataSet = {
-        new AssembledDataSet(resourceIden, resourceLoc, userFeatureOrder, itemFeatureOrder)
+        new AssembledDataSet(resourceIden, resourceLoc, userFeatureOrder, itemFeatureOrder, combData)
     }
 }
 

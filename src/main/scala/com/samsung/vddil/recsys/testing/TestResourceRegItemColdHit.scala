@@ -72,9 +72,11 @@ object TestResourceRegItemColdHit{
    
     //get test dates
     val testDates = jobInfo.testDates
+    val partitionNum = jobInfo.partitionNum_test
+    
     //get test data from test dates
     val testData:RDD[(String, String, Double)] = DataProcess.getDataFromDates(testDates, 
-      jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), sc).get
+      jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), sc, partitionNum).get
     //get training items
     val trainItems:Set[String] = trainCombData.itemMap.mapObj.keySet
     //get cold items not seen in training
@@ -220,7 +222,7 @@ object TestResourceRegItemColdHit{
             aggregatedPredBlock = aggregatedPredBlock ++ 
             		sc.objectFile[(Int, (String, Double))](blockPredFiles(idx))
         }
-        aggregatedPredBlock.coalesce(Pipeline.getPartitionNum)
+        aggregatedPredBlock.coalesce(partitionNum)
         
     }else{
 	    //for each user get all possible user item features

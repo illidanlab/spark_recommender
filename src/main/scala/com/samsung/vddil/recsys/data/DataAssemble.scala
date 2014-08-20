@@ -236,7 +236,7 @@ object DataAssemble {
                                         
           
           //can use both range partitoner or hashpartitioner to efficiently partition by user
-          val numPartitions = Pipeline.getPartitionNum
+          val numPartitions = jobInfo.partitionNum_train
           val partedByUJoinedItemFeat = joinedItemFeatures.partitionBy(
                                           new RangePartitioner(numPartitions, 
                                                               joinedItemFeatures)) 
@@ -262,7 +262,7 @@ object DataAssemble {
           }
           
           jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
-          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder, joinedUserItemFeatures.count)  
+          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder, combData, joinedUserItemFeatures.count)  
                     
           Logger.info("assembled features: " + assembleFileName)
           //Logger.info("Total data size: " + sampleSize)
