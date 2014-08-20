@@ -33,12 +33,22 @@ object DataProcess {
     def substituteIntId(idMap:Map[String, Int], 
                       dataRDD:RDD[(String, (Int,Double))],
                       sc:SparkContext):RDD[(Int, Int, Double)] = {
-        sc.parallelize(idMap.toList).join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
+        val idMapList = idMap.toList
+
+        val idMapRDD = sc.parallelize(idMap.toList)
+        Logger.info("Parallelized idMap.toList")
+
+        idMapRDD.persist(StorageLevel.DISK_ONLY)
+        dataRDD. persist(StorageLevel.DISK_ONLY)
+
+        val result = idMapRDD.join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
             val intID:Int = x._2._1 
             val otherField = x._2._2._1
             val value:Double = x._2._2._2
             (intID, otherField, value) 
         }
+        Logger.info("substituteIntId completes")
+        result
     }
 
 
@@ -149,18 +159,18 @@ object DataProcess {
 	    val trainData = getDataFromDates(dataDates, watchTimeResLoc, sc)
 	    
     	if(trainData.isDefined){ 
-    	    val data = trainData.get
-    	    
-    	    data.persist(StorageLevel.DISK_ONLY)
+    	    val data = trainData.get.persist(StorageLevel.DISK_ONLY)
     	    
             //2. generate and maintain user list in JobStatus
             val users = data.map(_._1).distinct
             val userList = users.collect
+            Logger.info("User number: " + userList.size) 
             users.persist 
 
             //3. generate and maintain item list in JobStatus
             val items = data.map(_._2).distinct
             val itemList = items.collect
+            Logger.info("Item number: " + itemList.size)
             items.persist 
             
             //create mapping from string id to int
@@ -174,13 +184,18 @@ object DataProcess {
             if(outputResource(dataLocCombine)) {
                 Logger.info("Dumping combined data")
                 val replacedItemIds =  data.map{record => 
-                  (record._1, (bIMap.value(record._2), record._3))
-                }
+                	  (record._1, (bIMap.value(record._2), record._3))
+                      }.persist(StorageLevel.DISK_ONLY)
+
                 val replacesUserIds = substituteIntId(userIdMap,
-                                        replacedItemIds, sc).map {x =>
-                                          x._1 + "," + x._2 + "," + x._3
-                                        }
-                replacesUserIds.saveAsTextFile(dataLocCombine) 
+                      replacedItemIds, sc).map {x =>
+                           x._1 + "," + x._2 + "," + x._3
+                      }.persist(StorageLevel.DISK_ONLY)
+
+                replacesUserIds.saveAsTextFile(dataLocCombine)
+		
+		replacedItemIds.unpersist()
+                replacesUserIds.unpersist() 
             }
             
             //save users list
@@ -260,11 +275,14 @@ object DataProcess {
 
     //include only users and items seen in training
     testData foreach {data =>
-      val replacedItemIds =  data.filter(x => bIMap.value.contains(x._2)
-                                  ).map{record =>
+      val replacedItemIds =  data.persist(StorageLevel.DISK_ONLY).
+                    filter(x => bIMap.value.contains(x._2)).
+                    map{record =>
                       (record._1, (bIMap.value(record._2), record._3))
-                    }
-      val replacedUserIds = substituteIntId(userMap, replacedItemIds, sc)    
+                    }.persist(StorageLevel.DISK_ONLY)
+
+      val replacedUserIds = substituteIntId(userMap, replacedItemIds, sc).persist(StorageLevel.DISK_ONLY)
+    
       jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
                                             Rating(x._1, x._2, x._3)
                                         })
