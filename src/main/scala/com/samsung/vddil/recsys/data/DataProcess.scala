@@ -11,6 +11,7 @@ import org.apache.hadoop.fs.Path
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.utils.Logger
+import org.apache.spark.storage.StorageLevel
 
 /**
  * Provides functions to aggregate data. The main functions are [[DataProcess.prepareTrain]] 
@@ -149,6 +150,8 @@ object DataProcess {
 	    
     	if(trainData.isDefined){ 
     	    val data = trainData.get
+    	    
+    	    data.persist(StorageLevel.DISK_ONLY)
     	    
             //2. generate and maintain user list in JobStatus
             val users = data.map(_._1).distinct
