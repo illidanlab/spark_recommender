@@ -40,15 +40,33 @@ object DataProcess {
         val idMapRDD = sc.parallelize(idMap.toList)
         Logger.info("Parallelized idMap.toList")
 
+	Logger.info("Starting to repartition and persist")
+        
         idMapRDD.persist(StorageLevel.MEMORY_AND_DISK_SER)
-        //dataRDD .repartition(partitionNum)
+        //dataRDD .repartition(3200)
+        //Consider HashPartitioner.
 
-        val result = idMapRDD.join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
-            val intID:Int = x._2._1 
-            val otherField = x._2._2._1
-            val value:Double = x._2._2._2
-            (intID, otherField, value) 
+	val pData = dataRDD.partitionBy(Pipeline.getHashPartitioner(1000))
+                           .persist(StorageLevel.DISK_ONLY)	
+
+	Logger.info("Repartition done with paritions" + partitionNum)
+
+	
+        //var result = dataRDD.partitionBy(Pipeline.getHashPartitioner(3200)).
+        var result = pData.
+                 join(idMapRDD, 1000).map{x => //(StringId, ((Int, Double), intd))
+            val intID:Int    = x._2._2
+            val otherField   = x._2._1._1
+            val value:Double = x._2._1._2
+            (intID, otherField, value)
         }
+
+        //val result = idMapRDD.join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
+        //    val intID:Int = x._2._1 
+        //    val otherField = x._2._2._1
+        //    val value:Double = x._2._2._2
+        //    (intID, otherField, value) 
+        //}
         Logger.info("substituteIntId completes")
         result
     }
@@ -81,7 +99,7 @@ object DataProcess {
 										.map {line =>    //convert each line of file to rating
 										  	  val fields = line.split('\t')
 										  	  (fields(0), fields(1), fields(2).toDouble)
-								      }.repartition(unitParitionNum)
+								      }//.repartition(unitParitionNum)
 								  }
 		
 		//combine RDDs to get the full data
@@ -192,12 +210,12 @@ object DataProcess {
                 Logger.info("Dumping combined data")
                 val replacedItemIds =  data.map{record => 
                 	  (record._1, (bIMap.value(record._2), record._3))
-                      }.persist(StorageLevel.DISK_ONLY)
+                      }//.persist(StorageLevel.DISK_ONLY)
 
                 val replacesUserIds = substituteIntId(userIdMap, 
                       replacedItemIds, sc, partitionNum).map {x =>
                            x._1 + "," + x._2 + "," + x._3
-                      }.persist(StorageLevel.DISK_ONLY)
+                      }//.persist(StorageLevel.DISK_ONLY)
 
                 replacesUserIds.saveAsTextFile(dataLocCombine)
 		

@@ -69,7 +69,7 @@ trait UserFeatureItemWtAgg extends Serializable {
         (rating.user, (bIFeatMap.value(rating.item), rating.rating)))
 
     //group by user, to get all preferred item and features 
-    val userGroupedItemFeats = userItemFeats.groupByKey
+    val userGroupedItemFeats = userItemFeats.groupByKey(1000)
 
     //get weighted aggregation of item features per user
     val aggFeatureFunc:(Iterable[(Vector, Double)]) => Vector = this.aggByItemFeature
@@ -118,7 +118,7 @@ trait UserFeatureItemWtAgg extends Serializable {
         //save generated userFeatures at specified file path
         if(jobInfo.outputResource(featureFilePath)) {
             Logger.info("Dumping feature resource: " + featureFilePath)
-            userFeatures.coalesce(jobInfo.partitionNum_unit).saveAsObjectFile(featureFilePath)
+            userFeatures.coalesce(jobInfo.partitionNum_unit * 2).saveAsObjectFile(featureFilePath)
         }
       }
     }
