@@ -155,8 +155,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
         // 3. Feature generation algorithms (HDFS operations)
         
         //get set of items
-        val itemSet = trainCombData.itemList.listObj.toSet
-        
+        val itemSet = trainCombData.getItemList().collect.toSet
         
         //get RDDs of genres only for param_GenreLang if exists
         var fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + jobInfo.trainDates(0) + "/genre*" 
@@ -204,7 +203,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
        
         Logger.info("Created itemGenres list: ")
         
-        val itemIdMap = trainCombData.itemMap.mapObj 
+        val itemIdMap = trainCombData.getItemMap().collectAsMap
+        
         val bItemMap = sc.broadcast(itemIdMap)
         //generate feature vector for each items    
         val itemFeature:RDD[(Int, Vector)] =

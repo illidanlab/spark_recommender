@@ -302,8 +302,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline(" Data Identity: " + trainCombData.resourceStr)
             writeline(" Data File:     " + trainCombData.resourceLoc)
             writeline(" Data Dates:    " + trainCombData.dates.mkString("[",", ","]"))
-            writeline("   User Number: " + trainCombData.userList.listObj.size)
-            writeline("   Item Number: " + trainCombData.itemList.listObj.size)
+            writeline("   User Number: " + trainCombData.userNum)
+            writeline("   Item Number: " + trainCombData.itemNum)
         }
         writer.newLine()
         

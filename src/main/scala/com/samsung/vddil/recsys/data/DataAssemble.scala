@@ -149,10 +149,10 @@ object DataAssemble {
       val sc = jobInfo.sc
       
       //get num of users
-      val numUsers = combData.userList.size
+      val numUsers = combData.userNum
       
       //get num of items
-      val numItems = combData.itemList.size
+      val numItems = combData.itemNum
       
       //set to keep keys of item feature having desired coverage
       val usedItemFeature:HashSet[FeatureStruct] = filterFeatures(
