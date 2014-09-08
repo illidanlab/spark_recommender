@@ -32,7 +32,41 @@ ItemFeatureExtractor {
     Source.fromInputStream(inputStream).mkString.split('\n').map(_.trim).toSet
   }
 
-
+  def getItemsText(
+          itemMap:RDD[(String, Int)], 
+          featureSources:List[String], 
+          sc:SparkContext):RDD[(String, String)] = {
+      
+      //get passed items description
+    val itemText:RDD[(String, String)] = featureSources.map{fileName =>
+      val currItemText:RDD[(String, String)] = sc.textFile(fileName).map{line =>
+        val fields = line.split(FeatSepChar)
+        //get item id
+        val itemId = fields(ItemIdInd)
+        val text = if (fields.length > ItemDescInd) fields(ItemDescInd) else ""
+        (itemId, text)
+      }
+      
+      //remove empty text and item which are not presented in itemIdMap
+      val filtCurrItemText:RDD[(String, String)] = 
+          currItemText.filter(x => x._2.length > 0).
+          join(itemMap).map{ line => //(itemIdStr, (itemText, itemIdInt))
+          val itemIdStr:String = line._1
+          val itemText :String = line._2._1
+          (itemIdStr, itemText)
+      }
+      filtCurrItemText
+    }.reduce{ (a,b) =>
+      //take union of RDDs
+      a.union(b)
+    }
+    itemText.reduceByKey{(a, b) => a + " " + b}
+  }
+  
+  
+  /**
+   * @deprecated
+   */
   def getItemsText(items:Set[String], featureSources:List[String], 
     sc:SparkContext):RDD[(String,String)] = {
     //broadcast item set
@@ -179,9 +213,10 @@ ItemFeatureExtractor {
 	                  "/" + resourceIden + "_Map"
 	    
 	    //broadcast item map to workers to workonly on items relevant to training
-	    val itemIdMap = trainCombData.itemMap.mapObj
+	    val itemIdMap = trainCombData.getItemMap().collectAsMap
 	    val bItemIdMap = sc.broadcast(itemIdMap)
-	      
+	    //val itemIdMap = trainCombData.getItemMap()
+	                  
 	    // 3. Feature generation algorithms (HDFS operations)
 	    val featureSources:List[String] = getFeatureSources(
 	        jobInfo.trainDates.toList, jobInfo)      

@@ -28,33 +28,36 @@ package object testing {
 	
     /**
 	 * remove new users and items from test
+	 * 
+	 * NOTE: the implementation of this function needs to be improved. 
+	 *       the rating data structure may need to be removed. 
 	 */
 	def filterTestRatingData(testData: RDD[Rating], trainCombData:CombinedDataSet,
 			                    sc:SparkContext): RDD[Rating] = {
-		var filtTestData = testData  
+		var filtTestData:RDD[Rating] = testData  
     
-		
-		
 	    //get userMap and itemMap
-	    val userMap = trainCombData.userMap.mapObj 
-	    val itemMap = trainCombData.itemMap.mapObj
-	                  
-	    val usersRDD = sc.parallelize(userMap.values.toList).map((_,1))
-	
-	    //broadcast item sets to worker nodes
-	    val itemIdSet = itemMap.values.toSet
-	    val bISet = sc.broadcast(itemIdSet)
+	    val userIdMapRDD = trainCombData.getUserMap() 
+	    val itemIdMapRDD = trainCombData.getItemMap()
 	    
-	    testData.filter(rating => bISet.value(rating.item))
-            .map{rating => 
-              (rating.user, (rating.item, rating.rating))
-            }.join(usersRDD
-            ).map {x =>
-              val user = x._1
-              val item = x._2._1._1
-              val rating = x._2._1._2
-              Rating(user, item, rating)
-            }
+	    testData.map{line =>
+		    (line.user, (line.item, line.rating))
+		}.join(
+		    userIdMapRDD.map{line => (line._2, line._1)}
+	    ).map{line => //(userIdInt, ((itemIdInt, rating), userIdStr))
+	        val userIdInt:Int = line._1
+	        val itemIdInt:Int = line._2._1._1
+	        val rating:Double = line._2._1._2
+		    (itemIdInt, (userIdInt, rating))
+		}.join(
+			itemIdMapRDD.map{line => (line._2, line._1)}
+		).map{line => //(itemIdInt, ((userIdInt, rating), itemIdStr) )
+		    val userIdInt:Int = line._2._1._1
+		    val itemIdInt:Int = line._1
+		    val rating:Double = line._2._1._2
+		    Rating(userIdInt, itemIdInt, rating)
+		}
+		
   }
     
   /**

@@ -4,6 +4,8 @@ import com.samsung.vddil.recsys.feature.FeatureStruct
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.ResourceStruct
+import org.apache.spark.rdd.RDD
+import com.samsung.vddil.recsys.Pipeline
 
 /**
  * This is the data structure for data
@@ -27,42 +29,70 @@ trait DataStruct extends ResourceStruct{
 class CombinedDataSet(
         val resourceStr: String,
         val resourceLoc: String,
-        val userList: CombinedDataEntityList,
-        val itemList: CombinedDataEntityList,
-        val userMap:  CombinedDataEntityIdMap,
-        val itemMap:  CombinedDataEntityIdMap,
+        val userListLoc: String,
+        val itemListLoc: String,
+        val userMapLoc: String,
+        val itemMapLoc: String,
+        val userNum: Int,
+        val itemNum: Int,
+        val recordNum: Long,
         val dates: Array[String]
         ) extends DataStruct{
     
     val resourcePrefix = CombinedDataSet.resourcePrefix
+    
+    def getDataRDD(minPartitionNum:Option[Int] = None): RDD[(Int, Int, Double)] = {
+        if (minPartitionNum.isDefined)
+            Pipeline.instance.get.sc.textFile(resourceLoc, minPartitionNum.get).map{line => 
+            	val splits = line.split(",")
+            	val userId = line(0).toInt
+            	val itemId = line(1).toInt
+            	val rating    = line(2).toDouble
+            	(userId, itemId, rating)
+        	}
+        	
+        else
+            Pipeline.instance.get.sc.textFile(resourceLoc).map{line =>
+            	val splits = line.split(",")
+            	val userId = line(0).toInt
+            	val itemId = line(1).toInt
+            	val rating    = line(2).toDouble
+            	(userId, itemId, rating)
+        	}
+    }
+    
+    def getUserList(minPartitionNum:Option[Int] = None): RDD[String] = {
+        if (minPartitionNum.isDefined)
+        	Pipeline.instance.get.sc.textFile(userListLoc, minPartitionNum.get)
+        else
+            Pipeline.instance.get.sc.textFile(userListLoc)
+    }
+    
+    def getItemList(minPartitionNum:Option[Int] = None): RDD[String] = {
+        if (minPartitionNum.isDefined)
+        	Pipeline.instance.get.sc.textFile(itemListLoc, minPartitionNum.get)
+        else
+        	Pipeline.instance.get.sc.textFile(itemListLoc)
+    }
+    
+    def getUserMap(minPartitionNum:Option[Int] = None): RDD[(String, Int)] = {
+        if (minPartitionNum.isDefined)
+        	Pipeline.instance.get.sc.objectFile[(String, Int)](userMapLoc, minPartitionNum.get)
+        else
+        	Pipeline.instance.get.sc.objectFile[(String, Int)](userMapLoc)
+    }
+    
+    def getItemMap(minPartitionNum:Option[Int] = None): RDD[(String, Int)] = {
+        if (minPartitionNum.isDefined)
+        	Pipeline.instance.get.sc.objectFile[(String, Int)](itemMapLoc, minPartitionNum.get)
+        else
+        	Pipeline.instance.get.sc.objectFile[(String, Int)](itemMapLoc)
+    }
 }
 
 object CombinedDataSet{
     val resourcePrefix = "CombinedData"
 }
-
-/**
- * Store the list of users/items in the combined data set
- */
-case class CombinedDataEntityList(
-        listObj:Array[String],
-        listLoc: String
-    ){
-    
-    def size = listObj.size
-}
-
-/**
- * Stores the list of user mapping/item mapping in the combined data sets
- */
-case class CombinedDataEntityIdMap(
-        mapObj: Map[String, Int],
-        mapLoc: String
-    ){
-    
-    def size = mapObj.size
-}
-
 
 /**
  * This is the data used to store an assembled feature, which includes 

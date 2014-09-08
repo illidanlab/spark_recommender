@@ -114,8 +114,8 @@ object TestResourceRegNotColdHit{
                                         (user, (item, rating))
                                       }
 
-    //get train items
-    val trainItems = sc.parallelize(trainCombData.itemMap.mapObj.values.toList)
+    //get train item indices. 
+    val trainItems = trainCombData.getItemMap().map{x => x._2}
     
     //get feature orderings
     val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
