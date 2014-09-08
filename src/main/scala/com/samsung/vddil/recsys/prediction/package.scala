@@ -15,6 +15,20 @@ package object prediction {
     
     /**
      * Computes the prediction given features and models. 
+     * 
+     * @param model a model struct
+     * @param userFeaturesRDD user features 
+     * @param itemFeaturesRDD
+     * @param outputResource determines if a resource is ready to be output
+     * @param PredBlockFiles block prediction files for partial model
+     * @param ItemUserFeatFile entire prediction files for regular model 
+     * @param sc SparkContext instance
+     * @param partitionNum parallelism 
+     * @param partialModelBatchNum the number of batches for partial model. 
+     * 
+     * Type parameters:
+     * @param UserIDType typically integer or string
+     * @param ItemIDType typically integer or string
      */
 	def computePrediction[UserIDType, ItemIDType] (
             	model:ModelStruct,
@@ -113,8 +127,7 @@ package object prediction {
     
     /**
      * Computes prediction using a regular model 
-     * 
-     * The type A is 
+     *  
      */
     def computePredictionWithRegularModel[UserIDType, ItemIDType](
             	model:ModelStruct, 
