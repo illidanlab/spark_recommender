@@ -135,7 +135,9 @@ object Pipeline {
 	    	 conf.set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")
 	    	 conf.set("spark.serializer",                 "org.apache.spark.serializer.KryoSerializer")
 	    	 conf.set("spark.kryo.registrator",           "com.samsung.vddil.recsys.SerializationRegistrator")
-	    	 //conf.set("spark.speculation",                "true")
+	    	 conf.set("spark.akka.frameSize",             "100")
+                 conf.set("spark.akka.timeout",               "200")
+                 //conf.set("spark.speculation",                "true")
 	    	 
 	         try{
 	             //construct spark context using SparkSubmit configurations.  
@@ -170,13 +172,28 @@ object Pipeline {
 	 * 
 	 * @return the partition number used for hash/range partitioner. 
 	 */
-	def getPartitionNum():Int = {
+	def getPartitionNum(trainDayNum:Int = 1):Int = {
 	    require(Pipeline.instance.isDefined)
-	    val numExecutors = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.instances")
-      val numExecCores = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
-      val numParts = 2 * numExecutors.getOrElse("100").toInt * numExecCores.getOrElse("2").toInt 
-      Logger.info("numParts: " + numParts)
-      numParts 
+	    
+	    val scConf = this.Instance.get.sc.getConf
+	    
+	    val (numExecutors, numExecCores)  = if (scConf.getOption("spark.master").isDefined && scConf.getOption("spark.master").get.startsWith("local")){
+	        //if local then we use a small number. 
+	        val numExec  = Some("3")
+            val numExecC = Some("2")
+            (numExec, numExecC)
+	    }else{
+	    	val numExec  = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.instances")
+	        val numExecC = Pipeline.Instance.get.sc.getConf.getOption("spark.executor.cores")
+	        (numExec, numExecC)
+	    }
+	    
+        //val numParts = 1 * numExecutors.getOrElse("100").toInt * numExecCores.getOrElse("2").toInt * (trainDayNum)
+         
+        val numParts = 1 * numExecutors.getOrElse("200").toInt * numExecCores.getOrElse("2").toInt       
+ 
+        Logger.info("numParts: " + numParts)
+        numParts 
 	}
 
 	
@@ -185,7 +202,7 @@ object Pipeline {
 	 * 
 	 * @param partitionNum the partitioner number for hash partitioner
 	 */
-	def getHashPartitioner(partitionNum:Int = Pipeline.getPartitionNum):HashPartitioner = {
+	def getHashPartitioner(partitionNum:Int):HashPartitioner = {
 	    require(Pipeline.instance.isDefined)
 	    
 	    val partitionerName = Pipeline.PartitionHashNum.format(partitionNum)

@@ -57,7 +57,7 @@ object TestResourceRegNotColdHit{
     
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
-   
+    
     //get percentage of user sample to predict on as it takes really long to
     //compute on all users
     val userSampleParam:Double = testParams.getOrElseUpdate("UserSampleSize",
@@ -78,6 +78,7 @@ object TestResourceRegNotColdHit{
     
     //get test data
     val testData = jobInfo.jobStatus.testWatchTime.get
+    val partitionNum = jobInfo.partitionNum_test
     
     //filter test data to remove new users/items
     val filtTestData = filterTestRatingData(testData, trainCombData,
@@ -113,8 +114,8 @@ object TestResourceRegNotColdHit{
                                         (user, (item, rating))
                                       }
 
-    //get train items
-    val trainItems = sc.parallelize(trainCombData.itemMap.mapObj.values.toList)
+    //get train item indices. 
+    val trainItems = trainCombData.getItemMap().map{x => x._2}
     
     //get feature orderings
     val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
@@ -265,7 +266,7 @@ object TestResourceRegNotColdHit{
             aggregatedPredBlock = aggregatedPredBlock ++ 
             		sc.objectFile[(Int, (Int, Double))](blockPredFiles(idx))
         }
-        aggregatedPredBlock.coalesce(Pipeline.getPartitionNum)
+        aggregatedPredBlock.coalesce(partitionNum)
         
     }else{
 	    //for each user get all possible user item features

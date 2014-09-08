@@ -13,9 +13,10 @@
 
 
 SPARK_BIN=$HOME/installSrc/spark/spark/bin/
-SPARK_EXEC_MEMORY="4G"
+SPARK_EXEC_MEMORY="8G"
 SPARK_EXEC_CORES=2
-SPARK_EXEC_NUM=200
+SPARK_EXEC_NUM=400
+SPARK_DRIVER_MEMORY="4G"
 
 if [ $# -lt 1 ]; then
     echo "Job file has not specified. Abort."
@@ -71,7 +72,8 @@ cmd="$SPARK_BIN/spark-submit \
       --class com.samsung.vddil.recsys.Pipeline \
      --master yarn-cluster \
      --executor-memory $SPARK_EXEC_MEMORY \
-     --executor-cores  $SPARK_EXEC_CORES 
+     --executor-cores  $SPARK_EXEC_CORES \
+     --driver-memory   $SPARK_DRIVER_MEMORY \
      --num-executors   $SPARK_EXEC_NUM \
      $SBTJAR $server_job_file --queue vddil"  
  

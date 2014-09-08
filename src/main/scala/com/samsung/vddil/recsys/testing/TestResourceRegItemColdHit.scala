@@ -72,11 +72,13 @@ object TestResourceRegItemColdHit{
    
     //get test dates
     val testDates = jobInfo.testDates
+    val partitionNum = jobInfo.partitionNum_test
+    
     //get test data from test dates
     val testData:RDD[(String, String, Double)] = DataProcess.getDataFromDates(testDates, 
-      jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), sc).get
+      jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), sc, partitionNum).get
     //get training items
-    val trainItems:Set[String] = trainCombData.itemMap.mapObj.keySet
+    val trainItems:Set[String] = trainCombData.getItemList().collect.toSet
     //get cold items not seen in training
     val coldItems:Set[String] = getColdItems(testData, trainItems, sc)
     Logger.info("Cold items not seen in training: " + coldItems.size) 
@@ -111,7 +113,7 @@ object TestResourceRegItemColdHit{
         bColdItems.value(x._2)).map(_._1)
     
     //get users in training
-    val trainUsers:RDD[String] = sc.parallelize(trainCombData.userMap.mapObj.keys.toList)
+    val trainUsers:RDD[String] = trainCombData.getUserList() 
     
     //filter out training users
     val allColdUsers:RDD[String] = preferredUsers.intersection(trainUsers)
@@ -130,8 +132,10 @@ object TestResourceRegItemColdHit{
 
 
     //replace coldItemUsers from training with corresponding int id
-    val userIdMap:Map[String, Int] = trainCombData.userMap.mapObj
-    val userMapRDD = sc.parallelize(userIdMap.toList)
+    //val userIdMap:Map[String, Int] = trainCombData.userMap.mapObj
+    //val userMapRDD:RDD[(String, Int)] = sc.parallelize(userIdMap.toList)
+    val userMapRDD:RDD[(String, Int)] = trainCombData.getUserMap()
+    
     val coldItemUsers:RDD[Int] = sampledColdUsers.map(x =>
         (x,1)).join(userMapRDD).map{_._2._2}
     val coldItemUsersCount = coldItemUsers.count
@@ -220,7 +224,7 @@ object TestResourceRegItemColdHit{
             aggregatedPredBlock = aggregatedPredBlock ++ 
             		sc.objectFile[(Int, (String, Double))](blockPredFiles(idx))
         }
-        aggregatedPredBlock.coalesce(Pipeline.getPartitionNum)
+        aggregatedPredBlock.coalesce(partitionNum)
         
     }else{
 	    //for each user get all possible user item features

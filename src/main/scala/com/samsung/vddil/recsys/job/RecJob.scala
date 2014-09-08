@@ -112,7 +112,12 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     /** a list of test procedures to be performed for each model */
     val testList:Array[RecJobTest] = populateTests()
     
-    
+    val partitionNum_unit:Int  = Pipeline.getPartitionNum(1)
+    Logger.info("Parition Number|Unit  => " + partitionNum_unit)
+    val partitionNum_train:Int = Pipeline.getPartitionNum(trainDates.length)
+    Logger.info("Parition Number|Train => " + partitionNum_train)
+    val partitionNum_test:Int  = Pipeline.getPartitionNum(testDates.length)
+    Logger.info("Parition Number|Test  => " + partitionNum_test)
     
     /**
      * Data splitting information 
@@ -297,8 +302,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline(" Data Identity: " + trainCombData.resourceStr)
             writeline(" Data File:     " + trainCombData.resourceLoc)
             writeline(" Data Dates:    " + trainCombData.dates.mkString("[",", ","]"))
-            writeline("   User Number: " + trainCombData.userList.listObj.size)
-            writeline("   Item Number: " + trainCombData.itemList.listObj.size)
+            writeline("   User Number: " + trainCombData.userNum)
+            writeline("   Item Number: " + trainCombData.itemNum)
         }
         writer.newLine()
         
