@@ -82,9 +82,14 @@ package object prediction {
             (itemId, partialModel)
         }.coalesce(partialModelBatchNum)
         
+        val totalNum = itemPartialModels.count
+        val partitionNum = math.ceil(totalNum/500.0).toInt
+        itemPartialModels = itemPartialModels.repartition(partitionNum) //repartition so data are redistributed.   
+        Logger.info(s"There are $totalNum partial models, and partition number is $partitionNum")
+        
         val predBlockSize = itemPartialModels.partitions.size
         val blockPredFiles = new Array[String](predBlockSize)
-        Logger.info("Item enclosed partial models are divdided into " + predBlockSize + " blocks.")
+        Logger.info(s"Item enclosed partial models are divdided into $predBlockSize blocks.")
         
         Logger.info("Preceed with partial models")
         for ((partialModelBlock, blockId) <- itemPartialModels.partitions.zipWithIndex){
