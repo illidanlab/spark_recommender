@@ -22,6 +22,9 @@ import scala.collection.immutable.List
 import scala.collection.mutable.Map
 import scala.sys.process._
 
+/**
+* Add some comments for test
+*/
 object RecOutput {
   // program id, start time, finish time.
   type RoviType = (String, (String, Long))
