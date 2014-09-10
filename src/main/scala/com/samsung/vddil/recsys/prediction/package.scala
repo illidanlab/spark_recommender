@@ -42,21 +42,28 @@ package object prediction {
             	partialModelBatchNum:Int = 10
     		):RDD[(UserIDType, (ItemIDType, Double))] = {
         
-        if (model.isInstanceOf[PartializableModel]){
-        //if the model is a partializable model, then we use partial model 
-        //and apply the models in batch. 
-	        computePredictionWithPartialModel[UserIDType, ItemIDType] (
+	    computePredictionWithoutPartialModel[UserIDType, ItemIDType] (
             	model.asInstanceOf[PartializableModel],
             	userFeaturesRDD, itemFeaturesRDD,
             	partialModelBatchNum, PredBlockFiles,
             	outputResource, sc, partitionNum)
-	    }else{
-	        //compute using traditional Cartisan production. 
-	        computePredictionWithRegularModel[UserIDType, ItemIDType](
-            	model, userFeaturesRDD, itemFeaturesRDD, 
-            	ItemUserFeatFile,
-            	outputResource, sc, partitionNum)
-	    }
+	    
+//        if (model.isInstanceOf[PartializableModel]){
+//        //if the model is a partializable model, then we use partial model 
+//        //and apply the models in batch. 
+//	        computePredictionWithPartialModel[UserIDType, ItemIDType] (
+//            	model.asInstanceOf[PartializableModel],
+//            	userFeaturesRDD, itemFeaturesRDD,
+//            	partialModelBatchNum, PredBlockFiles,
+//            	outputResource, sc, partitionNum)
+//	    }else{
+//	        //compute using traditional Cartisan production. 
+//	        computePredictionWithoutPartialModel[UserIDType, ItemIDType] (
+//            	model.asInstanceOf[PartializableModel],
+//            	userFeaturesRDD, itemFeaturesRDD,
+//            	partialModelBatchNum, PredBlockFiles,
+//            	outputResource, sc, partitionNum)
+//	    }
 
     }
     
@@ -169,6 +176,70 @@ package object prediction {
     }
     
 
-    
+    	/**
+	 * Computes prediction using a partial model
+	 */
+    def computePredictionWithoutPartialModel[UserIDType, ItemIDType] (
+            	model: PartializableModel,
+            	userFeaturesRDD: RDD[(UserIDType, Vector)],
+            	itemFeaturesRDD: RDD[(ItemIDType, Vector)],
+            	partialModelBatchNum:Int,
+            	PredBlockFiles: String,
+            	outputResource: String => Boolean,
+            	sc:SparkContext,
+            	partitionNum:Int
+            	
+            ):RDD[(UserIDType, (ItemIDType, Double))] = {
+        
+        Logger.info("Repartition item feature RDD")
+        
+        val totalNum = itemFeaturesRDD.count
+        val partitionNum = math.ceil(totalNum/500.0).toInt
+        
+        val partitionedItemFeaturesRDD = itemFeaturesRDD.repartition(partitionNum) 
+        val predBlockSize = partitionedItemFeaturesRDD.partitions.size
+        val blockPredFiles = new Array[String](predBlockSize)
+        Logger.info(s"Item enclosed partial models are divdided into $predBlockSize blocks.")
+        
+        
+        Logger.info("Proceed with block predictions")
+        for((itemBlock, blockId) <- partitionedItemFeaturesRDD.partitions.zipWithIndex){
+            val idx = itemBlock.index
+            val blockRDD = partitionedItemFeaturesRDD.mapPartitionsWithIndex(
+                    (ind, x) => if (ind == idx) x else Iterator(), true)
+            
+            //collect the items by block 
+            var blockItemFeatures = blockRDD.collect()
+            Logger.info("Broadcast block [ " + blockId + ":" + idx + "] with size:" + blockItemFeatures.size)
+            
+            //block file location 
+            blockPredFiles(idx) = PredBlockFiles + "_" + idx
+            
+            if (outputResource(blockPredFiles(idx))){
+                val bcItemFeatures = sc.broadcast(blockItemFeatures)
+                //for each user compute the prediction for all items in this block. 
+                
+                userFeaturesRDD.flatMap{ x=> 
+                    val userId: UserIDType  = x._1
+                    val userFeature: Vector = x._2
+                    
+                    bcItemFeatures.value.map{ y => 
+                        val itemId:ItemIDType = y._1
+                        val itemFeature: Vector = y._2
+                        (userId, (itemId, model.predict(userFeature ++ itemFeature)))
+                    }
+                }.saveAsObjectFile(blockPredFiles(idx))
+            }
+        }
+        
+        //load all predict blocks and aggregate. 
+        Logger.info("Loading and aggregating " + predBlockSize + " blocks.")
+        var aggregatedPredBlock:RDD[(UserIDType, (ItemIDType, Double))] = sc.emptyRDD[(UserIDType, (ItemIDType, Double))]
+        for (idx <- 0 until predBlockSize){
+            aggregatedPredBlock = aggregatedPredBlock ++ 
+            		sc.objectFile[(UserIDType, (ItemIDType, Double))](blockPredFiles(idx))
+        }
+        aggregatedPredBlock.coalesce(partitionNum)
+    }
     
 }
