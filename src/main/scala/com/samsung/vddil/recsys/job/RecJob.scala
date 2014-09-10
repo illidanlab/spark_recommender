@@ -222,7 +222,10 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	if (this.prediction.isDefined){
                 Logger.info("Prediction module found.")
 
-    		val bestModel = getBestModel(jobStatus.completedTests)
+    		val bestModel = getBestModel(
+    		        jobStatus.completedTests, 
+    		        jobStatus.resourceLocation_RegressModel.values.toList ++
+    		        jobStatus.resourceLocation_ClassifyModel.values.toList)
 	    	bestModel.foreach{
 	    	    theBestModel: ModelStruct => 
 	    	        Logger.info("The best model obtained is "+ theBestModel)
