@@ -17,6 +17,7 @@ import com.samsung.vddil.recsys.feature.FeatureStruct
 import org.apache.spark.RangePartitioner
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.data.CombinedDataSet
+import com.samsung.vddil.recsys.model.ModelStruct
 
 /**
  * The testing package includes a set of test units. Each test unit 
@@ -26,6 +27,21 @@ import com.samsung.vddil.recsys.data.CombinedDataSet
  */
 package object testing {
 	
+    /**
+     * Return a random model from the models that completed the tests. s
+     * 
+     * TODO: return the best model
+     */
+    def getBestModel(
+            	completedTests:HashMap[ModelStruct, HashMap[TestUnit, TestUnit.TestResults]]
+            ): Option[ModelStruct] = {
+        val modelSet = completedTests.keySet
+        if (modelSet.size == 0)
+            return None
+        else
+            return Some(modelSet.toList (0))
+    }
+    
     /**
 	 * remove new users and items from test
 	 * 
