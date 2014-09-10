@@ -30,16 +30,27 @@ package object testing {
     /**
      * Return a random model from the models that completed the tests. s
      * 
+     * @param completedTests the test results
+     * 
      * TODO: return the best model
      */
     def getBestModel(
-            	completedTests:HashMap[ModelStruct, HashMap[TestUnit, TestUnit.TestResults]]
+            	completedTests:HashMap[ModelStruct, HashMap[TestUnit, TestUnit.TestResults]],
+            	allModels:List[ModelStruct] = List()
             ): Option[ModelStruct] = {
         val modelSet = completedTests.keySet
-        if (modelSet.size == 0)
-            return None
-        else
-            return Some(modelSet.toList (0))
+        if (modelSet.size == 0){
+            Logger.info("No test results found. Continue with a random model. ")
+            if (allModels.size > 0){
+            	Some(allModels(0))
+            }else{
+                Logger.info("No model found in pipeline.")
+            	None
+            }
+        }else{
+            Logger.info("Comparison module not found. Continue with a random model. ")
+            Some(modelSet.toList (0))
+        }
     }
     
     /**
