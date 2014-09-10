@@ -217,15 +217,20 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	Logger.info("Writing summary file")
     	writeSummaryFile()
     	
+        Logger.info("Output prediction")
     	//pick the best model from completedTests and generate results
     	if (this.prediction.isDefined){
+                Logger.info("Prediction module found.")
+
     		val bestModel = getBestModel(jobStatus.completedTests)
 	    	bestModel.foreach{
 	    	    theBestModel: ModelStruct => 
 	    	        Logger.info("The best model obtained is "+ theBestModel)
 	    	    prediction.get.run(this, theBestModel)
 	    	}
-    	}
+    	}else{
+            Logger.info("Prediction module not found.")
+        }
     }
     
     /**
