@@ -176,7 +176,7 @@ object TestResourceRegNotColdHit{
                                                     }                                              
     
     val userItemPred:RDD[(Int, (Int, Double))] = computePrediction (
-            	model, userFeaturesRDD, itemFeaturesRDD,
+            	model, sampledTestUserFeatures, itemFeaturesRDD,
             	(resLoc: String) => jobInfo.outputResource(resLoc),
             	sampledPredBlockFiles, sampledItemUserFeatFile,
             	sc, partitionNum, partialModelBatchNum
