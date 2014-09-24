@@ -116,7 +116,7 @@ object RecOutput {
   def getRec(programScores: RDD[RecType], 
              roviData: RDD[RoviType], K: Int): RDD[OutputType] = {
     val joinedRec = programScores.map{case(duid, program, score) 
-                                        => (program, (duid, score))}.join(roviData) 
+                                        => (program, (duid, score))}.join(roviData) //probably repartition. 
     val groupedRec = joinedRec.map{case(program, ((duid, score), (channel, startTime))) 
                                      => (duid, (program, channel, startTime, score))}
                               .groupByKey() 
