@@ -135,9 +135,10 @@ object Pipeline {
 	    	 conf.set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")
 	    	 conf.set("spark.serializer",                 "org.apache.spark.serializer.KryoSerializer")
 	    	 conf.set("spark.kryo.registrator",           "com.samsung.vddil.recsys.SerializationRegistrator")
+	    	 conf.set("spark.kryoserializer.buffer.mb",   "500") //enable this if get Kryo Buffer Overflow
 	    	 conf.set("spark.akka.frameSize",             "100")
-                 conf.set("spark.akka.timeout",               "200")
-                 //conf.set("spark.speculation",                "true")
+             conf.set("spark.akka.timeout",               "200")
+             //conf.set("spark.speculation",                "true") //this is done outside. 
 	    	 
 	         try{
 	             //construct spark context using SparkSubmit configurations.  
