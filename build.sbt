@@ -28,6 +28,7 @@
  )
 
  mergeStrategy in assembly := {
+  case PathList("org", "apache", "http", "impl", xs @ _*) => MergeStrategy.first
   case n if n.startsWith("com/esotericsoftware/minlog") => MergeStrategy.first
   case n if n.startsWith("javax/activation") => MergeStrategy.first
   case n if n.startsWith("javax/servlet/") => MergeStrategy.first
