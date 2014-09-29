@@ -22,6 +22,8 @@ import scala.collection.immutable.List
 import scala.collection.mutable.Map
 import scala.sys.process._
 
+import org.apache.spark.HashPartitioner
+
 /**
 * Add some comments for test
 */
@@ -60,13 +62,12 @@ object RecOutput {
   def doRecommendation(paraSc: SparkContext, date: String, roviPath: String, 
                        programScores: RDD[RecType], outputPath: String, K: Int) {
     sc = paraSc
-    val partitionedProgramScores = programScores.partitionByKey(new HashPartitioner(100))
     val startHourString = date + "0000"
     val startHour = timestampToUTCUnixTime(startHourString)
     for (i <- 0 until 24) {
       val currentHour = startHour + i * 3600
       val finalPath = f"${outputPath}/${i}%02d"  
-      recommend(roviPath, currentHour, partitionedProgramScores, finalPath, K)
+      recommend(roviPath, currentHour, programScores, finalPath, K)
     }
   }
   
@@ -117,8 +118,10 @@ object RecOutput {
   // keeo only programs that will be shown a certain portion within this hour. 
   def getRec(programScores: RDD[RecType], 
              roviData: RDD[RoviType], K: Int): RDD[OutputType] = {
-    val joinedRec = programScores.map{case(duid, program, score) 
-                                        => (program, (duid, score))}.join(roviData) //probably repartition. 
+    val partitionedProgramScores = programScores.map{case(duid, program, score)
+                                                    => (program, (duid, score))}
+                                               .partitionBy(new HashPartitioner(50)).persist
+    val joinedRec = partitionedProgramScores.join(roviData) //probably repartition. 
     val groupedRec = joinedRec.map{case(program, ((duid, score), (channel, startTime))) 
                                      => (duid, (program, channel, startTime, score))}
                               .groupByKey() 
