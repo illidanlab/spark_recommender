@@ -56,15 +56,17 @@ object RecOutput {
     doRecommendation(paraSc, date, roviPath, programScores, outputPath, K)
   }
 
+  // the main function to do recommendation. called from other classes.
   def doRecommendation(paraSc: SparkContext, date: String, roviPath: String, 
                        programScores: RDD[RecType], outputPath: String, K: Int) {
     sc = paraSc
+    val partitionedProgramScores = programScores.partitionByKey(new HashPartitioner(100))
     val startHourString = date + "0000"
     val startHour = timestampToUTCUnixTime(startHourString)
     for (i <- 0 until 24) {
       val currentHour = startHour + i * 3600
       val finalPath = f"${outputPath}/${i}%02d"  
-      recommend(roviPath, currentHour, programScores, finalPath, K)
+      recommend(roviPath, currentHour, partitionedProgramScores, finalPath, K)
     }
   }
   
