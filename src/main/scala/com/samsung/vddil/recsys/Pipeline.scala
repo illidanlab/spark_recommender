@@ -136,8 +136,9 @@ object Pipeline {
 	    	 conf.set("spark.serializer",                 "org.apache.spark.serializer.KryoSerializer")
 	    	 conf.set("spark.kryo.registrator",           "com.samsung.vddil.recsys.SerializationRegistrator")
 	    	 conf.set("spark.kryoserializer.buffer.mb",   "500") //enable this if get Kryo Buffer Overflow
-	    	 conf.set("spark.akka.frameSize",             "100")
-             conf.set("spark.akka.timeout",               "200")
+	    	 conf.set("spark.akka.frameSize",             "1024")
+             conf.set("spark.akka.timeout",               "1000")
+             conf.set("spark.core.connection.ack.wait.timeout", "600")
              //conf.set("spark.speculation",                "true") //this is done outside. 
 	    	 
 	         try{
