@@ -46,7 +46,7 @@ case class RecJobScoreRegModel(
 		Logger.info("**assembling data")
     	
 		val allData:AssembledDataSet = 
-		    DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
+		    DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage, true)
 		
 		//2. divide training, testing, validation
 		Logger.info("**divide training/testing/validation")
