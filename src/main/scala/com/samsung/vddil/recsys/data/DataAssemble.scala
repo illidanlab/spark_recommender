@@ -131,10 +131,14 @@ object DataAssemble {
     * @param jobInfo the job information
     * @param minIFCoverage minimum item feature coverage 
     * @param minUFCoverage minimum user feature coverage
+    * @param plainTextOutput *additional* plain text output.  
     * 
     * @return the resource identity of the assembled data
     */
-   def assembleContinuousData(jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double ):AssembledDataSet = {
+   def assembleContinuousData(
+           jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double,
+           plainTextOutput:Boolean
+   ):AssembledDataSet = {
       require(minIFCoverage >= 0 && minIFCoverage <= 1)
       require(minUFCoverage >= 0 && minUFCoverage <= 1)
       
@@ -266,6 +270,35 @@ object DataAssemble {
                     
           Logger.info("assembled features: " + assembleFileName)
           //Logger.info("Total data size: " + sampleSize)
+          
+          if(plainTextOutput){
+              val plainTextOutputUserItemMatrix = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
+                                        		     "/" + resourceStr  + "_plainText_userItemMatrix"
+              val plainTextOutputItemFeature    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
+                                        		     "/" + resourceStr  + "_plainText_ItemFeatureMatrix"
+              //output data matrix. 
+              filterByUserItem.map{line => 
+                  val userId:Int    = line._1
+                  val itemId:Int    = line._2
+                  val rating:Double = line._3
+                  (userId, (itemId, rating))
+              }.groupByKey().map{line => //Int, Iterable[(Int, Double)]
+                  val userId:Int    = line._1
+                  val userHistory   = line._2.toList.mkString("%")
+                  userId.toString + "@" + userHistory
+              }.saveAsTextFile(plainTextOutputUserItemMatrix)
+                                        		     
+        	  //output feature matrix
+              itemFeaturesRDD.map{line =>
+                  val itemId:Int = line._1
+                  val itemFeatureDS = line._2.toSparse.data
+                  val itemFeature   = itemFeatureDS.index.zip(itemFeatureDS.data).mkString("%")  
+                  
+                  //(itemId, itemFeature)
+                  itemId.toString + "@" + itemFeature
+              }.saveAsTextFile(plainTextOutputItemFeature)
+          }
+          
       }
       
       jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr)
