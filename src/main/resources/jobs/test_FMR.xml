@@ -24,6 +24,13 @@
 				<param>
 					<lang>en</lang>
 				</param>
+			</feature>
+			<feature>
+				<type>itemFeature</type>
+				<name>showTime</name>
+				<param>
+					<timeWindow>12</timeWindow>
+				</param>
 			</feature>	
 			<feature>
 				<type>userFeature</type>
