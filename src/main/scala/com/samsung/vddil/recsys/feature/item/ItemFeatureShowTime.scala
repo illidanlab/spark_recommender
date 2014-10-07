@@ -111,9 +111,11 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         val scheduleFiles = jobInfo.trainDates.map{trainDate =>
             jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + trainDate + "/schedule*"
         }
-        			   
+        			
+        val rangeSlot = Range(0, 2400, 2400/ timeWindow) :+ 9999 
+        
         // get feature map
-        val featureMap = getFeatureMap(timeWindow)
+        val featureMap = getFeatureMap(rangeSlot)
         if(jobInfo.outputResource(featureMapFileName)){
             sc.parallelize(featureMap).saveAsTextFile(featureMapFileName)
         }
@@ -121,7 +123,6 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         //
         if(jobInfo.outputResource(featureFileName)){
 	        // get features
-            val rangeSlot = Range(0, 2400, 2400/ timeWindow) :+ 100000 
             //the last one provides an inclusive upper bound. 
             
 	        val bItemSet = sc.broadcast(itemSet) 
@@ -201,12 +202,12 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         Vectors.sparse(feature)
     }
     
-    def getFeatureMap(timeWindow:Int):List[String] = {
-        val numWindow = math.ceil(24.0/timeWindow).toInt
+    def getFeatureMap(rangeSlot:IndexedSeq[Int]):List[String] = {
         var featureMap = List[String]()
-        for (i <- Range(1, numWindow)){
-            featureMap = featureMap :+ ( s"TimeWindow[$i of $timeWindow]")
+        for (i <- Range(1, rangeSlot.size)){
+            featureMap = featureMap :+ ( "TimeWindow["+rangeSlot(i-1)+"]["+ rangeSlot(i) +"]")
         }
+        
         featureMap
     }
     
