@@ -40,6 +40,14 @@
 				<type>userFeature</type>
 				<name>genre</name>
 			</feature>
+			<feature>
+				<type>userFeature</type>
+				<name>showTime</name>
+			</feature>
+			<feature>
+				<type>userFeature</type>
+				<name>channel</name>
+			</feature>
 		</features>
 		<dataSplit>
 			<testingRatio>0.2</testingRatio>
