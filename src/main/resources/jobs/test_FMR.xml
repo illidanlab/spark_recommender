@@ -31,7 +31,11 @@
 				<param>
 					<timeWindow>12</timeWindow>
 				</param>
-			</feature>	
+			</feature>
+			<feature>
+				<type>itemFeature</type>
+				<name>channel</name>
+			</feature>
 			<feature>
 				<type>userFeature</type>
 				<name>genre</name>

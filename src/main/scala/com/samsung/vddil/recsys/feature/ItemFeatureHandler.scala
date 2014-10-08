@@ -9,6 +9,7 @@ import com.samsung.vddil.recsys.feature.item.ItemFeatureGenre
 import com.samsung.vddil.recsys.utils.Logger
 import scala.collection.mutable.{Map=>MMap}
 import com.samsung.vddil.recsys.feature.item.ItemFeatureShowTime
+import com.samsung.vddil.recsys.feature.item.ItemFeatureChannel
 /*
  * This is the main entrance of the item (program) feature processing.
  * 
@@ -20,6 +21,7 @@ object ItemFeatureHandler extends FeatureHandler{
 	val IFSynopsisTFIDF:String = "syn_tfidf"
 	val IFGenre:String = "genre"
 	val IFShowTime:String = "showTime"
+	val IFChannel:String  = "channel"
 
     //this will contain reverse mapping from resource string to Feature object 
     //val revItemFeatureMap:MMap[String, ItemFeatureExtractor] = MMap.empty
@@ -35,6 +37,7 @@ object ItemFeatureHandler extends FeatureHandler{
 		  case IFSynopsisTFIDF => resource = ItemFeatureSynopsisTFIDF.processFeature(featureParams, jobInfo)
 		  case IFGenre         => resource = ItemFeatureGenre.processFeature(featureParams, jobInfo)
 		  case IFShowTime      => resource = ItemFeatureShowTime.processFeature(featureParams, jobInfo)
+		  case IFChannel       => resource = ItemFeatureChannel.processFeature(featureParams, jobInfo)
 		  case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 		}
 		
