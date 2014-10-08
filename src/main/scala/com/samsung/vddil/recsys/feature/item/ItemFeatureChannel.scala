@@ -204,8 +204,10 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 	    var featureVect:Set[(Int, Double)] = Set()
 	    
 	    channelSet.foreach{channelId => 
-	        val featureUnit = (sourceMap(channelId), 1.0)
-	        featureVect = featureVect + featureUnit 
+	        if(sourceMap.isDefinedAt(channelId)){
+	        	val featureUnit = (sourceMap(channelId), 1.0)
+	        	featureVect = featureVect + featureUnit
+	        }
 	    }
 	    
 	    Vectors.sparse(sourceMap.size, featureVect.toSeq)
