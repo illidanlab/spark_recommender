@@ -146,7 +146,7 @@ object Pipeline {
 	           case _:SparkException =>
 	             Logger.warn("Failed to build SparkContext from Spark submit! Trying to build a local one from config file.")
 	             //construct spark context based on local 
-	             sc = Some(new SparkContext(conf.setMaster("local[4]").setAppName("local_test")))
+	             sc = Some(new SparkContext(conf.setMaster("local").setAppName("local_test")))
 	         }
 	         
 	         if (sc.isDefined){
