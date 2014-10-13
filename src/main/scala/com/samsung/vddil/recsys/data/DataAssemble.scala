@@ -13,6 +13,7 @@ import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.job.RecJobStatus
 import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.linalg.SparseVector
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 
@@ -223,54 +224,9 @@ object DataAssemble {
                       val watchTime = x._2._1._2
                       (userID, itemID, watchTime) 
                   }                        
-                                                        
-          //6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
-          //join with item features (join item first as # of items is small)
-          val joinedItemFeatures = 
-              filterByUserItem.map{x => 
-                  (x._2, (x._1, x._3))
-              }.join(itemFeaturesRDD 
-              ).map{y => //(item, ((user, rating), IF))
-                   val userID:Int = y._2._1._1
-                   val itemID:Int = y._1
-                   val itemFeature:Vector = y._2._2
-                   val rating:Double = y._2._1._2
-                   (userID, (itemID, itemFeature, rating))
-              }
-                                        
           
-          //can use both range partitoner or hashpartitioner to efficiently partition by user
-          val numPartitions = jobInfo.partitionNum_train
-          val partedByUJoinedItemFeat = joinedItemFeatures.partitionBy(
-                                          new RangePartitioner(numPartitions, 
-                                                              joinedItemFeatures)) 
-
-          //join with user features
-          val joinedUserItemFeatures = 
-              	partedByUJoinedItemFeat.join(userFeaturesRDD
-              	).map {x=> //(user, ((item, IF, rating), UF))
-                    //(user, item, UF, IF, rating)
-                    val userID = x._1
-                    val itemID = x._2._1._1
-                    val userFeature:Vector = x._2._2
-                    val itemFeature:Vector = x._2._1._2
-                    val features = userFeature ++ itemFeature  
-                    val rating:Double = x._2._1._3
-                    (userID, itemID, features, rating)
-                }                                                       
-                                                                                          
-          //7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
-          if (jobInfo.outputResource(assembleFileName)) {
-        	  // join features and store in assembleFileName
-        	  joinedUserItemFeatures.saveAsObjectFile(assembleFileName)
-          }
           
-          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
-          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder, combData, joinedUserItemFeatures.count)  
-                    
-          Logger.info("assembled features: " + assembleFileName)
-          //Logger.info("Total data size: " + sampleSize)
-          
+                   
           if(plainTextOutput){
               val plainTextOutputUserItemMatrix = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
                                         		     "/" + resourceStr  + "_plainText_userItemMatrix"
@@ -297,7 +253,56 @@ object DataAssemble {
                   //(itemId, itemFeature)
                   itemId.toString + "@" + itemFeature
               }.saveAsTextFile(plainTextOutputItemFeature)
+          } 
+          
+          
+          //6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
+          //join with item features (join item first as # of items is small)
+          val joinedItemFeatures = 
+              filterByUserItem.map{x => 
+                  (x._2, (x._1, x._3))
+              }.join(itemFeaturesRDD 
+              ).map{y => //(item, ((user, rating), IF))
+                   val userID:Int = y._2._1._1
+                   val itemID:Int = y._1
+                   val itemFeature:Vector = y._2._2
+                   val rating:Double = y._2._1._2
+                   (userID, (itemID, itemFeature, rating))
+              }
+                                        
+          
+          //can use both range partitoner or hashpartitioner to efficiently partition by user
+          //val numPartitions = jobInfo.partitionNum_train
+          val partedByUJoinedItemFeat = joinedItemFeatures//.partitionBy(
+                                          //new RangePartitioner(numPartitions, 
+                                          //                    joinedItemFeatures)) 
+
+          //join with user features
+          val joinedUserItemFeatures = 
+              	partedByUJoinedItemFeat.join(userFeaturesRDD
+              	).map {x=> //(user, ((item, IF, rating), UF))
+                    //(user, item, UF, IF, rating)
+                    val userID = x._1
+                    val itemID = x._2._1._1
+                    val userFeature:SparseVector = x._2._2.toSparse
+                    val itemFeature:SparseVector = x._2._1._2.toSparse
+                    val features = userFeature ++ itemFeature  
+                    val rating:Double = x._2._1._3
+                    (userID, itemID, features, rating)
+                }                                                       
+                                                                                          
+          //7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
+          if (jobInfo.outputResource(assembleFileName)) {
+        	  // join features and store in assembleFileName
+        	  joinedUserItemFeatures.saveAsObjectFile(assembleFileName)
           }
+          
+          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
+          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder, combData, joinedUserItemFeatures.count)  
+                    
+          Logger.info("assembled features: " + assembleFileName)
+          //Logger.info("Total data size: " + sampleSize)
+
           
       }
       
