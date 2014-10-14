@@ -16,6 +16,8 @@ object UserFeatureHandler extends FeatureHandler{
 	val UFBehaviorGenre     = "genre"
 	val UFBehaviorTFIDF     = "syn_tfidf"
 	val UFDemoGeoLocation   = "geo"
+	val UFBehaviorShowTime  = "showTime"
+	val UFBehaviorChannel   = "channel"
 	    
 	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean={
 		Logger.info("Processing user feature [%s:%s]".format(featureName, featureParams))
@@ -29,6 +31,8 @@ object UserFeatureHandler extends FeatureHandler{
 	      case UFBehaviorGenre     => resource = UserFeatureBehaviorGenre.processFeature(featureParams, jobInfo)
 	      case UFBehaviorTFIDF     => resource = UserFeatureBehaviorSynTFIDF.processFeature(featureParams, jobInfo)
 	      case UFDemoGeoLocation   => resource = UserFeatureDemographicGeoLocation.processFeature(featureParams, jobInfo)
+	      case UFBehaviorShowTime  => resource = UserFeatureBehaviorShowTime.processFeature(featureParams, jobInfo)
+	      case UFBehaviorChannel   => resource = UserFeatureBehaviorChannel.processFeature(featureParams, jobInfo)
 	      case _ => Logger.warn("Unknown item feature type [%s]".format(featureName))
 	    }
 	    

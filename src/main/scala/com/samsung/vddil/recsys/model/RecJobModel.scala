@@ -42,13 +42,17 @@ case class RecJobScoreRegModel(
 	extends RecJobModel(modelName, modelParams){
     
 	def run(jobInfo: RecJob):Unit = {
-	    //1. prepare data with continuous labels (X, y). 
+	    
+	    //1. examine parameters 
+	    val exportPlainTextFeatures = jobInfo.experimentalFeatures.getOrElse("exportPlainTextData", "false").toBoolean
+	    
+	    //2. prepare data with continuous labels (X, y). 
 		Logger.info("**assembling data")
-    	
-		val allData:AssembledDataSet = 
-		    DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
 		
-		//2. divide training, testing, validation
+		val allData:AssembledDataSet = 
+		    DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage, exportPlainTextFeatures)
+		
+		//3. divide training, testing, validation
 		Logger.info("**divide training/testing/validation")
 		val splitName = DataSplitting.splitContinuousData(jobInfo, allData, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
@@ -56,7 +60,7 @@ case class RecJobScoreRegModel(
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio)
 		)
 		
-	    //3. train model on training and tune using validation, and testing.
+	    //4. train model on training and tune using validation, and testing.
 		Logger.info("**building and testing models")
 		
 		jobInfo.jobStatus.completedRegressModels(this) = 

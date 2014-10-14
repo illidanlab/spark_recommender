@@ -11,6 +11,9 @@
 			<watchTime>data/ACR/</watchTime>
       <workspace>/tmp/vddil/recsys-spark</workspace>
 		</resourceLocation>
+		<experimentalFeature>
+			<exportPlainTextData>false</exportPlainTextData>
+		</experimentalFeature>
 		<trainDates>
 			<date>20140522-20140524</date>
     	</trainDates>
@@ -24,10 +27,29 @@
 				<param>
 					<lang>en</lang>
 				</param>
-			</feature>	
+			</feature>
+			<feature>
+				<type>itemFeature</type>
+				<name>showTime</name>
+				<param>
+					<timeWindow>12</timeWindow>
+				</param>
+			</feature>
+			<feature>
+				<type>itemFeature</type>
+				<name>channel</name>
+			</feature>
 			<feature>
 				<type>userFeature</type>
 				<name>genre</name>
+			</feature>
+			<feature>
+				<type>userFeature</type>
+				<name>showTime</name>
+			</feature>
+			<feature>
+				<type>userFeature</type>
+				<name>channel</name>
 			</feature>
 		</features>
 		<dataSplit>
