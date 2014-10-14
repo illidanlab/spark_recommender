@@ -115,6 +115,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     /** a list of test procedures to be performed for each model */
     val testList:Array[RecJobTest] = populateTests()
     
+    /** a list of experimental features. */ 
+    val experimentalFeatures:HashMap[String, String] = populateExpFeatures()
+    
     val partitionNum_unit:Int  = Pipeline.getPartitionNum(1)
     Logger.info("Parition Number|Unit  => " + partitionNum_unit)
     val partitionNum_train:Int = Pipeline.getPartitionNum(trainDates.length)
@@ -603,6 +606,26 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         )
         
         addonResourceLoc
+    }
+    
+    def populateExpFeatures():HashMap[String, String] = {
+        var expFeatures:HashMap[String, String] = HashMap()
+        
+        var nodeList = jobNode \ JobTag.RecJobExperimentalFeature
+        if (nodeList.size == 0){
+            Logger.info("No experimental features specified.")
+            return expFeatures
+        }
+        
+        for (expFeaturesNode <- nodeList){
+            val expFeatureList = expFeaturesNode.child.
+            		map(featureEntry => (featureEntry.label, featureEntry.text)).filter(_._1 != "#PCDATA")
+            for(expFeaturePair <- expFeatureList){
+                expFeatures += (expFeaturePair._1 -> expFeaturePair._2) 
+            }
+        }
+        
+        expFeatures
     }
     
     /** Populate prediction fields */

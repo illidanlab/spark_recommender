@@ -11,6 +11,9 @@
 			<watchTime>data/ACR/</watchTime>
       <workspace>/tmp/vddil/recsys-spark</workspace>
 		</resourceLocation>
+		<experimentalFeature>
+			<exportPlainTextData>false</exportPlainTextData>
+		</experimentalFeature>
 		<trainDates>
 			<date>20140522-20140524</date>
     	</trainDates>

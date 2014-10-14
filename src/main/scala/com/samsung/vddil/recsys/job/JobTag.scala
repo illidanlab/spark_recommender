@@ -84,4 +84,6 @@ object JobTag {
 	val RecJobEnsembleUnit = "ensemble"
 	val RecJobEnsembleUnitType  = "type"
 	val RecJobEnsembleUnitParam = "param"
+	    
+	val RecJobExperimentalFeature = "experimentalFeature"
 }
