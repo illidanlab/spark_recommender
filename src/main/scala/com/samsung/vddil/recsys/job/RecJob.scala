@@ -20,6 +20,9 @@ import java.util.Date
 import java.util.Calendar
 import java.util.GregorianCalendar
 import java.text.SimpleDateFormat
+import com.samsung.vddil.recsys.prediction.RecJobPrediction
+import com.samsung.vddil.recsys.prediction.RecJobPrediction
+import com.samsung.vddil.recsys.prediction.RecJobPrediction
 
 /**
  * The constant variables of recommendation job.
@@ -112,6 +115,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     /** a list of test procedures to be performed for each model */
     val testList:Array[RecJobTest] = populateTests()
     
+    /** a list of experimental features. */ 
+    val experimentalFeatures:HashMap[String, String] = populateExpFeatures()
+    
     val partitionNum_unit:Int  = Pipeline.getPartitionNum(1)
     Logger.info("Parition Number|Unit  => " + partitionNum_unit)
     val partitionNum_train:Int = Pipeline.getPartitionNum(trainDates.length)
@@ -130,6 +136,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
      */
     val dataSplit:HashMap[String, Double] = populateDataSplitting()
     //TODO: parse and ensemble 
+    
+    /** the optional prediction phase*/
+    val prediction:Option[RecJobPrediction] = populatePrediction()
     
     /** A data structure maintaining resources for intermediate results. */
     val jobStatus:RecJobStatus = new RecJobStatus(this)
@@ -210,6 +219,24 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	
     	Logger.info("Writing summary file")
     	writeSummaryFile()
+    	
+        Logger.info("Output prediction")
+    	//pick the best model from completedTests and generate results
+    	if (this.prediction.isDefined){
+                Logger.info("Prediction module found.")
+
+    		val bestModel = getBestModel(
+    		        jobStatus.completedTests, 
+    		        jobStatus.resourceLocation_RegressModel.values.toList ++
+    		        jobStatus.resourceLocation_ClassifyModel.values.toList)
+	    	bestModel.foreach{
+	    	    theBestModel: ModelStruct => 
+	    	        Logger.info("The best model obtained is "+ theBestModel)
+	    	    prediction.get.run(this, theBestModel)
+	    	}
+    	}else{
+            Logger.info("Prediction module not found.")
+        }
     }
     
     /**
@@ -581,6 +608,70 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         addonResourceLoc
     }
     
+    def populateExpFeatures():HashMap[String, String] = {
+        var expFeatures:HashMap[String, String] = HashMap()
+        
+        var nodeList = jobNode \ JobTag.RecJobExperimentalFeature
+        if (nodeList.size == 0){
+            Logger.info("No experimental features specified.")
+            return expFeatures
+        }
+        
+        for (expFeaturesNode <- nodeList){
+            val expFeatureList = expFeaturesNode.child.
+            		map(featureEntry => (featureEntry.label, featureEntry.text)).filter(_._1 != "#PCDATA")
+            for(expFeaturePair <- expFeatureList){
+                expFeatures += (expFeaturePair._1 -> expFeaturePair._2) 
+            }
+        }
+        
+        expFeatures
+    }
+    
+    /** Populate prediction fields */
+    def populatePrediction():Option[RecJobPrediction] = {
+        
+        var nodeList = jobNode \ JobTag.RecJobPred
+        if (nodeList.size == 0){
+            Logger.warn("No prediction specified.")
+            return None
+        }
+        
+        val parseNode = nodeList(0)
+        
+        //parse dates
+        if ((parseNode \ JobTag.RecJobPredDateList).size <= 0){
+            Logger.warn("INVALID PREDICTION: No dates found in prediction. ")
+            return None
+        }
+        var dateList:Array[String] = (parseNode \ JobTag.RecJobPredDateList).map(_.text).
+      			flatMap(expandDateList(_, dateParser)).  //expand the lists
+      			toSet.toArray.sorted                     //remove duplication and sort.
+        
+        //parse content dates 
+      	if ((parseNode \ JobTag.RecJobPredCntDate).size <= 0){
+            Logger.warn("INVALID PREDICTION: No content dates found in prediction. ")
+            return None
+        }
+        var contentDateList:Array[String] = (parseNode \ JobTag.RecJobPredCntDate).map(_.text).
+      			flatMap(expandDateList(_, dateParser)).  //expand the lists
+      			toSet.toArray.sorted                     //remove duplication and sort.
+      			
+      	//parse parameters 
+      	val featureParam = parseNode \ JobTag.RecJobPredParam
+        var paramList:HashMap[String, String] = HashMap()
+        for (featureParamNode <- featureParam){
+          // the #PCDATA is currently ignored. 
+          val paraPairList = featureParamNode.child.map(feat => (feat.label, feat.text )).filter(_._1 != "#PCDATA")
+          
+          for (paraPair <- paraPairList){
+            paramList += (paraPair._1 -> paraPair._2)
+          }
+        } 
+        
+        Some(RecJobPrediction(dateList, contentDateList, paramList))
+    }
+    
     /**
      * Populates training dates.
      * 
@@ -635,6 +726,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
           
       return dateList
     }
+    
     
     /**
      * Populates features from XML.

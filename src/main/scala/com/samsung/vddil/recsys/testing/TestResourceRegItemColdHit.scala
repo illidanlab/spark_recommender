@@ -14,6 +14,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.prediction._
 
 object TestResourceRegItemColdHit{
   
@@ -172,87 +173,13 @@ object TestResourceRegItemColdHit{
     val userFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)
     Logger.info("No. of users of cold items: " + userFeatures.count)
 
-
-    val userItemPred:RDD[(Int, (String, Double))] = if (model.isInstanceOf[PartializableModel]){
-        //if the model is a partializable model, then we use partial model 
-        //and apply the models in batch. 
-        
-        Logger.info("Generating item enclosed partial models")
-        var itemPartialModels = coldItemFeatures.map{x=>
-            val itemId:String = x._1
-            val partialModel = model.asInstanceOf[PartializableModel].applyItemFeature(x._2)
-            (itemId, partialModel)
-        }.coalesce(partialModelBatchNum)
-        
-        val predBlockSize = itemPartialModels.partitions.size
-        val blockPredFiles = new Array[String](predBlockSize)
-        Logger.info("Item enclosed partial models are divdided into " + predBlockSize + " blocks.")
-        
-        Logger.info("Preceed with partial models")
-        for ((partialModelBlock, blockId) <- itemPartialModels.partitions.zipWithIndex){
-            val idx = partialModelBlock.index
-            val blockRdd = itemPartialModels.mapPartitionsWithIndex(
-                    (ind, x) => if (ind == idx) x else Iterator(), true)
-            
-            //collect the models by block 
-            var blockItemPartialModels = blockRdd.collect()
-        	Logger.info("Broadcast block [ " + blockId + ":" + idx + "] with size:" + blockItemPartialModels.size)
-        	
-        	//block file location. 
-        	blockPredFiles(idx) = sampledPredBlockFiles + "_" + idx
-        	
-        	if (jobInfo.outputResource(blockPredFiles(idx))){
-		        val bcItemPartialModels = sc.broadcast(blockItemPartialModels) 
-		        //for each user compute the prediction for all items in this block. 
-		        userFeatures.flatMap{x=>
-		            val userId: Int = x._1
-		            val userFeature:Vector = x._2
-		            
-		            //itemPartialModelMap will be shipped to executors.  
-		            bcItemPartialModels.value.map{x =>
-		                val itemId:String = x._1
-		                (userId, (itemId, x._2(userFeature) ))
-		            }
-		        }.saveAsObjectFile(blockPredFiles(idx))
-        	}
-        }
-        
-        //load all predict blocks and aggregate. 
-        Logger.info("Loading and aggregating " + predBlockSize + " blocks.")
-        var aggregatedPredBlock:RDD[(Int, (String, Double))] = sc.emptyRDD[(Int, (String, Double))]
-        for (idx <- 0 until predBlockSize){
-            aggregatedPredBlock = aggregatedPredBlock ++ 
-            		sc.objectFile[(Int, (String, Double))](blockPredFiles(idx))
-        }
-        aggregatedPredBlock.coalesce(partitionNum)
-        
-    }else{
-	    //for each user get all possible user item features
-	    Logger.info("Generating all possible user-item features")
-	
-	    if (jobInfo.outputResource(sampledItemUserFeatFile)){
-	        val sampledUFIFRDD = userFeatures.cartesian(coldItemFeatures
-	            ).map{ x=> //((userID, userFeature), (itemID, itemFeature))
-	                val userID:Int = x._1._1
-	                val itemID:String = x._2._1
-	                val feature:Vector = x._1._2 ++ x._2._2
-	                (userID, (itemID, feature))
-	            }
-	        //NOTE: by rearranging (userID, (itemID, feature)) we want to use
-	        //      the partitioner by userID.
-	        sampledUFIFRDD.coalesce(1000).saveAsObjectFile(sampledItemUserFeatFile)
-	    }
-	    val userItemFeat = sc.objectFile[(Int, (String, Vector))](sampledItemUserFeatFile)
-	    		
-	    //for each user in test get prediction on all train items
-	    userItemFeat.mapPartitions{iter =>                 
-	              def pred: (Vector) => Double = model.predict
-	              //(item, prediction)
-	              iter.map( x => (x._1, (x._2._1, pred(x._2._2)))) 
-	            }
-    }
-      
     //use predictions to get recall and hits
+    val userItemPred:RDD[(Int, (String, Double))] = computePrediction (
+            	model,  userFeatures, coldItemFeatures,
+            	(resLoc: String) => jobInfo.outputResource(resLoc),
+            	sampledPredBlockFiles, sampledItemUserFeatFile,
+            	sc, partitionNum, partialModelBatchNum
+    		)    
 
     //get cold item sets for each user
     val userColdItems:RDD[(Int, Set[String])] = repTestData.map{x =>
