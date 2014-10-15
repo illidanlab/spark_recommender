@@ -1,7 +1,8 @@
 #!/bin/bash
 if [ $# -lt 3 ]; then
 	echo "Usage: ./submit_emr.sh <job_file> <node_num> <num_executors> [compile]"
-	echo "Example: ./submit_emr.sh ~/Desktop/emr/emr_jobs/aws_test_job_s3_st.xml 50 20 [compile]"
+	echo "Example: ./submit_emr.sh ~/Desktop/emr/emr_jobs/aws_test_job_s3_st.xml 50 200 [compile]"
+	echo "        This runs the job on 50 nodes with 200 executors"
 	exit -1
 fi
 
