@@ -6,6 +6,8 @@ import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.ResourceStruct
 import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.linalg.Vector
+import org.apache.spark.mllib.regression.LabeledPoint
 
 /**
  * This is the data structure for data
@@ -155,6 +157,16 @@ class AssembledDataSet(
     
     def createSplitStruct(resourceIden:String, resourceLoc:String): AssembledDataSet = {
         new AssembledDataSet(resourceIden, resourceLoc, userFeatureOrder, itemFeatureOrder, combData)
+    }
+    
+    /* Read offline file and parse data LabelPoint data structures. */
+    def getLabelPointRDD() = {
+        Pipeline.instance.get.sc.objectFile[(Int, Int, Vector, Double)](resourceLoc).
+        map{tuple =>
+            val rating:Double = tuple._4
+            val feature:Vector = tuple._3
+            LabeledPoint(rating, feature.toMLLib)
+        }
     }
 }
 

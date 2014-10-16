@@ -46,25 +46,24 @@ object DataAssemble {
        
        //join all features RDD
        ///the first join. 
-       var featureJoin = sc.objectFile[(Int, Vector)](
-               usedFeaturesList.head.featureFileName
-               ).join(idSetRDD
-               ).map{x=>  // (ID, (feature, 1))
+       var featureJoin = usedFeaturesList.head.getFeatureRDD.
+    		   join(idSetRDD).map{x=>  // (ID, (feature, 1))
                    val ID = x._1 // could be both user ID and item ID
                    val feature:Vector = x._2._1
                    (ID, feature)
-       		   }
+       }
+       
        ///remaining
 	   for (usedFeature <- usedFeaturesList.tail){
-		   featureJoin = featureJoin.join(
-				sc.objectFile[(Int, Vector)](usedFeature.featureFileName)
-		   ).map{ x => // (ID, feature1, feature2)
+	       featureJoin = featureJoin.join(
+	            usedFeature.getFeatureRDD
+	       ).map{ x => // (ID, feature1, feature2)
 		      val ID = x._1
 		      val concatenateFeature:Vector = x._2._1 ++ x._2._2 
 		      (ID, concatenateFeature) //TODO: do we need to make sure this is a sparse vector? 
 		   }
 	   }
-	     
+	   
 	   (featureJoin, usedFeaturesList)
    }
   
@@ -82,7 +81,7 @@ object DataAssemble {
             sc: SparkContext):  RDD[Int] = {
       
       val intersectIds = usedFeatures.map{feature =>
-        sc.objectFile[(Int, Vector)](feature.featureFileName)
+        feature.getFeatureRDD
           .map(_._1) //the first field is always id
       }.reduce((idSetA, idSetB) => idSetA.intersection(idSetB)) // reduce to get intersection of all sets
           
@@ -109,7 +108,7 @@ object DataAssemble {
         featureResourceMap foreach {
             case (k, v) =>
                 {
-                    val numFeatures = sc.objectFile[(Int, Vector)](v.featureFileName).count
+                    val numFeatures = v.getFeatureRDD.count
                     if ( (numFeatures.toDouble/total)  > minCoverage) {
                       //coverage satisfy by feature add it to used set
                         usedFeatures += v

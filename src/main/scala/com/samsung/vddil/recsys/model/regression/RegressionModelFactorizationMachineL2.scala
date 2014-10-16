@@ -46,18 +46,15 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
         	Logger.info("Training model...")
             
 	        // 3. Model learning algorithms (HDFS operations)
-        	val splitData = allData.getSplit(splitName).get
-	        val trData = splitData.training
-	        val teData = splitData.testing
-	        val vaData = splitData.validation
+        	val splitData = allData.getSplit(splitName).get 
 	        
 	        //get the spark context
 	        val sc = jobInfo.sc
 	        
 	        //parse the data to get Label and feature information in LabeledPoint form
-	        val trainData = parseDataObj(trData.resourceLoc, sc)
-	        val testData  = parseDataObj(teData.resourceLoc, sc)
-	        val valData   = parseDataObj(vaData.resourceLoc, sc)
+	        val trainData = splitData.training.getLabelPointRDD
+	        val testData  = splitData.testing.getLabelPointRDD
+	        val valData   = splitData.validation.getLabelPointRDD
 	        
 	        //initial solution
 	        

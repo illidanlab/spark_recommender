@@ -62,6 +62,8 @@ package object model {
     
     /**
      * Parses data split from text file to label points
+     * 
+     * @deprecated 
      */
     def parseData(dataFileName: String, sc: SparkContext):RDD[LabeledPoint]  ={
        sc.textFile(dataFileName).map { line =>
@@ -72,18 +74,6 @@ package object model {
             val features = parts.slice(2, parts.length -1).map(_.toDouble)
             LabeledPoint(rating, Vectors.dense(features))
        }
-    }
-    
-    /**
-     * Parses data split from serialized object file to label points
-     */
-    def parseDataObj(dataFileName: String, sc: SparkContext):RDD[LabeledPoint] = {
-        //(userID:String, itemID:String, features:Vector, rating:Double)
-        sc.objectFile[(Int, Int, Vector, Double)](dataFileName).map{tuple =>
-            val rating:Double = tuple._4
-            val feature:Vector = tuple._3
-            LabeledPoint(rating, feature.toMLLib)
-        }
     }
     
     
