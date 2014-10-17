@@ -34,7 +34,7 @@ abstract class RecJobModel(val modelName:String, val modelParams: HashMap[String
 object RecJobModel{
 	val defaultMinUserFeatureCoverage = "0.1"
 	val defaultMinItemFeatureCoverage = "0.1"
-    val defaultUseOnlineAssembleData  = "true"
+    val defaultUseOnlineAssembleData  = "false"
 	    
 	    
 	val Param_MinUserFeatureCoverage = "minUFCoverage"
