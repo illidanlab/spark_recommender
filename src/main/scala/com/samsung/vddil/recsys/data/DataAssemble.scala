@@ -23,6 +23,36 @@ import com.samsung.vddil.recsys.utils.HashString
  */
 object DataAssemble {
    
+    /**
+     * From a given list of features, we re-assemble the (id, features). 
+     */
+   def reassembleFeatures(
+        idSet: RDD[Int],
+		featuresStructs: List[FeatureStruct]
+   ):RDD[(Int, Vector)] = {
+       
+       val idSetRDD = idSet.map(x => (x,1))
+       
+       var featureJoin = featuresStructs.head.getFeatureRDD.
+    		   join(idSetRDD).map{x=>  // (ID, (feature, 1))
+                   val ID = x._1 // could be both user ID and item ID
+                   val feature:Vector = x._2._1
+                   (ID, feature)
+       }
+       
+       for (usedFeature <- featuresStructs.tail){
+	       featureJoin = featureJoin.join(
+	            usedFeature.getFeatureRDD
+	       ).map{ x => // (ID, feature1, feature2)
+		      val ID = x._1
+		      val concatenateFeature:Vector = x._2._1 ++ x._2._2 
+		      (ID, concatenateFeature) //TODO: do we need to make sure this is a sparse vector? 
+		   }
+	   }
+       featureJoin
+   }
+   
+    
    /**
    * Returns join of features of specified IDs, and ordering of features
    * 
@@ -131,12 +161,15 @@ object DataAssemble {
     * @param jobInfo the job information
     * @param minIFCoverage minimum item feature coverage 
     * @param minUFCoverage minimum user feature coverage
+    * @param onlineData if true then the features are not concatenated 
+    *        before its use, and assembled data will not be dumped to file systems. 
     * @param plainTextOutput *additional* plain text output.  
     * 
     * @return the resource identity of the assembled data
     */
    def assembleContinuousData(
            jobInfo:RecJob, minIFCoverage:Double, minUFCoverage:Double,
+           onlineData: Boolean,
            plainTextOutput:Boolean
    ):AssembledDataSet = {
       require(minIFCoverage >= 0 && minIFCoverage <= 1)
@@ -177,6 +210,10 @@ object DataAssemble {
       val assembleFileName = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
                                         "/" + resourceStr  + "_all"
       
+      val assembleCombDataResourceStr = resourceStr + "_combData"
+      val assembleCombDataFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/" + assembleCombDataResourceStr  + "_all" 
+                                        
+                                        
       //check if the regression data has already generated in jobInfo.jobStatus
       //  it is possible this combination has been used (and thus generated) by other classifiers. 
       //  in that case directly return resourceStr.
@@ -197,7 +234,7 @@ object DataAssemble {
           var (userFeaturesRDD, userFeatureOrder) = 
               getCombinedFeatures(userIntersectIds, usedUserFeature, sc)
                                   
-                                  
+          
           //5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
           //   and generate <intersectTuple>
           //filtering such that we have only user-item pairs such that for both features have been found
@@ -224,8 +261,13 @@ object DataAssemble {
                       (userID, itemID, watchTime) 
                   }                        
           
+          val assembleCombData:CombinedDataSet = combData.createSubset(assembleCombDataResourceStr, assembleCombDataFileName)
           
-                   
+          if (! assembleCombData.resourceExist){
+              if (jobInfo.outputResource(assembleCombDataFileName)) { assembleCombData.saveDataRDD(filterByUserItem) }
+          }
+          
+          
           if(plainTextOutput){
               val plainTextOutputUserItemMatrix = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
                                         		     "/" + resourceStr  + "_plainText_userItemMatrix"
@@ -254,55 +296,68 @@ object DataAssemble {
               }.saveAsTextFile(plainTextOutputItemFeature)
           } 
           
-          
-          //6. join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
-          //join with item features (join item first as # of items is small)
-          val joinedItemFeatures = 
-              filterByUserItem.map{x => 
-                  (x._2, (x._1, x._3))
-              }.join(itemFeaturesRDD 
-              ).map{y => //(item, ((user, rating), IF))
-                   val userID:Int = y._2._1._1
-                   val itemID:Int = y._1
-                   val itemFeature:Vector = y._2._2
-                   val rating:Double = y._2._1._2
-                   (userID, (itemID, itemFeature, rating))
-              }
-                                        
-          
-          //can use both range partitoner or hashpartitioner to efficiently partition by user
-          //val numPartitions = jobInfo.partitionNum_train
-          val partedByUJoinedItemFeat = joinedItemFeatures//.partitionBy(
-                                          //new RangePartitioner(numPartitions, 
-                                          //                    joinedItemFeatures)) 
+          //6. Construct assembled data set using online/offline mode. 
+          if (onlineData){
+              //ONLINE MODE. No dump. 
+              jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
+	          	= new AssembledOnlineDataSet(
+	          	        resourceStr,  
+	          	        userFeatureOrder, itemFeatureOrder, 
+	          	        assembleCombData, filterByUserItem.count)  
+              
+          }else{
+              //OFFLINE MODE.    
+	          //join features and <intersectTuple> and generate aggregated data (UF1 UF2 ... IF1 IF2 ... , feedback )
+	          //join with item features (join item first as # of items is small)
+	          val joinedItemFeatures = 
+	              filterByUserItem.map{x => 
+	                  (x._2, (x._1, x._3))
+	              }.join(itemFeaturesRDD 
+	              ).map{y => //(item, ((user, rating), IF))
+	                   val userID:Int = y._2._1._1
+	                   val itemID:Int = y._1
+	                   val itemFeature:Vector = y._2._2
+	                   val rating:Double = y._2._1._2
+	                   (userID, (itemID, itemFeature, rating))
+	              }
+	                                        
+	          
+	          //can use both range partitoner or hashpartitioner to efficiently partition by user
+	          //val numPartitions = jobInfo.partitionNum_train
+	          val partedByUJoinedItemFeat = joinedItemFeatures//.partitionBy(
+	                                          //new RangePartitioner(numPartitions, 
+	                                          //                    joinedItemFeatures)) 
+	
+	          //join with user features
+	          val joinedUserItemFeatures = 
+	              	partedByUJoinedItemFeat.join(userFeaturesRDD
+	              	).map {x=> //(user, ((item, IF, rating), UF))
+	                    //(user, item, UF, IF, rating)
+	                    val userID = x._1
+	                    val itemID = x._2._1._1
+	                    val userFeature:SparseVector = x._2._2.toSparse
+	                    val itemFeature:SparseVector = x._2._1._2.toSparse
+	                    val features = userFeature ++ itemFeature  
+	                    val rating:Double = x._2._1._3
+	                    (userID, itemID, features, rating)
+	                }                                                       
+	                                                                                          
+	          //7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
+	          if (jobInfo.outputResource(assembleFileName)) {
+	        	  // join features and store in assembleFileName
+	        	  joinedUserItemFeatures.saveAsObjectFile(assembleFileName)
+	          }
+	          
+	          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
+	          	= new AssembledOfflineDataSet(
+	          	        resourceStr, assembleFileName, 
+	          	        userFeatureOrder, itemFeatureOrder, 
+	          	        assembleCombData, joinedUserItemFeatures.count)  
+	                    
+	          Logger.info("offline assembled features: " + assembleFileName)
+	          //Logger.info("Total data size: " + sampleSize)
 
-          //join with user features
-          val joinedUserItemFeatures = 
-              	partedByUJoinedItemFeat.join(userFeaturesRDD
-              	).map {x=> //(user, ((item, IF, rating), UF))
-                    //(user, item, UF, IF, rating)
-                    val userID = x._1
-                    val itemID = x._2._1._1
-                    val userFeature:SparseVector = x._2._2.toSparse
-                    val itemFeature:SparseVector = x._2._1._2.toSparse
-                    val features = userFeature ++ itemFeature  
-                    val rating:Double = x._2._1._3
-                    (userID, itemID, features, rating)
-                }                                                       
-                                                                                          
-          //7. save resource to <jobInfo.jobStatus.resourceLocation_AggregateData_Continuous>
-          if (jobInfo.outputResource(assembleFileName)) {
-        	  // join features and store in assembleFileName
-        	  joinedUserItemFeatures.saveAsObjectFile(assembleFileName)
           }
-          
-          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr) 
-          = new AssembledDataSet(resourceStr, assembleFileName, userFeatureOrder, itemFeatureOrder, combData, joinedUserItemFeatures.count)  
-                    
-          Logger.info("assembled features: " + assembleFileName)
-          //Logger.info("Total data size: " + sampleSize)
-
-          
       }
       
       jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr)

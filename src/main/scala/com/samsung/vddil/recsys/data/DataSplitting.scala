@@ -51,14 +51,24 @@ object DataSplitting {
     	
     	// check if the resource has already implemented. 
     	if ( ! allData.getSplit(splitName).isDefined){
-    	    
-    		splitDataByPercentage(
-    				splitName, jobInfo.sc, allData, 
-    				(resourceLoc:String) => jobInfo.outputResource(resourceLoc),
-    				partitionNum,
-    				trainingPerc, 
-    				testingPerc, 
-    				validationPerc)
+    	    allData match {
+    	        case offlinedata:AssembledOfflineDataSet =>
+    	            splitDataByPercentage(
+	    				splitName, jobInfo.sc, offlinedata, 
+	    				(resourceLoc:String) => jobInfo.outputResource(resourceLoc),
+	    				partitionNum,
+	    				trainingPerc, 
+	    				testingPerc, 
+	    				validationPerc)
+    	        case onlineData:AssembledOnlineDataSet =>
+    	            splitDataByPercentage(
+	    				splitName, jobInfo.sc, onlineData, 
+	    				(resourceLoc:String) => jobInfo.outputResource(resourceLoc),
+	    				partitionNum,
+	    				trainingPerc, 
+	    				testingPerc, 
+	    				validationPerc)
+    	    }
     	}
     	
     	splitName
@@ -86,27 +96,21 @@ object DataSplitting {
 	  
 	}
 	
-	
-	
-	def splitDataByPercentage(
-	        splitName:String, 
+	def splitDataByPercentage(splitName:String, 
 	        sc:SparkContext,
-	        allData:AssembledDataSet, 
+	        allData:AssembledOfflineDataSet, 
 	        outputResource:String=>Boolean,
 	        partitionNum:Int,
 			trainingPerc:Double, 
 			testingPerc:Double, 
 			validationPerc:Double) = {
 	    
-		require(trainingPerc>=0   && trainingPerc<=1)
+	    require(trainingPerc>=0   && trainingPerc<=1)
 		require(testingPerc>=0    && testingPerc<=1)
 		require(validationPerc>=0 && validationPerc<=1)
 		require(trainingPerc + testingPerc + validationPerc <= 1)
-	
-		//NOTE: do we need also enforce the entire data to be used? see the require below. 
-		//require(trainingPerc + testingPerc + validationPerc >= 0.99)
-	    
-	    val resourceStr = allData.resourceIden
+		
+		val resourceStr = allData.resourceIden
 
 		//construct file names (locations). 
 	    val trDataResId    = allData.resourceIden + "_" + splitName + "_tr"
@@ -185,5 +189,99 @@ object DataSplitting {
 		
 		//set split
 		allData.putSplit(splitName, trDataStruct, teDataStruct, vaDataStruct)
+	}
+	
+	/**
+	 * This data split is based on the AssembledOnlineDataSet. Therefore the key here is 
+	 * only split the combData variable, and create new AssembledOnlineDataSet based on 
+	 * a updated combData. 
+	 */
+	def splitDataByPercentage(
+	        splitName:String, 
+	        sc:SparkContext,
+	        allData:AssembledOnlineDataSet, 
+	        outputResource:String=>Boolean,
+	        partitionNum:Int,
+			trainingPerc:Double, 
+			testingPerc:Double, 
+			validationPerc:Double) = {
+	    
+		require(trainingPerc>=0   && trainingPerc<=1)
+		require(testingPerc>=0    && testingPerc<=1)
+		require(validationPerc>=0 && validationPerc<=1)
+		require(trainingPerc + testingPerc + validationPerc <= 1)
+	
+		//NOTE: do we need also enforce the entire data to be used? see the require below. 
+		//require(trainingPerc + testingPerc + validationPerc >= 0.99)
+	    
+	    val resourceStr = allData.resourceIden
+
+		//construct file names (locations). 
+	    val trADataResId    = allData.resourceIden + "_" + splitName + "_tr"
+	    val trCDataResId    = allData.combData.resourceIden + "_" + splitName + "_tr"
+    	val trCDataFilename = allData.combData.resourceLoc  + "_" + splitName + "_tr"
+    	
+    	val teADataResId    = allData.resourceIden + "_" + splitName + "_te"
+    	val teCDataResId    = allData.combData.resourceIden + "_" + splitName + "_te"
+    	val teCDataFilename = allData.combData.resourceLoc  + "_" + splitName + "_te"
+    	
+    	val vaADataResId    = allData.resourceIden + "_" + splitName + "_va"
+    	val vaCDataResId    = allData.combData.resourceIden + "_" + splitName + "_va"
+    	val vaCDataFilename = allData.combData.resourceLoc  + "_" + splitName + "_va"
+    	
+    	
+    	val trDataCombDataSet = allData.combData.createSubset(trCDataResId, trCDataFilename) 
+    	val teDataCombDataSet = allData.combData.createSubset(teCDataResId, teCDataFilename)
+    	val vaDataCombDataSet = allData.combData.createSubset(vaCDataResId, vaCDataFilename)
+    	
+    	// check if the resource has already implemented. 
+    	if(trDataCombDataSet.resourceExist && teDataCombDataSet.resourceExist && vaDataCombDataSet.resourceExist){
+    	    //if all resources are available, we don't need to re-generate it. 
+    		Logger.info("All resources exist, and processing skipped.")
+    	}else{
+    	    //Generate resources.
+	    	
+	    	//randomize the passed data
+    	    val partedRandData = allData.combData.getDataRDD().map{
+    	        tuple => 
+    	            var randId = tuple._1 % 10
+    	            (randId.toDouble / 10, tuple)
+    	    }
+	    	
+	    	//persist the randomize data for faster split generation
+	    	partedRandData.persist
+	    	
+	    	Logger.info("Number of partitions: " + partedRandData.partitions.length)
+
+
+	    	//split the data based on specified percentage
+	    	
+	    	//get the train data, i.e all random id < trainPc
+	    	val trainData = partedRandData.filter(_._1 < trainingPerc)
+                                    .values //remove the random id get only the data
+	    	
+	    	//get the test data i.e. all random id  > trainPc but < (trainPc+testPc)
+	    	val testData = partedRandData.filter(x => x._1 >= trainingPerc 
+	    	                                && x._1 < (trainingPerc + testingPerc))
+                                   .values //remove the random id get only the data
+	        
+	        //get the validation data i.e. all randomId > (trainPc+testPc)
+	    	val valData = partedRandData.filter(x => x._1 >= (trainingPerc + testingPerc))
+                                  .values //remove the random id get only the data
+	    	
+	    	//save data into files
+	    	if (outputResource(trCDataFilename)) CombinedDataSet.saveDataRDD(trainData, trCDataFilename) 
+	    	if (outputResource(teCDataFilename)) CombinedDataSet.saveDataRDD(testData,  teCDataFilename) 
+	    	if (outputResource(vaCDataFilename)) CombinedDataSet.saveDataRDD(valData,   vaCDataFilename)
+	    	
+	    	//unpersist the persisted data to free up memory associated
+	    	partedRandData.unpersist(false)
+    	}
+		
+		//set split
+		allData.putSplit(splitName, 
+		        allData.createSplitStruct(trADataResId, trDataCombDataSet), 
+		        allData.createSplitStruct(teADataResId, teDataCombDataSet), 
+		        allData.createSplitStruct(vaADataResId, vaDataCombDataSet))
     }
 }
