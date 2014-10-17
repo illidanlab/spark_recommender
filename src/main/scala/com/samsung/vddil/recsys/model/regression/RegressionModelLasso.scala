@@ -48,9 +48,9 @@ object RegressionModelLasso extends
 		val sc = jobInfo.sc
 		
 		//parse the data to get Label and feature information in LabeledPoint form
-		val trainData = parseDataObj(trData.resourceLoc, sc)
-	    val testData  = parseDataObj(teData.resourceLoc, sc)
-	    val valData   = parseDataObj(vaData.resourceLoc, sc)
+		val trainData = trData.getLabelPointRDD
+	    val testData  = teData.getLabelPointRDD
+	    val valData   = vaData.getLabelPointRDD
 		
 		//build model for each parameter combination
 		var bestParams:Option[(Double,Double,Double)] = None

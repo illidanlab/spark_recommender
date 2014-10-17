@@ -173,7 +173,7 @@ package object testing {
       val idRDDs = idSet.map((_,1))
 
     	//initialize list of RDD of format (id,features)
-      val headFeatures = sc.objectFile[(Int, Vector)](featureOrder.head.featureFileName)
+      val headFeatures = featureOrder.head.getFeatureRDD
       
       Logger.info("Starting partitioning features...") 
       val partedFeatures = if(isPartition) {
@@ -190,7 +190,7 @@ package object testing {
       //add remaining features
       for (usedFeature <- featureOrder.tail) {
         featureJoin  = featureJoin.join(
-                          sc.objectFile[(Int, Vector)](usedFeature.featureFileName)
+                		  usedFeature.getFeatureRDD
                         ).map{x => // (ID, (prevFeatureVector, newFeatureVector))
                             val ID = x._1
                             val feature:Vector = x._2._1 ++ x._2._2

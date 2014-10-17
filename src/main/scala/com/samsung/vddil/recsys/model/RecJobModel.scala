@@ -14,14 +14,18 @@ import com.samsung.vddil.recsys.data.AssembledDataSet
  */
 abstract class RecJobModel(val modelName:String, val modelParams: HashMap[String, String]){
     
-    var minIFCoverage = modelParams.getOrElseUpdate(
+    val minIFCoverage = modelParams.getOrElseUpdate(
 		        	RecJobModel.Param_MinItemFeatureCoverage, 
 		        	RecJobModel.defaultMinItemFeatureCoverage).toDouble
 		        	
-	var minUFCoverage = modelParams.getOrElseUpdate(
+	val minUFCoverage = modelParams.getOrElseUpdate(
 		        	RecJobModel.Param_MinUserFeatureCoverage, 
 		        	RecJobModel.defaultMinUserFeatureCoverage).toDouble
     
+    val useOnlineData = modelParams.getOrElseUpdate(
+            		RecJobModel.Param_UseOnlineAssembleData,
+            		RecJobModel.defaultUseOnlineAssembleData).toBoolean
+		        	
     /** build models */
 	def run(jobInfo: RecJob):Unit
 }
@@ -30,9 +34,12 @@ abstract class RecJobModel(val modelName:String, val modelParams: HashMap[String
 object RecJobModel{
 	val defaultMinUserFeatureCoverage = "0.1"
 	val defaultMinItemFeatureCoverage = "0.1"
-  
+    val defaultUseOnlineAssembleData  = "false"
+	    
+	    
 	val Param_MinUserFeatureCoverage = "minUFCoverage"
 	val Param_MinItemFeatureCoverage = "minIFCoverage"
+	val Param_UseOnlineAssembleData  = "useOnlineData"
 }
 
 /** Regression model */
@@ -50,7 +57,9 @@ case class RecJobScoreRegModel(
 		Logger.info("**assembling data")
 		
 		val allData:AssembledDataSet = 
-		    DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage, exportPlainTextFeatures)
+		    DataAssemble.assembleContinuousData(
+		            jobInfo, minIFCoverage, minUFCoverage, useOnlineData, 
+		            exportPlainTextFeatures)
 		
 		//3. divide training, testing, validation
 		Logger.info("**divide training/testing/validation")

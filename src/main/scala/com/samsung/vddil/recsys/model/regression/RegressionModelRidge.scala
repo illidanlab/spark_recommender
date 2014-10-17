@@ -48,9 +48,9 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
         val sc = jobInfo.sc
         
         //parse the data to get Label and feature information in LabeledPoint form
-        val trainData = parseDataObj(trData.resourceLoc, sc)
-	    val testData  = parseDataObj(teData.resourceLoc, sc)
-	    val valData   = parseDataObj(vaData.resourceLoc, sc)
+        val trainData = trData.getLabelPointRDD 
+	    val testData  = teData.getLabelPointRDD 
+	    val valData   = teData.getLabelPointRDD
         
         //build model for each parameter combination
         val bestModel = getBestModelByValidation(

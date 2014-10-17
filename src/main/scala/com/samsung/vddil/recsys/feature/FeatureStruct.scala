@@ -3,6 +3,9 @@ package com.samsung.vddil.recsys.feature
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
 import com.samsung.vddil.recsys.ResourceStruct
+import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.linalg.Vector
+import org.apache.spark.rdd.RDD
 
 /**
  * This data structure stores the information of feature
@@ -36,6 +39,12 @@ trait FeatureStruct extends ResourceStruct{
 	 */
 	def featureParams:HashMap[String, String]
 	
+	/**
+	 * Get the RDD data structure of the content. 
+	 */
+	def getFeatureRDD():RDD[(Int, Vector)] = {
+	    Pipeline.instance.get.sc.objectFile[(Int, Vector)](featureFileName)
+	}
 }
 
 /**
