@@ -273,27 +273,32 @@ object DataAssemble {
                                         		     "/" + resourceStr  + "_plainText_userItemMatrix"
               val plainTextOutputItemFeature    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + 
                                         		     "/" + resourceStr  + "_plainText_ItemFeatureMatrix"
-              //output data matrix. 
-              filterByUserItem.map{line => 
-                  val userId:Int    = line._1
-                  val itemId:Int    = line._2
-                  val rating:Double = line._3
-                  (userId, (itemId, rating))
-              }.groupByKey().map{line => //Int, Iterable[(Int, Double)]
-                  val userId:Int    = line._1
-                  val userHistory   = line._2.toList.mkString("%")
-                  userId.toString + "@" + userHistory
-              }.saveAsTextFile(plainTextOutputUserItemMatrix)
+              
+              if(jobInfo.outputResource(plainTextOutputUserItemMatrix)){
+	              //output data matrix. 
+	              filterByUserItem.map{line => 
+	                  val userId:Int    = line._1
+	                  val itemId:Int    = line._2
+	                  val rating:Double = line._3
+	                  (userId, (itemId, rating))
+	              }.groupByKey().map{line => //Int, Iterable[(Int, Double)]
+	                  val userId:Int    = line._1
+	                  val userHistory   = line._2.toList.mkString("%")
+	                  userId.toString + "@" + userHistory
+	              }.saveAsTextFile(plainTextOutputUserItemMatrix)
+              }
                                         		     
-        	  //output feature matrix
-              itemFeaturesRDD.map{line =>
-                  val itemId:Int = line._1
-                  val itemFeatureDS = line._2.toSparse.data
-                  val itemFeature   = itemFeatureDS.index.zip(itemFeatureDS.data).mkString("%")  
-                  
-                  //(itemId, itemFeature)
-                  itemId.toString + "@" + itemFeature
-              }.saveAsTextFile(plainTextOutputItemFeature)
+              if(jobInfo.outputResource(plainTextOutputItemFeature)){
+	        	  //output feature matrix
+	              itemFeaturesRDD.map{line =>
+	                  val itemId:Int = line._1
+	                  val itemFeatureDS = line._2.toSparse.data
+	                  val itemFeature   = itemFeatureDS.index.zip(itemFeatureDS.data).mkString("%")  
+	                  
+	                  //(itemId, itemFeature)
+	                  itemId.toString + "@" + itemFeature
+	              }.saveAsTextFile(plainTextOutputItemFeature)
+              }
           } 
           
           //6. Construct assembled data set using online/offline mode. 
