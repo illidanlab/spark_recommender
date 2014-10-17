@@ -18,6 +18,7 @@ import org.apache.spark.mllib.optimization.FactorizationMachineRegressionL2WithS
 import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.data.AssembledDataSet
+import com.samsung.vddil.recsys.data.AssembledOnlineDataSet
 
 object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegCustomizedModel[FactorizationMachineRegressionModel] {
 	
@@ -47,14 +48,23 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
             
 	        // 3. Model learning algorithms (HDFS operations)
         	val splitData = allData.getSplit(splitName).get 
-	        
+	        val persistDataSets = allData.isInstanceOf[AssembledOnlineDataSet]
+        	
 	        //get the spark context
 	        val sc = jobInfo.sc
 	        
 	        //parse the data to get Label and feature information in LabeledPoint form
-	        val trainData = splitData.training.getLabelPointRDD.persist
-	        val testData  = splitData.testing.getLabelPointRDD.persist
-	        val valData   = splitData.validation.getLabelPointRDD.persist
+	        val trainData = splitData.training.getLabelPointRDD
+		    val testData  = splitData.testing.getLabelPointRDD
+		    val valData   = splitData.validation.getLabelPointRDD
+	        
+		    if (persistDataSets){
+		        trainData.persist
+		        testData .persist
+		        valData  .persist
+		    }
+	        
+	        Logger.info("Training sample:" + trainData.count)
 	        
 	        //initial solution
 	        
@@ -83,10 +93,12 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
 	        modelStruct.performance(ModelStruct.PerformanceTrainMSE) = trainMSE
 	        modelStruct.performance(ModelStruct.PerformanceTestMSE)  = testMSE
 	        
-	        trainData.unpersist(false)
-	        testData.unpersist(false)
-	        valData.unpersist(false)
-	        
+	        if (persistDataSets){
+	        	trainData.unpersist(false)
+	        	testData.unpersist(false)
+	        	valData.unpersist(false)
+	        }
+	        					
 	        Logger.info("trainMSE = " + trainMSE + " testMSE = " + testMSE)
 	        Logger.info("trainData: " + trainData.count + " testData: "
 	                               + testData.count + " valData: " + valData.count)
