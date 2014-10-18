@@ -22,7 +22,8 @@ num_cores="6"
 num_executors=$3
 
 spark_default_parallelism=1600
-running_job_file="running_job.xml"
+#running_job_file="running_job.xml"
+running_job_file=$USER"_"$(basename $job_file)
 
 #set up directory
 emr_dir=$HOME/emr
