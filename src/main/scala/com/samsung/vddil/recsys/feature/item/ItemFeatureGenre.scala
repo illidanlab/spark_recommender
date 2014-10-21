@@ -234,15 +234,17 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
           }.saveAsTextFile(featureMapFileName)
         }
         
+        val featureSize = itemFeature.first._2.size
+        
         val featureStruct:ItemFeatureStruct = 
           	new ItemFeatureStruct(
           	        IdenPrefix, resourceIden, featureFileName, 
-          	        featureMapFileName, featureParams, ItemFeatureGenre)
+          	        featureMapFileName, featureParams, featureSize, ItemFeatureGenre)
         
         // 4. Generate and return a FeatureResource that includes all resources.  
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
-        
+        resourceMap(FeatureResource.ResourceStr_FeatureDim)  = featureSize
         Logger.info("Saved item features and feature map")
         
         new FeatureResource(true, Some(resourceMap), resourceIden)

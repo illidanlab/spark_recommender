@@ -163,14 +163,16 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
 	        Logger.info("Saved item features")
 	        
         }
+        val featureSize = sc.objectFile[(Int, Vector)](featureFileName).first._2.size 
         
         //post-processing. 
         val featureStruct:ItemFeatureStruct = 
             new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, 
-                    featureMapFileName, featureParams, ItemFeatureShowTime)
+                    featureMapFileName, featureParams, featureSize, ItemFeatureShowTime)
         
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
+        resourceMap(FeatureResource.ResourceStr_FeatureDim)  = featureSize
         
         new FeatureResource(true, Some(resourceMap), resourceIden)
     }

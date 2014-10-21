@@ -109,8 +109,10 @@ trait UserFeatureItemWtAgg extends Serializable {
 		}
 
     itemFeatureFile match {
-      case None => throw new Exception("ERROR: Dependent item feature not ready")
-           //TODO: if not found we need to generate it!
+      case None => 
+           Logger.error("ERROR: Dependent item feature not ready")
+           return FeatureResource.fail
+           
       case Some(itemFeatureFileName) => {
         val ratingDataFileName = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.resourceLoc
         val userFeatures:RDD[(Int, Vector)] =
@@ -123,13 +125,17 @@ trait UserFeatureItemWtAgg extends Serializable {
       }
     }
 
+    val featureSize:Int = sc.objectFile[(Int,Vector)](itemFeatureFile.get).first._2.size
     
     // 4. Generate and return a FeatureResource that includes all resources.
     val featureStruct:UserFeatureStruct = 
-          	new UserFeatureStruct(idenPrefix, resourceIden, featureFilePath, itemFeatureMapFile.get, featureParams)
+          	new UserFeatureStruct(
+          	        idenPrefix, resourceIden, featureFilePath, 
+          	        itemFeatureMapFile.get, featureParams, featureSize)
+    
     val resourceMap:HashMap[String, Any] = new HashMap()
 		resourceMap(FeatureResource.ResourceStr_UserFeature) = featureStruct
-
+		resourceMap(FeatureResource.ResourceStr_FeatureDim)  = featureSize
 		Logger.info("Saved user features and feature map")
 		new FeatureResource(true, Some(resourceMap), resourceIden)
   } 

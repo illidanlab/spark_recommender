@@ -269,15 +269,17 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 			Logger.info("Saved item features")
 		}
 		
+		val featureSize = sc.objectFile[(Int, Vector)](featureFileName).first._2.size
+		
 		// 4. Generate and return a FeatureResource that includes all resources.
 		val featureStruct:ItemFeatureStruct = 
 		    new ItemFeatureStruct(
 		            IdenPrefix, resourceIden, featureFileName, 
-		            featureMapFileName, featureParams, ItemFeatureGenre)
+		            featureMapFileName, featureParams, featureSize, ItemFeatureGenre)
 		  
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
-        resourceMap(FeatureResource.ResourceStr_FeatureDim)  = sourceMap.size
+        resourceMap(FeatureResource.ResourceStr_FeatureDim)  = featureSize
         Logger.info("Saved item features and feature map")
         
         new FeatureResource(true, Some(resourceMap), resourceIden)

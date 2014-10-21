@@ -18,6 +18,8 @@ trait FeatureStruct extends ResourceStruct{
 	def featureIden:String
 	def resourcePrefix = featureIden
 	
+	def featureSize:Int
+	
 	/**
 	 * The resource string (identity plus parameter hash)
 	 */
@@ -55,7 +57,8 @@ case class UserFeatureStruct(
 				val resourceStr:String,
 				val featureFileName:String, 
 				val featureMapFileName:String,
-				val featureParams:HashMap[String, String]
+				val featureParams:HashMap[String, String],
+				val featureSize:Int
 			) extends FeatureStruct {
 }
 
@@ -71,6 +74,7 @@ case class ItemFeatureStruct(
 				val featureFileName:String, 
 				val featureMapFileName:String,
 				val featureParams:HashMap[String, String],
+				val featureSize:Int,
 				val extractor:ItemFeatureExtractor
 			) extends FeatureStruct{
 }
