@@ -41,7 +41,9 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
             sourceMap: scala.collection.Map[String,Int],
             sc:SparkContext): RDD[(String, Vector)] = {
         
-        val bItemSet = sc.broadcast(items)
+        val bItemSet    = sc.broadcast(items)
+        val maxFeatureId = sourceMap.values.max + 1
+        
         scheduleFiles.map{scheduleFile =>
 				val scheduleRDD = sc.textFile(scheduleFile).map{line =>
 				    val fields = line.split('|')
@@ -58,7 +60,7 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 			    a ++ b
 			}.map{line =>
 			    val pid:String     = line._1
-			    val feature:Vector = generateFeatureVector(line._2, sourceMap)
+			    val feature:Vector = generateFeatureVector(line._2, sourceMap, maxFeatureId)
 			    (pid, feature)
 			}
     }
@@ -111,7 +113,7 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 		
 		
 		val featureMap:Map[String, Int] = 
-		    channelList.zipWithIndex.toMap
+		    channelList.zip(0 until channelList.length).toMap
 		    
 		featureMap
     }
@@ -290,7 +292,8 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 	 */
 	def generateFeatureVector(
 	        channelSet: Set[String],
-	        sourceMap:scala.collection.Map[String,Int]): Vector = {
+	        sourceMap:scala.collection.Map[String,Int],
+	        maxFeatureId: Int): Vector = {
 	    var featureVect:Set[(Int, Double)] = Set()
 	    
 	    channelSet.foreach{channelId => 
@@ -300,7 +303,7 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 	        }
 	    }
 	    
-	    Vectors.sparse(sourceMap.size, featureVect.toSeq)
+	    Vectors.sparse(maxFeatureId, featureVect.toSeq)
 	}
 	
 	
