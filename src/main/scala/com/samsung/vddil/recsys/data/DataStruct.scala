@@ -135,6 +135,7 @@ trait AssembledDataSet extends DataStruct{
     val itemFeatureOrder: List[FeatureStruct]
     val combData: CombinedDataSet
     var size:Long
+    var dimension:Int
     
     val resourcePrefix = "AssembledData"
     
@@ -196,7 +197,8 @@ case class AssembledOfflineDataSet(
     val userFeatureOrder: List[FeatureStruct],
     val itemFeatureOrder: List[FeatureStruct],
     val combData: CombinedDataSet,
-    var size: Long = -1
+    var size: Long = -1,
+    var dimension: Int = -1
     ) extends DataStruct with AssembledDataSet{
     
     def createSplitStruct(resourceIden:String, resourceLoc:String): AssembledDataSet = {
@@ -222,7 +224,8 @@ case class AssembledOnlineDataSet(
     val userFeatureOrder: List[FeatureStruct],
     val itemFeatureOrder: List[FeatureStruct],
     val combData: CombinedDataSet,
-    var size: Long = -1
+    var size: Long = -1,
+    var dimension: Int = -1
 		) extends DataStruct with AssembledDataSet{
     
     val resourceLoc: String = null; 

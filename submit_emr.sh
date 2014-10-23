@@ -64,7 +64,10 @@ cluster_result=$($emr_dir/elastic-mapreduce --create --name $cluster_name --ami-
         --jar s3://elasticmapreduce/libs/script-runner/script-runner.jar \
             --args "s3://support.elasticmapreduce/spark/start-history-server" \
         --jar s3://elasticmapreduce/libs/script-runner/script-runner.jar \
-            --args "s3://support.elasticmapreduce/spark/configure-spark.bash,spark.default.parallelism=$spark_default_parallelism,spark.locality.wait.rack=0" \
+            --args "s3://support.elasticmapreduce/spark/configure-spark.bash,\
+				spark.default.parallelism=$spark_default_parallelism,\
+				spark.storage.memoryFraction=0.4,\
+				spark.locality.wait.rack=0" \
         --alive --region us-east-1 --key-pair DMC_DEV)
 
 #get cluster master DNS

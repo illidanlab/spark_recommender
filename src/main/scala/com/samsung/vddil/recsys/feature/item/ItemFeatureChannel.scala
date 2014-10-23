@@ -41,7 +41,10 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
             sourceMap: scala.collection.Map[String,Int],
             sc:SparkContext): RDD[(String, Vector)] = {
         
-        val bItemSet = sc.broadcast(items)
+        val bItemSet    = sc.broadcast(items)
+        //val maxFeatureId = sourceMap.values.max + 1
+        val maxFeatureId = sourceMap.values.size
+        
         scheduleFiles.map{scheduleFile =>
 				val scheduleRDD = sc.textFile(scheduleFile).map{line =>
 				    val fields = line.split('|')
@@ -58,9 +61,62 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 			    a ++ b
 			}.map{line =>
 			    val pid:String     = line._1
-			    val feature:Vector = generateFeatureVector(line._2, sourceMap)
+			    val feature:Vector = generateFeatureVector(line._2, sourceMap, maxFeatureId)
 			    (pid, feature)
 			}
+    }
+    
+    
+    val maximum_channel_association = 20
+    /**
+     * itemMap = trainCombData.getItemMap()
+     */
+    def constructChannelFeatureMap(
+            itemMap: RDD[(String, Int)],
+            scheduleFiles:List[String],
+            sc:SparkContext
+            ):Map[String, Int] = {
+		/////we only use channels where the training programs appear. 
+		//get training program list
+		val itemIDList:Set[String] = itemMap.map{line =>
+		   	line._1
+		}.collect.toSet
+		
+		val bItemSet = sc.broadcast(itemIDList)
+		
+		//find in schedule all channels.
+		val channelList:Array[String] = 
+		    scheduleFiles.map{scheduleFile =>
+				val scheduleRDD = sc.textFile(scheduleFile).map{line =>
+				    val fields = line.split('|')
+				    val pid: String       = fields(ScheduleField_ProgId)
+				    val channelId: String = fields(ScheduleField_ChannelId)
+				    (pid, Set(channelId))
+				}.filter{scheduleEntry =>
+				    bItemSet.value.contains(scheduleEntry._1)
+				}
+				scheduleRDD
+			}.reduce{(a,b) =>
+			    a.union(b)
+			}.reduceByKey{(a,b) =>
+			    a ++ b
+			}.filter{line =>
+			    //If a program associates to too many channels
+			    //then we remove them in this map, because it 
+			    //may significantly increase the number of features
+			    //while not bringing in any new information. 
+			    line._2.size <= maximum_channel_association
+			}.flatMap{line =>
+			    line._2
+			}.distinct.collect
+			
+		Logger.info("Channels found:" + channelList.size)
+		
+		
+		val featureMap:Map[String, Int] = 
+		    channelList.zip(0 until channelList.length).toMap
+		    
+		featureMap
     }
     
 	def extractFeature(
@@ -119,9 +175,16 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 
 		//Construct feature map if necessary. 
 		if(jobInfo.outputResource(featureMapFileName)){
-		    //construct a RDD (featureIdx, sourceId, sourceDesc)
-			val sourceMapRDD:RDD[(Int, String, String)] = 
-			    sourceFiles.map{sourceFile => 
+		    
+		    
+		    //obtain the feature map. 
+			val featureMap:Map[String, Int] = constructChannelFeatureMap(
+					trainCombData.getItemMap(), scheduleFiles.toList, sc )
+			
+			val bFeatureMap = sc.broadcast(featureMap)
+			
+			val featureId2Desc:RDD[(String, String)] = 
+		        sourceFiles.map{sourceFile => 
 			        val curSourceMap:RDD[(String, String)] =
 			            sc.textFile(sourceFile).map{line =>
 			            	val fields = line.split('|')
@@ -130,19 +193,25 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 			            	(sourceId, sourceName)
 			        }
 			        curSourceMap
-			    }.reduce{(a, b) =>
+				}.reduce{(a, b) =>
 			        a.union(b)
 			    }.reduceByKey{ 
 			        //here is a very tricky part, one source may 
 			        //correspond to multiple description.
 			        //STRATEGY: randomly choose one using reduce. 
 			        (a:String,b:String)=> a
-			    }.zipWithIndex.map{line =>
-			        val sourceFeatureId = line._2.toInt
-			        val sourceId        = line._1._1
-			        val sourceDesc      = line._1._2
-			        (sourceFeatureId, sourceId, sourceDesc)
-			    }
+			    }.filter{line=>
+			        bFeatureMap.value.contains(line._1)
+			    }			
+					
+			val sourceMapRDD:RDD[(Int, String, String)] =
+					sc.parallelize(featureMap.toList).
+					leftOuterJoin(featureId2Desc).map{line =>
+			    val sourceFeatureIdx = line._2._1
+			    val sourceId         = line._1
+			    val sourceName       = line._2._2.getOrElse("unknown")
+			    (sourceFeatureIdx, sourceId, sourceName)
+			}
 			    
 			Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
 			Logger.logger.info("SourceMap Size: " + sourceMapRDD.count)
@@ -181,15 +250,17 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 			Logger.info("Saved item features")
 		}
 		
+		val featureSize = sc.objectFile[(Int, Vector)](featureFileName).first._2.size
+		
 		// 4. Generate and return a FeatureResource that includes all resources.
 		val featureStruct:ItemFeatureStruct = 
 		    new ItemFeatureStruct(
 		            IdenPrefix, resourceIden, featureFileName, 
-		            featureMapFileName, featureParams, ItemFeatureGenre)
+		            featureMapFileName, featureParams, featureSize, ItemFeatureGenre)
 		  
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
-        
+        resourceMap(FeatureResource.ResourceStr_FeatureDim)  = featureSize
         Logger.info("Saved item features and feature map")
         
         new FeatureResource(true, Some(resourceMap), resourceIden)
@@ -200,7 +271,8 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 	 */
 	def generateFeatureVector(
 	        channelSet: Set[String],
-	        sourceMap:scala.collection.Map[String,Int]): Vector = {
+	        sourceMap:scala.collection.Map[String,Int],
+	        maxFeatureId: Int): Vector = {
 	    var featureVect:Set[(Int, Double)] = Set()
 	    
 	    channelSet.foreach{channelId => 
@@ -210,7 +282,7 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 	        }
 	    }
 	    
-	    Vectors.sparse(sourceMap.size, featureVect.toSeq)
+	    Vectors.sparse(maxFeatureId, featureVect.toSeq)
 	}
 	
 	

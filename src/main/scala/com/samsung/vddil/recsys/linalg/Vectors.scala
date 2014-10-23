@@ -144,6 +144,7 @@ object Vectors{
    
    /**
    * Creates a sparse vector using unordered (index, value) pairs.
+   * NOTE: The indices are 0 based. 
    *
    * @param size vector size.
    * @param elements vector elements in (index, value) pairs.

@@ -288,14 +288,18 @@ ItemFeatureExtractor {
 	      }.saveAsTextFile(featureMapFileName)
 	    }
 	    
+	    val featureSize = subItemTermCounts.first._2.size;
+	    
 	    val featureStruct:ItemFeatureStruct = 
 	        new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, 
-	                featureMapFileName, featureParams, ItemFeatureSynopsisTFIDF)
+	                featureMapFileName, featureParams, featureSize, 
+	                ItemFeatureSynopsisTFIDF)
 	
 	    // 4. Generate and return a FeatureResource that includes all resources.  
 			val resourceMap:HashMap[String, Any] = new HashMap()
 	    resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
-	    
+	    resourceMap(FeatureResource.ResourceStr_FeatureDim)  = featureSize
+	        
 	    Logger.info("Saved item features and feature map")
 	
 	    new FeatureResource(true, Some(resourceMap), resourceIden)

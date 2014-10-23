@@ -342,6 +342,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Feature Identity:   " + feature.resourceStr)
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
+            writeline("     Feature Size:  " + feature.featureSize)
             writer.newLine()
         }
         writer.newLine()
@@ -350,6 +351,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Feature Identity:   " + feature.resourceStr)
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
+            writeline("     Feature Size:  " + feature.featureSize)
             writer.newLine()
         }
         writer.newLine()
@@ -360,16 +362,19 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Data Identity:      " + data.resourceStr)
             writeline("  Data File:          " + data.resourceLoc)
             writeline("  Data Size:          " + data.size)
+            writeline("  Data Dimension:     " + data.dimension)
             writeline("  User Features:")
             for (feature <- data.userFeatureOrder){
-                writeline("     Feature Name: " + feature.featureIden)
-                writeline("     Feature Iden: " + feature.resourceStr)
+                writeline("     Feature Name:  " + feature.featureIden)
+                writeline("     Feature Iden:  " + feature.resourceStr)
+                writeline("     Feature Size:  " + feature.featureSize)
                 writeline("     Feature Param: " + feature.featureParams.toString)
             }
             writeline("  Item Features:")
             for (feature <- data.itemFeatureOrder){
                 writeline("     Feature Name: " + feature.featureIden)
                 writeline("     Feature Iden: " + feature.resourceStr)
+                writeline("     Feature Size: " + feature.featureSize)
                 writeline("     Feature Param: " + feature.featureParams.toString)
             }
             writer.newLine()
