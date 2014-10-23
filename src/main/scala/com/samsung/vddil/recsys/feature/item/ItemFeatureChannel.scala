@@ -42,7 +42,8 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
             sc:SparkContext): RDD[(String, Vector)] = {
         
         val bItemSet    = sc.broadcast(items)
-        val maxFeatureId = sourceMap.values.max + 1
+        //val maxFeatureId = sourceMap.values.max + 1
+        val maxFeatureId = sourceMap.values.size
         
         scheduleFiles.map{scheduleFile =>
 				val scheduleRDD = sc.textFile(scheduleFile).map{line =>
@@ -179,10 +180,10 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 		    //obtain the feature map. 
 			val featureMap:Map[String, Int] = constructChannelFeatureMap(
 					trainCombData.getItemMap(), scheduleFiles.toList, sc )
-					
-					
+			
 			val bFeatureMap = sc.broadcast(featureMap)
-		    val sourceMapRDD:RDD[(Int, String, String)] = 
+			
+			val featureId2Desc:RDD[(String, String)] = 
 		        sourceFiles.map{sourceFile => 
 			        val curSourceMap:RDD[(String, String)] =
 			            sc.textFile(sourceFile).map{line =>
@@ -201,38 +202,16 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 			        (a:String,b:String)=> a
 			    }.filter{line=>
 			        bFeatureMap.value.contains(line._1)
-			    }.map{line=>
-			        val sourceFeatureId = bFeatureMap.value(line._1)
-			        val sourceId        = line._1
-			        val sourceDesc      = line._2
-			        (sourceFeatureId, sourceId, sourceDesc)
-			    }
-			
-		    
-//		    //construct a RDD (featureIdx, sourceId, sourceDesc)
-//			val sourceMapRDD:RDD[(Int, String, String)] = 
-//			    sourceFiles.map{sourceFile => 
-//			        val curSourceMap:RDD[(String, String)] =
-//			            sc.textFile(sourceFile).map{line =>
-//			            	val fields = line.split('|')
-//			            	val sourceId = fields(SourceId)
-//			            	val sourceName = fields(SourceName)
-//			            	(sourceId, sourceName)
-//			        }
-//			        curSourceMap
-//			    }.reduce{(a, b) =>
-//			        a.union(b)
-//			    }.reduceByKey{ 
-//			        //here is a very tricky part, one source may 
-//			        //correspond to multiple description.
-//			        //STRATEGY: randomly choose one using reduce. 
-//			        (a:String,b:String)=> a
-//			    }.zipWithIndex.map{line =>
-//			        val sourceFeatureId = line._2.toInt
-//			        val sourceId        = line._1._1
-//			        val sourceDesc      = line._1._2
-//			        (sourceFeatureId, sourceId, sourceDesc)
-//			    }
+			    }			
+					
+			val sourceMapRDD:RDD[(Int, String, String)] =
+					sc.parallelize(featureMap.toList).
+					leftOuterJoin(featureId2Desc).map{line =>
+			    val sourceFeatureIdx = line._2._1
+			    val sourceId         = line._1
+			    val sourceName       = line._2._2.getOrElse("unknown")
+			    (sourceFeatureIdx, sourceId, sourceName)
+			}
 			    
 			Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
 			Logger.logger.info("SourceMap Size: " + sourceMapRDD.count)

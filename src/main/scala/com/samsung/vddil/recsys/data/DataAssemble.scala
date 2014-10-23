@@ -363,6 +363,13 @@ object DataAssemble {
 	          //Logger.info("Total data size: " + sampleSize)
 
           }
+          
+          val dataDimension = 
+              jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr).
+              getLabelPointRDD.first.features.size
+          
+          jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr).dimension = dataDimension  
+          
       }
       
       jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(resourceStr)

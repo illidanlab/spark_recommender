@@ -362,6 +362,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Data Identity:      " + data.resourceStr)
             writeline("  Data File:          " + data.resourceLoc)
             writeline("  Data Size:          " + data.size)
+            writeline("  Data Dimension:     " + data.dimension)
             writeline("  User Features:")
             for (feature <- data.userFeatureOrder){
                 writeline("     Feature Name:  " + feature.featureIden)
