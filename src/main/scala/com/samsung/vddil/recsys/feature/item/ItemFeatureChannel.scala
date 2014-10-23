@@ -67,7 +67,7 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
     }
     
     
-    val maximum_channel_association = 50
+    val maximum_channel_association = 20
     /**
      * itemMap = trainCombData.getItemMap()
      */
