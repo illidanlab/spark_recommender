@@ -12,12 +12,16 @@ import com.samsung.vddil.recsys.linalg.{Vector,Vectors,SparseVector}
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 
 object UserFeatureBehaviorSynTFIDF extends FeatureProcessingUnit 
                                 with UserFeatureItemWtAgg {
 	
-  def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
+  def processFeature(
+          featureParams:HashMap[String, String], 
+          postProcessing:List[FeaturePostProcess], 
+          jobInfo:RecJob):FeatureResource = {
 		
     //Generate resource identity using resouceIdentity()
 		val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
@@ -25,9 +29,9 @@ object UserFeatureBehaviorSynTFIDF extends FeatureProcessingUnit
 		var featureFileName    = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
 								    "/" + resourceIden
 
-    generateFeature(featureParams, jobInfo, ItemFeatureSynopsisTFIDF.checkIdentity,
-      featureFileName, IdenPrefix, resourceIden)
-
+    generateFeature(
+            featureParams, jobInfo, ItemFeatureSynopsisTFIDF.checkIdentity,
+            featureFileName, IdenPrefix, resourceIden, postProcessing)
 	}
 	
 	val IdenPrefix:String = "UserFeatureSynTFIDF"

@@ -12,6 +12,9 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 
 trait UserFeatureItemWtAgg extends Serializable {
  
@@ -80,9 +83,14 @@ trait UserFeatureItemWtAgg extends Serializable {
     }
   }
 
-  def generateFeature(featureParams:HashMap[String, String], jobInfo:RecJob, 
-      checkIdentity: (String) => Boolean, featureFilePath:String,
-      idenPrefix:String, resourceIden:String):FeatureResource = {
+  def generateFeature(
+          featureParams:HashMap[String, String], 
+          jobInfo:RecJob, 
+          checkIdentity: (String) => Boolean, featureFilePath:String,
+          idenPrefix:String, 
+          resourceIden:String,
+          featurePostProcess:List[FeaturePostProcess]
+	):FeatureResource = {
    	
 		//get spark context
 		val sc = jobInfo.sc
@@ -108,6 +116,10 @@ trait UserFeatureItemWtAgg extends Serializable {
 			}			 
 		}
 
+		
+	//TODO: add feature selection. 
+	val	featurePostProcessor:List[FeaturePostProcessor] = List()
+	
     itemFeatureFile match {
       case None => 
            Logger.error("ERROR: Dependent item feature not ready")
@@ -131,7 +143,9 @@ trait UserFeatureItemWtAgg extends Serializable {
     val featureStruct:UserFeatureStruct = 
           	new UserFeatureStruct(
           	        idenPrefix, resourceIden, featureFilePath, 
-          	        itemFeatureMapFile.get, featureParams, featureSize)
+          	        itemFeatureMapFile.get, featureParams, 
+          	        featureSize, featureSize, 
+          	        featurePostProcessor)
     
     val resourceMap:HashMap[String, Any] = new HashMap()
 		resourceMap(FeatureResource.ResourceStr_UserFeature) = featureStruct

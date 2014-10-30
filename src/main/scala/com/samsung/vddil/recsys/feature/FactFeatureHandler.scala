@@ -6,6 +6,7 @@ import com.samsung.vddil.recsys.feature.fact.FactFeatureNMF
 import com.samsung.vddil.recsys.feature.fact.FactFeaturePMF
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 /*
  * This is the main entrance of the factorization feature processing.
@@ -16,15 +17,19 @@ object FactFeatureHandler extends FeatureHandler{
 	val FFNMF = "nmf"
 	val FFPMF = "pmf"
 	
-	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean = {
+	def processFeature(
+	        featureName:String, 
+	        featureParams:HashMap[String, String], 
+	        postProcessing:List[FeaturePostProcess], 
+	        jobInfo:RecJob):Boolean = {
 		Logger.logger.info("Processing factorization feature [%s:%s]".format(featureName, featureParams))
 		 
 		var resource:FeatureResource = FeatureResource.fail
 		
 		//Process the features accordingly 
 		featureName match{
-		  case FFNMF => resource = FactFeatureNMF.processFeature(featureParams, jobInfo)
-		  case FFPMF => resource = FactFeaturePMF.processFeature(featureParams, jobInfo)
+		  case FFNMF => resource = FactFeatureNMF.processFeature(featureParams, postProcessing, jobInfo)
+		  case FFPMF => resource = FactFeaturePMF.processFeature(featureParams, postProcessing, jobInfo)
 		  case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 		}
 		

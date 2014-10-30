@@ -10,6 +10,7 @@ import com.samsung.vddil.recsys.utils.Logger
 import scala.collection.mutable.{Map=>MMap}
 import com.samsung.vddil.recsys.feature.item.ItemFeatureShowTime
 import com.samsung.vddil.recsys.feature.item.ItemFeatureChannel
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 /*
  * This is the main entrance of the item (program) feature processing.
  * 
@@ -26,18 +27,22 @@ object ItemFeatureHandler extends FeatureHandler{
     //this will contain reverse mapping from resource string to Feature object 
     //val revItemFeatureMap:MMap[String, ItemFeatureExtractor] = MMap.empty
 
-	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean = {
+	def processFeature(
+	        featureName:String, 
+	        featureParams:HashMap[String, String],
+	        postProcessing:List[FeaturePostProcess], 
+	        jobInfo:RecJob):Boolean = {
 		Logger.logger.info("Processing item feature [%s:%s]".format(featureName, featureParams))
 		 
 		var resource:FeatureResource = FeatureResource.fail
 		
 		//Process the features accordingly
 		featureName match{
-		  case IFSynopsisTopic => resource = ItemFeatureSynopsisTopic.processFeature(featureParams, jobInfo)
-		  case IFSynopsisTFIDF => resource = ItemFeatureSynopsisTFIDF.processFeature(featureParams, jobInfo)
-		  case IFGenre         => resource = ItemFeatureGenre.processFeature(featureParams, jobInfo)
-		  case IFShowTime      => resource = ItemFeatureShowTime.processFeature(featureParams, jobInfo)
-		  case IFChannel       => resource = ItemFeatureChannel.processFeature(featureParams, jobInfo)
+		  case IFSynopsisTopic => resource = ItemFeatureSynopsisTopic.processFeature(featureParams, postProcessing, jobInfo)
+		  case IFSynopsisTFIDF => resource = ItemFeatureSynopsisTFIDF.processFeature(featureParams, postProcessing, jobInfo)
+		  case IFGenre         => resource = ItemFeatureGenre.processFeature(featureParams, postProcessing, jobInfo)
+		  case IFShowTime      => resource = ItemFeatureShowTime.processFeature(featureParams, postProcessing, jobInfo)
+		  case IFChannel       => resource = ItemFeatureChannel.processFeature(featureParams, postProcessing, jobInfo)
 		  case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 		}
 		

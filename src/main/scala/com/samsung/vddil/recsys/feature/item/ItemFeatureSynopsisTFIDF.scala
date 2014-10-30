@@ -15,6 +15,8 @@ import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
 import scala.math.log
 import scala.io.Source
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 
 /*
  * Item Feature: extract TFIDF numerical features from synopsis
@@ -151,9 +153,11 @@ ItemFeatureExtractor {
   }
   
 
-  def extractFeature(items:Set[String], featureSources:List[String],
-    featureParams:HashMap[String, String], featureMapFileName:String, 
-    sc:SparkContext): RDD[(String, Vector)] = {
+  def extractFeature(
+          items:Set[String], featureSources:List[String],
+          featureParams:HashMap[String, String], featureMapFileName:String,
+          postProcessing:List[FeaturePostProcessor],
+          sc:SparkContext): RDD[(String, Vector)] = {
     
     //get default parameters
     val N:Int = featureParams.getOrElse("N",  "500").toInt
@@ -189,7 +193,10 @@ ItemFeatureExtractor {
 
 
 
-	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
+	def processFeature(
+	        featureParams:HashMap[String, String], 
+	        postProcessing:List[FeaturePostProcess],  
+	        jobInfo:RecJob):FeatureResource = {
     
 	  	val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
 	    
@@ -271,7 +278,7 @@ ItemFeatureExtractor {
 	      val feature = itemTermCount._2
 	      (item, feature)
 	    }
-	
+	    
 	    //save these termcounts as item features
 	    if (jobInfo.outputResource(featureFileName)) {
 	      Logger.logger.info("Dumping feature resource: " + featureFileName)
@@ -290,9 +297,13 @@ ItemFeatureExtractor {
 	    
 	    val featureSize = subItemTermCounts.first._2.size;
 	    
+	    //TODO: Feature Selection 
+	    val featurePostProcessor:List[FeaturePostProcessor] = List()
 	    val featureStruct:ItemFeatureStruct = 
-	        new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, 
+	        new ItemFeatureStruct(
+	                IdenPrefix, resourceIden, featureFileName, 
 	                featureMapFileName, featureParams, featureSize, 
+	                featureSize, featurePostProcessor, 
 	                ItemFeatureSynopsisTFIDF)
 	
 	    // 4. Generate and return a FeatureResource that includes all resources.  

@@ -134,8 +134,9 @@ package object testing {
         
       val featParams = itemFeatureExtractor.trFeatureParams
       val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)
+      
       itemFeatureExtractor.extractFeature(items, featureSources, featParams,
-        featMapFileName, sc)
+        featMapFileName, feature.featurePostProcessor, sc)
     }
 
     //combine feature in order

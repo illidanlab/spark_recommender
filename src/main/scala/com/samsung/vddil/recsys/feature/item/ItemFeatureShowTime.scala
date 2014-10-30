@@ -16,8 +16,9 @@ import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
-
 import scala.util.control.Breaks._
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 /**
  * @author jiayu.zhou
  *
@@ -40,10 +41,9 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
     }
         
     def extractFeature(
-            items:Set[String], 
-            featureSources:List[String],
-    		featureParams:HashMap[String, String], 
-    		featureMapFileName:String, 
+            items:Set[String], featureSources:List[String],
+    		featureParams:HashMap[String, String], featureMapFileName:String, 
+    		postProcessing:List[FeaturePostProcessor],
     		sc:SparkContext): RDD[(String, Vector)] = {
         
         val timeWindow = featureParams.get(Param_TimeWindow).get.toInt
@@ -75,7 +75,10 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         programTime
     }
         
-    def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
+    def processFeature(
+            featureParams:HashMap[String, String], 
+            postProcessing:List[FeaturePostProcess],  
+            jobInfo:RecJob):FeatureResource = {
         
         val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
         
@@ -165,10 +168,15 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         }
         val featureSize = sc.objectFile[(Int, Vector)](featureFileName).first._2.size 
         
-        //post-processing. 
+        //post-processing.
+        //TODO: Feature Selection 
+	    val featurePostProcessor:List[FeaturePostProcessor] = List()
         val featureStruct:ItemFeatureStruct = 
-            new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, 
-                    featureMapFileName, featureParams, featureSize, ItemFeatureShowTime)
+            new ItemFeatureStruct(
+                    IdenPrefix, resourceIden, featureFileName, 
+                    featureMapFileName, featureParams, featureSize,
+                    featureSize, featurePostProcessor, 
+                    ItemFeatureShowTime)
         
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct

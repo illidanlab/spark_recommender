@@ -38,6 +38,17 @@
 			<feature>
 				<type>itemFeature</type>
 				<name>channel</name>
+				<processes>
+					<process>
+						<name>randomSelection</name>
+						<param>
+							<size>100</size>
+						</param>
+					</process>
+					<process>
+						<name>l2normalize</name>
+					</process>
+				</processes>
 			</feature>
 			<feature>
 				<type>userFeature</type>

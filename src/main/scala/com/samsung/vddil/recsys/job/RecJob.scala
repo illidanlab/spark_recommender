@@ -1,28 +1,42 @@
 package com.samsung.vddil.recsys.job
 
-import scala.xml._
-import scala.collection.mutable.HashMap
-import org.apache.hadoop.fs.FileSystem
-import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext
-import com.samsung.vddil.recsys.data.DataProcess
-import com.samsung.vddil.recsys.model._
-import com.samsung.vddil.recsys.Pipeline
-import com.samsung.vddil.recsys.testing._
-import com.samsung.vddil.recsys.utils.HashString
-import com.samsung.vddil.recsys.utils.Logger
-import com.samsung.vddil.recsys.feature.{RecJobFeature, RecJobItemFeature, RecJobUserFeature, RecJobFactFeature}
-import com.samsung.vddil.recsys.evaluation._
-import org.apache.hadoop.fs.Path
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
-import java.util.Date
-import java.util.Calendar
-import java.util.GregorianCalendar
 import java.text.SimpleDateFormat
+
+import scala.Array.canBuildFrom
+import scala.collection.mutable.HashMap
+import scala.xml.Elem
+import scala.xml.Node
+
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+
+import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.data.DataProcess
+import com.samsung.vddil.recsys.evaluation.RecJobMetric
+import com.samsung.vddil.recsys.evaluation.RecJobMetricColdRecall
+import com.samsung.vddil.recsys.evaluation.RecJobMetricHR
+import com.samsung.vddil.recsys.evaluation.RecJobMetricMSE
+import com.samsung.vddil.recsys.evaluation.RecJobMetricRMSE
+import com.samsung.vddil.recsys.feature.RecJobFactFeature
+import com.samsung.vddil.recsys.feature.RecJobFeature
+import com.samsung.vddil.recsys.feature.RecJobItemFeature
+import com.samsung.vddil.recsys.feature.RecJobUserFeature
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.model.ModelStruct
+import com.samsung.vddil.recsys.model.RecJobBinClassModel
+import com.samsung.vddil.recsys.model.RecJobModel
+import com.samsung.vddil.recsys.model.RecJobScoreRegModel
+import com.samsung.vddil.recsys.model.SerializableModel
 import com.samsung.vddil.recsys.prediction.RecJobPrediction
-import com.samsung.vddil.recsys.prediction.RecJobPrediction
-import com.samsung.vddil.recsys.prediction.RecJobPrediction
+import com.samsung.vddil.recsys.testing.RecJobTest
+import com.samsung.vddil.recsys.testing.RecJobTestColdItem
+import com.samsung.vddil.recsys.testing.RecJobTestNoCold
+import com.samsung.vddil.recsys.testing.getBestModel
+import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.utils.Logger
 
 /**
  * The constant variables of recommendation job.
@@ -613,6 +627,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         addonResourceLoc
     }
     
+    /** Populate experimental features */
     def populateExpFeatures():HashMap[String, String] = {
         var expFeatures:HashMap[String, String] = HashMap()
         
@@ -761,7 +776,12 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         // extract feature name 
         val featureName = (node \ JobTag.RecJobFeatureUnitName).text
         
-        // extract features 
+        // extract feature post-processing info
+        val featureProcessList = (node \ JobTag.RecJobFeaturePostProcess).flatMap{
+            node=>populateFeatureProcesses(node:Node)
+        }.toList
+        
+        // extract feature parameters 
         val featureParam = node \ JobTag.RecJobFeatureUnitParam
         
         var paramList:HashMap[String, String] = HashMap()
@@ -779,9 +799,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         
         //create feature structs by type
         featureType match{
-          case JobTag.RecJobFeatureType_Item => featList = featList :+ RecJobItemFeature(featureName, paramList)
-          case JobTag.RecJobFeatureType_User => featList = featList :+ RecJobUserFeature(featureName, paramList)
-          case JobTag.RecJobFeatureType_Fact => featList = featList :+ RecJobFactFeature(featureName, paramList)
+          case JobTag.RecJobFeatureType_Item => featList = featList :+ RecJobItemFeature(featureName, paramList, featureProcessList)
+          case JobTag.RecJobFeatureType_User => featList = featList :+ RecJobUserFeature(featureName, paramList, featureProcessList)
+          case JobTag.RecJobFeatureType_Fact => featList = featList :+ RecJobFactFeature(featureName, paramList, featureProcessList)
           case _ => Logger.warn("Feature type %s not found and discarded.".format(featureType))
         }
         
@@ -791,6 +811,37 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
       featList
     }
     
+    def populateFeatureProcesses(processNode:Node):Array[FeaturePostProcess] = {
+        var processList:Array[FeaturePostProcess] = Array()
+        
+        var nodeList = processNode \ JobTag.RecJobFeaturePostProcessUnit
+        
+        for (node <- nodeList){
+            val featureName = (node\JobTag.RecJobFeaturePostProcessName).text
+                            
+            val featureParam = node \ JobTag.RecJobFeaturePostProcessParam
+    
+	        var paramList:HashMap[String, String] = HashMap()
+	        
+	        for (featureParamNode <- featureParam){
+	          //in case multiple parameter fields exist. 
+	          
+	          // the #PCDATA is currently ignored. 
+	          val paraPairList = featureParamNode.child.map(feat => (feat.label, feat.text )).filter(_._1 != "#PCDATA")
+	          
+	          for (paraPair <- paraPairList){
+	            paramList += (paraPair._1 -> paraPair._2)
+	          }
+	        }
+            
+            val processUnit = FeaturePostProcess(featureName, paramList)
+            processUnit.foreach{unit =>
+                processList = processList :+ unit
+            }
+        }
+        
+        processList
+    }
     
     /**
      * Populates required evaluation metrics from XML

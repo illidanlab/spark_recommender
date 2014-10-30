@@ -63,6 +63,11 @@ object JobTag {
 	val RecJobFeatureUnitType = "type"
 	val RecJobFeatureUnitParam = "param"
 	
+	val RecJobFeaturePostProcess      = "processes"
+	val RecJobFeaturePostProcessUnit  = "process"	    
+	val RecJobFeaturePostProcessName  = "name"
+	val RecJobFeaturePostProcessParam = "param"
+	    
 	val RecJobModelList = "models"
 	val RecJobModelType_Regress = "score_reg"
 	val RecJobModelType_Classify = "binary_cls" 

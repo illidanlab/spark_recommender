@@ -5,6 +5,8 @@ import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 
 trait ItemFeatureExtractor {
   
@@ -15,9 +17,11 @@ trait ItemFeatureExtractor {
    * extracted
    * @return RDD of item and sparse feature vector
    */
-  def extractFeature(items:Set[String], featureSources:List[String],
-    featureParams:HashMap[String, String], featureMapFileName:String, 
-    sc:SparkContext): RDD[(String, Vector)]
+  def extractFeature(
+          items:Set[String], featureSources:List[String],
+          featureParams:HashMap[String, String], featureMapFileName:String,
+          postProcessing:List[FeaturePostProcessor],
+          sc:SparkContext): RDD[(String, Vector)]
   
   /**
    * get files from which feature extraction should be done

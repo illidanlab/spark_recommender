@@ -6,6 +6,7 @@ import com.samsung.vddil.recsys.ResourceStruct
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.rdd.RDD
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 
 /**
  * This data structure stores the information of feature
@@ -18,7 +19,10 @@ trait FeatureStruct extends ResourceStruct{
 	def featureIden:String
 	def resourcePrefix = featureIden
 	
+	/** this is the feature size*/
 	def featureSize:Int
+	/** this is the original feature size */
+	def featureSizeOriginal:Int
 	
 	/**
 	 * The resource string (identity plus parameter hash)
@@ -47,6 +51,11 @@ trait FeatureStruct extends ResourceStruct{
 	def getFeatureRDD():RDD[(Int, Vector)] = {
 	    Pipeline.instance.get.sc.objectFile[(Int, Vector)](featureFileName)
 	}
+	
+	/**
+	 * A list of processors. 
+	 */
+	def featurePostProcessor:List[FeaturePostProcessor]
 }
 
 /**
@@ -58,7 +67,9 @@ case class UserFeatureStruct(
 				val featureFileName:String, 
 				val featureMapFileName:String,
 				val featureParams:HashMap[String, String],
-				val featureSize:Int
+				val featureSize:Int,
+				val featureSizeOriginal:Int,
+				val featurePostProcessor:List[FeaturePostProcessor]
 			) extends FeatureStruct {
 }
 
@@ -75,6 +86,8 @@ case class ItemFeatureStruct(
 				val featureMapFileName:String,
 				val featureParams:HashMap[String, String],
 				val featureSize:Int,
+				val featureSizeOriginal:Int,
+				val featurePostProcessor:List[FeaturePostProcessor],
 				val extractor:ItemFeatureExtractor
 			) extends FeatureStruct{
 }
