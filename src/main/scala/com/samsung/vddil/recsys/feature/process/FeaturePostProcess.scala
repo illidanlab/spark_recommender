@@ -76,8 +76,7 @@ trait FeaturePostProcessor{
     def transformedFeatureFile: String
     def transformedFeatureMapFile: String
     
-    def process[T<:FeatureStruct](input:T) :T = {
-        
+    def process(input: UserFeatureStruct) : UserFeatureStruct ={
         //get features and transform it. 
         val featureVector = processFeatureVector(input.getFeatureRDD) 
         val featureMap    = processFeatureMap(input.getFeatureMapRDD)
@@ -85,51 +84,50 @@ trait FeaturePostProcessor{
         featureVector.saveAsObjectFile(transformedFeatureFile)
         featureVector.saveAsTextFile(transformedFeatureMapFile)
         
-        input match{
-            case UserFeatureStruct(
-				featureIden:String, 
-				resourceStr:String,
-				featureFileName:String, 
-				featureMapFileName:String,
-				featureParams:HashMap[String, String],
-				featureSize:Int,
-				featureSizeOriginal:Int,
-				featurePostProcessor:List[FeaturePostProcessor]
-			) => input
-//			    new UserFeatureStruct(
-//					featureIden, 
-//					resourceStr:String,
-//					transformedFeatureFile, 
-//					transformedFeatureMapFile,
-//					featureParams:HashMap[String, String],
-//					inputFeatureSize,
-//					outputFeatureSize,
-//					featurePostProcessor:+ this
-//			    )
-			    
-            case ItemFeatureStruct(
-				featureIden:String,
-				resourceStr:String,
-				featureFileName:String, 
-				featureMapFileName:String,
-				featureParams:HashMap[String, String],
-				featureSize:Int,
-				featureSizeOriginal:Int,
-				featurePostProcessor:List[FeaturePostProcessor],
-				extractor:ItemFeatureExtractor
-			) => input
-        }
-        
+        new UserFeatureStruct(
+			input.featureIden, 
+			input.resourceStr,
+			transformedFeatureFile, 
+			transformedFeatureMapFile,
+			input.featureParams,
+			inputFeatureSize,
+			outputFeatureSize,
+			input.featurePostProcessor:+ this
+        )
     }
+    
+    def process(input: ItemFeatureStruct) : ItemFeatureStruct = {
+        //get features and transform it. 
+        val featureVector = processFeatureVector(input.getFeatureRDD) 
+        val featureMap    = processFeatureMap(input.getFeatureMapRDD)
+        
+        featureVector.saveAsObjectFile(transformedFeatureFile)
+        featureVector.saveAsTextFile(transformedFeatureMapFile)
+        
+        new ItemFeatureStruct(
+			input.featureIden,
+			input.resourceStr,
+			transformedFeatureFile, 
+			transformedFeatureMapFile,
+			input.featureParams,
+			inputFeatureSize,
+			outputFeatureSize,
+			input.featurePostProcessor:+ this,
+			input.extractor
+		) 
+    }
+
     def processFeatureVector[T](trainingData:RDD[(T, Vector)]):RDD[(T, Vector)]
+    
     def processFeatureMap[T](trainingData:RDD[(Int, String)]):RDD[(Int, String)]
+    
 }
 
-//case class DummyFeaturePostProcessor(
-//        val featureSize:Int) extends FeaturePostProcessor{
-//    val inputFeatureSize  = featureSize
-//    val outputFeatureSize = featureSize
-//    
-//    
-//}
+case class DummyFeaturePostProcessor(
+        val featureSize:Int) extends FeaturePostProcessor{
+    val inputFeatureSize  = featureSize
+    val outputFeatureSize = featureSize
+    
+    
+}
 
