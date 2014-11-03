@@ -50,6 +50,13 @@ object ItemFeatureHandler extends FeatureHandler{
 		if(resource.success){
 		   resource.resourceMap.get(FeatureResource.ResourceStr_ItemFeature) match{
 		      case featureStruct:ItemFeatureStruct=> 
+		        //perform feature selection 
+		        var processedFeatureStruct = featureStruct
+		        postProcessing.foreach{processUnit=>
+		            val processor = processUnit.train(processedFeatureStruct.getFeatureRDD)
+		            
+		        }   
+		        
 		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
 		   }
 

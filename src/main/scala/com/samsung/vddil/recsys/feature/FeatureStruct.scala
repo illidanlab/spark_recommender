@@ -52,6 +52,10 @@ trait FeatureStruct extends ResourceStruct{
 	    Pipeline.instance.get.sc.objectFile[(Int, Vector)](featureFileName)
 	}
 	
+	def getFeatureMapRDD():RDD[(Int, String)] = {
+	    throw new NotImplementedError()
+	}
+	
 	/**
 	 * A list of processors. 
 	 */
