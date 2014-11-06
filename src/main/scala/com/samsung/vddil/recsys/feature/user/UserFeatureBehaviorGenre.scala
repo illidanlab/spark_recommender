@@ -20,7 +20,6 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit
 	
   def processFeature(
           featureParams:HashMap[String, String], 
-          postProcessing:List[FeaturePostProcess], 
           jobInfo:RecJob):FeatureResource = {
 		
     //Generate resource identity using resouceIdentity()
@@ -31,7 +30,7 @@ object UserFeatureBehaviorGenre extends FeatureProcessingUnit
 
     generateFeature(
             featureParams, jobInfo, ItemFeatureGenre.checkIdentity,
-            featureFileName, IdenPrefix, resourceIden, postProcessing)
+            featureFileName, IdenPrefix, resourceIden)
 	}
 	
 	val IdenPrefix:String = "UserFeatureGenre"

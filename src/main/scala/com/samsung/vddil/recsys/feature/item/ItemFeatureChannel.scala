@@ -126,7 +126,6 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
             featureSources:List[String],
     		featureParams:HashMap[String, String], 
     		featureMapFileName:String, 
-    		postProcessing:List[FeaturePostProcessor],
     		sc:SparkContext): RDD[(String, Vector)] = {
 	   
 	   //from RDD to in-memory map for feature construction.
@@ -147,7 +146,6 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 	
 	def processFeature(
 	        featureParams:HashMap[String, String], 
-	        postProcessing:List[FeaturePostProcess], 
 	        jobInfo:RecJob):FeatureResource = {
 		val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
 		

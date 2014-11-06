@@ -28,8 +28,8 @@ object FactFeatureHandler extends FeatureHandler{
 		
 		//Process the features accordingly 
 		featureName match{
-		  case FFNMF => resource = FactFeatureNMF.processFeature(featureParams, postProcessing, jobInfo)
-		  case FFPMF => resource = FactFeaturePMF.processFeature(featureParams, postProcessing, jobInfo)
+		  case FFNMF => resource = FactFeatureNMF.processFeature(featureParams, jobInfo)
+		  case FFPMF => resource = FactFeaturePMF.processFeature(featureParams, jobInfo)
 		  case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 		}
 		
@@ -40,12 +40,25 @@ object FactFeatureHandler extends FeatureHandler{
 		  
 		   resource.resourceMap.get(FeatureResource.ResourceStr_ItemFeature) match{
 		      case featureStruct:ItemFeatureStruct => 
-		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
+		        var processedFeatureStruct = featureStruct
+		        postProcessing.foreach{processUnit=>
+		            processUnit.train(processedFeatureStruct).foreach{processor=>
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct)
+		            }
+		        }
+		        
+		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = processedFeatureStruct
 		   }
 		   
 		   resource.resourceMap.get(FeatureResource.ResourceStr_UserFeature) match{
 		      case featureStruct:UserFeatureStruct => 
-		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = featureStruct
+		        var processedFeatureStruct = featureStruct
+		        postProcessing.foreach{processUnit=>
+		            processUnit.train(processedFeatureStruct).foreach{processor=>
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct)
+		            }
+		        }
+		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = processedFeatureStruct
 		   }
 		   
 		}

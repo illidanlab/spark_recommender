@@ -31,13 +31,13 @@ object UserFeatureHandler extends FeatureHandler{
 	    
 		//Process the features accordingly.
 		featureName match{
-	      case UFBehaviorWatchtime => resource = UserFeatureBehaviorWatchtime.processFeature(featureParams, postProcessing, jobInfo)
-	      case UFBehaviorZapping   => resource = UserFeatureBehaviorZapping.processFeature(featureParams, postProcessing, jobInfo)
-	      case UFBehaviorGenre     => resource = UserFeatureBehaviorGenre.processFeature(featureParams, postProcessing, jobInfo)
-	      case UFBehaviorTFIDF     => resource = UserFeatureBehaviorSynTFIDF.processFeature(featureParams, postProcessing, jobInfo)
-	      case UFDemoGeoLocation   => resource = UserFeatureDemographicGeoLocation.processFeature(featureParams, postProcessing, jobInfo)
-	      case UFBehaviorShowTime  => resource = UserFeatureBehaviorShowTime.processFeature(featureParams, postProcessing, jobInfo)
-	      case UFBehaviorChannel   => resource = UserFeatureBehaviorChannel.processFeature(featureParams, postProcessing, jobInfo)
+	      case UFBehaviorWatchtime => resource = UserFeatureBehaviorWatchtime.processFeature(featureParams, jobInfo)
+	      case UFBehaviorZapping   => resource = UserFeatureBehaviorZapping.processFeature(featureParams, jobInfo)
+	      case UFBehaviorGenre     => resource = UserFeatureBehaviorGenre.processFeature(featureParams, jobInfo)
+	      case UFBehaviorTFIDF     => resource = UserFeatureBehaviorSynTFIDF.processFeature(featureParams, jobInfo)
+	      case UFDemoGeoLocation   => resource = UserFeatureDemographicGeoLocation.processFeature(featureParams, jobInfo)
+	      case UFBehaviorShowTime  => resource = UserFeatureBehaviorShowTime.processFeature(featureParams, jobInfo)
+	      case UFBehaviorChannel   => resource = UserFeatureBehaviorChannel.processFeature(featureParams, jobInfo)
 	      case _ => Logger.warn("Unknown item feature type [%s]".format(featureName))
 	    }
 	    
@@ -45,7 +45,15 @@ object UserFeatureHandler extends FeatureHandler{
 	    if(resource.success){
 		   resource.resourceMap.get(FeatureResource.ResourceStr_UserFeature) match{
 		      case featureStruct:UserFeatureStruct => 
-		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = featureStruct
+		        //perform feature selection 
+		        var processedFeatureStruct = featureStruct
+		        postProcessing.foreach{processUnit=>
+		            processUnit.train(processedFeatureStruct).foreach{processor=>
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct)
+		            }
+		        }   
+		        
+		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = processedFeatureStruct
 		   }
 		}
 	    

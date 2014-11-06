@@ -20,7 +20,6 @@ object UserFeatureBehaviorChannel extends FeatureProcessingUnit
 	
   def processFeature(
           featureParams:HashMap[String, String],
-          postProcessing:List[FeaturePostProcess], 
           jobInfo:RecJob):FeatureResource = {
 		
     //Generate resource identity using resouceIdentity()
@@ -31,7 +30,7 @@ object UserFeatureBehaviorChannel extends FeatureProcessingUnit
 
     generateFeature(
             featureParams, jobInfo, ItemFeatureChannel.checkIdentity,
-            featureFileName, IdenPrefix, resourceIden, postProcessing)
+            featureFileName, IdenPrefix, resourceIden)
 	}
 	
 	val IdenPrefix:String = "UserFeatureChannel"

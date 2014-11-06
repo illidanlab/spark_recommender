@@ -20,7 +20,6 @@ object UserFeatureBehaviorShowTime extends FeatureProcessingUnit
 	
   def processFeature(
           featureParams:HashMap[String, String], 
-          postProcessing:List[FeaturePostProcess], 
           jobInfo:RecJob):FeatureResource = {
 		
     //Generate resource identity using resouceIdentity()
@@ -31,7 +30,7 @@ object UserFeatureBehaviorShowTime extends FeatureProcessingUnit
 
     generateFeature(
             featureParams, jobInfo, ItemFeatureShowTime.checkIdentity,
-            featureFileName, IdenPrefix, resourceIden, postProcessing)
+            featureFileName, IdenPrefix, resourceIden)
 	}
 	
 	val IdenPrefix:String = "UserFeatureShowTime"

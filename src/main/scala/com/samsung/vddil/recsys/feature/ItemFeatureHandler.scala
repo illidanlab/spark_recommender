@@ -38,11 +38,11 @@ object ItemFeatureHandler extends FeatureHandler{
 		
 		//Process the features accordingly
 		featureName match{
-		  case IFSynopsisTopic => resource = ItemFeatureSynopsisTopic.processFeature(featureParams, postProcessing, jobInfo)
-		  case IFSynopsisTFIDF => resource = ItemFeatureSynopsisTFIDF.processFeature(featureParams, postProcessing, jobInfo)
-		  case IFGenre         => resource = ItemFeatureGenre.processFeature(featureParams, postProcessing, jobInfo)
-		  case IFShowTime      => resource = ItemFeatureShowTime.processFeature(featureParams, postProcessing, jobInfo)
-		  case IFChannel       => resource = ItemFeatureChannel.processFeature(featureParams, postProcessing, jobInfo)
+		  case IFSynopsisTopic => resource = ItemFeatureSynopsisTopic.processFeature(featureParams, jobInfo)
+		  case IFSynopsisTFIDF => resource = ItemFeatureSynopsisTFIDF.processFeature(featureParams, jobInfo)
+		  case IFGenre         => resource = ItemFeatureGenre.processFeature(featureParams, jobInfo)
+		  case IFShowTime      => resource = ItemFeatureShowTime.processFeature(featureParams, jobInfo)
+		  case IFChannel       => resource = ItemFeatureChannel.processFeature(featureParams, jobInfo)
 		  case _ => Logger.logger.warn("Unknown item feature type [%s]".format(featureName))
 		}
 		
@@ -53,18 +53,13 @@ object ItemFeatureHandler extends FeatureHandler{
 		        //perform feature selection 
 		        var processedFeatureStruct = featureStruct
 		        postProcessing.foreach{processUnit=>
-		            val processor = processUnit.train(processedFeatureStruct.getFeatureRDD)
-		            
+		            processUnit.train(processedFeatureStruct).foreach{processor=>
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct)
+		            }
 		        }   
 		        
-		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
+		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = processedFeatureStruct
 		   }
-
-//       featureName match{
-//		    case IFSynopsisTFIDF => revItemFeatureMap(resource.resourceIden) = ItemFeatureSynopsisTFIDF
-//		    case IFGenre =>         revItemFeatureMap(resource.resourceIden) = ItemFeatureGenre
-//		    case _ => Logger.logger.warn("Unknown item feature type for reverse feature map [%s]".format(featureName))
-//		  }
 
 		}
 		

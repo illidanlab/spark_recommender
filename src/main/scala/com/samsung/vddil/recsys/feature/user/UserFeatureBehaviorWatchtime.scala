@@ -14,7 +14,6 @@ import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 object UserFeatureBehaviorWatchtime extends FeatureProcessingUnit {
 	def processFeature(
 	        featureParams:HashMap[String, String], 
-	        postProcessing:List[FeaturePostProcess],  
 	        jobInfo:RecJob):FeatureResource = {
 		Logger.error("%s has not been implmented.".format(getClass.getName()))
 		

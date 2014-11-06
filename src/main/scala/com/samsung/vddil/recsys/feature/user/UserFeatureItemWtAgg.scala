@@ -88,8 +88,7 @@ trait UserFeatureItemWtAgg extends Serializable {
           jobInfo:RecJob, 
           checkIdentity: (String) => Boolean, featureFilePath:String,
           idenPrefix:String, 
-          resourceIden:String,
-          featurePostProcess:List[FeaturePostProcess]
+          resourceIden:String
 	):FeatureResource = {
    	
 		//get spark context

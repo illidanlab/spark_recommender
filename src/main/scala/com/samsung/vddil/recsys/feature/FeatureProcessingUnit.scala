@@ -28,7 +28,6 @@ trait FeatureProcessingUnit {
 	 */
 	def processFeature(
 	        featureParams:HashMap[String, String],
-	        postProcessing:List[FeaturePostProcess],  
 	        jobInfo:RecJob):FeatureResource
 	
 	/*

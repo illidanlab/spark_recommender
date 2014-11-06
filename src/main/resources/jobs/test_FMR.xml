@@ -48,6 +48,9 @@
 					<process>
 						<name>l2normalize</name>
 					</process>
+					<process>
+						<name>dummy</name>
+					</process>
 				</processes>
 			</feature>
 			<feature>
