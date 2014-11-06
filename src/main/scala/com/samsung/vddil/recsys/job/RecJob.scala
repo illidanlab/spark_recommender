@@ -12,6 +12,7 @@ import com.samsung.vddil.recsys.testing._
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.feature.{RecJobFeature, RecJobItemFeature, RecJobUserFeature, RecJobFactFeature}
+import com.samsung.vddil.recsys.feature.item.ItemFeatureGenreAgg
 import com.samsung.vddil.recsys.evaluation._
 import org.apache.hadoop.fs.Path
 import java.io.BufferedWriter
@@ -164,6 +165,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     def run():Unit= {
     	val logger = Logger.logger 
 
+      ItemFeatureGenreAgg.saveAggGenreWtime(this)
+      
+      /*
     	//Preparing processing data. 
     	//In this step the user/item lists are available in the JobStatus. 
     	Logger.info("**preparing training data")
@@ -237,6 +241,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	}else{
             Logger.info("Prediction module not found.")
         }
+
+      */
     }
     
     /**
