@@ -12,21 +12,9 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.model.PartializableModel
+import com.samsung.vddil.recsys.prediction._
 
-
-object RegNotColdHitTestHandler extends NotColdTestHandler 
-                                with LinearRegTestHandler {
-  
-  def resourceIdentity(
-          testParams:HashMap[String, String], 
-          metricParams:HashMap[String, String], 
-          modelStr:String
-          ):String = {
-        IdenPrefix + "_" + 
-        		HashString.generateHash(testParams.toString) + "_" + 
-        		HashString.generateHash(metricParams.toString)  + "_" +
-        		modelStr
-  }
+object TestResourceRegNotColdHit{
   
   val IdenPrefix = "RegNotColdHit"
   
@@ -59,45 +47,53 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
    * @param model
    * @return a RDD of hit rate. 
    */
-  def performTest(jobInfo:RecJob, testName: String,
+  def generateResource(jobInfo:RecJob, 
               testParams:HashMap[String, String],
-              metricParams:HashMap[String, String],
-              model: ModelStruct): 
-                  RDD[HitSet] = {
+              model: ModelStruct,
+              testResourceDir:String
+              ):RDD[HitSet] = {
 
+    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+    
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
-   
+    
     //get percentage of user sample to predict on as it takes really long to
     //compute on all users
-    val userSampleParam:Double = metricParams.getOrElseUpdate("UserSampleSize",
+    val userSampleParam:Double = testParams.getOrElseUpdate("UserSampleSize",
                                                   "0.2").toDouble
     Logger.info("User sample parameter: " + userSampleParam)
     
     //seed parameter needed for sampling test users
     val seed = testParams.getOrElseUpdate("seed", "3").toInt
-
-    val resourceIden = resourceIdentity(testParams, metricParams, model.resourceStr)
-    
-    val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 
     
     //cache intermediate files, helpful in case of crash  
-    val itemFeatObjFile         = testResourceDir + "/itemFeat"   
-    val userFeatObjFile         = testResourceDir + "/userFeat" 
-    val sampledUserFeatObjFile  = testResourceDir + "/sampledUserFeat" 
-    val sampledItemUserFeatFile = testResourceDir + "/sampledUserItemFeat"
-    val sampledPredBlockFiles   = testResourceDir + "/sampledPred/BlockFiles"
+    val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/itemFeat"   
+    val userFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/userFeat" 
+    val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
+    val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
+    val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
+    val filterRatingDataFile    = testResourceDir + "/" + IdenPrefix + "/filterTestRatingData"
+    
     //get spark context
     val sc = jobInfo.sc
     
-    //get test data
-    val testData = jobInfo.jobStatus.testWatchTime.get
+    val partitionNum = jobInfo.partitionNum_test
     
     //filter test data to remove new users/items
-    val filtTestData = filterTestRatingData(testData, jobInfo.jobStatus,
-                          sc).map(x => 
-                            (x.user, (x.item, x.rating))
-                          )
+    if(jobInfo.outputResource(filterRatingDataFile)){
+        // cache the filtered rating data
+        val filtTestData:RDD[(Int, (Int, Double))] = 
+            filterTestRatingData(
+                jobInfo.jobStatus.testWatchTime.get,  //get test data
+                jobInfo.jobStatus.resourceLocation_CombinedData_train.get,
+                sc).map(x => 
+                    (x.user, (x.item, x.rating))
+                )
+        filtTestData.saveAsObjectFile(filterRatingDataFile)
+    }
+    
+    val filtTestData:RDD[(Int, (Int, Double))] = sc.objectFile(filterRatingDataFile)
         
     //get test users
     val testUsers = filtTestData.map{ _._1.toInt}.distinct  
@@ -127,8 +123,8 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                         (user, (item, rating))
                                       }
 
-    //get train items
-    val trainItems = sc.parallelize(jobInfo.jobStatus.itemIdMap.values.toList)
+    //get train item indices. 
+    val trainItems = trainCombData.getItemMap().map{x => x._2}
     
     //get feature orderings
     val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
@@ -141,8 +137,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     Logger.info("Preparing item features...")
     if (jobInfo.outputResource(itemFeatObjFile)) {
       //item features file don't exist, we generate and save
-      val iFRDD = getOrderedFeatures(trainItems, itemFeatureOrder, 
-                    jobInfo.jobStatus.resourceLocation_ItemFeature, sc)
+      val iFRDD = getOrderedFeatures(trainItems, itemFeatureOrder, sc)
       iFRDD.saveAsObjectFile(itemFeatObjFile)
     } 
     val itemFeaturesRDD:RDD[(Int, Vector)] =  sc.objectFile[(Int, Vector)](itemFeatObjFile)                    
@@ -151,8 +146,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     Logger.info("Preparing user features...")
     if (jobInfo.outputResource(userFeatObjFile)) {
       //item features file don't exist, we generate and save
-      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, 
-                    jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, sc)
       uFRDD.saveAsObjectFile(userFeatObjFile)
     }  
     val userFeaturesRDD:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)                    
@@ -173,7 +167,7 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
     //for each user get train/past/old items, require to know new items for user
     //NOTE: This will generate user item set map which can take y
     Logger.info("Get training users item sets")
-    val trainUserItem= sc.textFile(jobInfo.jobStatus.resourceLocation_CombineData).map { x =>
+    val trainUserItem= sc.textFile(trainCombData.resourceLoc).map { x =>
                               val fields = x.split(',')
                               val user = fields(0).toInt
                               val item = fields(1).toInt
@@ -189,127 +183,13 @@ object RegNotColdHitTestHandler extends NotColdTestHandler
                                                     ).map{x =>
                                                       (x._1, x._2.toSet)
                                                     }                                              
-                                                
-    val userItemPred:RDD[(Int, (Int, Double))] = if (model.isInstanceOf[PartializableModel]){
-        //if the model is a partializable model, then we use partial model 
-        //and apply the models in batch. 
-        
-        Logger.info("Generating item enclosed partial models")
-        var itemPartialModels = itemFeaturesRDD.map{x=>
-            val itemId:Int = x._1
-            val partialModel = model.asInstanceOf[PartializableModel].applyItemFeature(x._2)
-            (itemId, partialModel)
-        }.coalesce(partialModelBatchNum)
-        
-        val predBlockSize = itemPartialModels.partitions.size
-        val blockPredFiles = new Array[String](predBlockSize)
-        Logger.info("Item enclosed partial models are divdided into " + predBlockSize + " blocks.")
-        
-        Logger.info("Preceed with partial models")
-        for ((partialModelBlock, blockId) <- itemPartialModels.partitions.zipWithIndex){
-            val idx = partialModelBlock.index
-            val blockRdd = itemPartialModels.mapPartitionsWithIndex(
-                    (ind, x) => if (ind == idx) x else Iterator(), true)
-            
-            //collect the models by block 
-            var blockItemPartialModels = blockRdd.collect()
-        	Logger.info("Broadcast block [ " + blockId + ":" + idx + "] with size:" + blockItemPartialModels.size)
-        	
-        	//block file location. 
-        	blockPredFiles(idx) = sampledPredBlockFiles + "_" + idx
-        	
-        	if (jobInfo.outputResource(blockPredFiles(idx))){
-		        val bcItemPartialModels = sc.broadcast(blockItemPartialModels) 
-		        //for each user compute the prediction for all items in this block. 
-		        sampledTestUserFeatures.flatMap{x=>
-		            val userId: Int = x._1
-		            val userFeature:Vector = x._2
-		            
-		            //itemPartialModelMap will be shipped to executors.  
-		            bcItemPartialModels.value.map{x =>
-		                val itemId:Int = x._1
-		                (userId, (itemId, x._2(userFeature) ))
-		            }
-		        }.saveAsObjectFile(blockPredFiles(idx))
-        	}
-        }
-        
-        
-        
-//        Logger.info("Generating item partial models")
-//        var itemPartialModels = itemFeaturesRDD.map{x=>
-//            val itemId:Int = x._1
-//            val partialModel = model.asInstanceOf[PartializableModel].applyItemFeature(x._2)
-//            (itemId, partialModel)
-//        }.collect() //these partial models are to be stored. 
-//        
-//        //break the partial models into blocks for computing. 
-//        val itemPartialModelArr: List[Array[(Int, Vector => Double)]] 
-//        		= itemPartialModels.grouped(partialModelBatchSize).toList
-//        Logger.info("Item enclosed partial models created. Size:" + itemPartialModels.size)
-//        
-//        val predBlockSize = itemPartialModelArr.size // size of the prediction blocks 
-//        Logger.info("Item enclosed partial models are divdided into " + predBlockSize + " blocks.")
-//        
-//        //compute for each block. 
-//        val blockPredFiles = new Array[String](predBlockSize)//place to store intermediate files. 
-//        for ((itemPartialModelSet, idx) <- itemPartialModelArr.zipWithIndex){
-//        	Logger.info("Broadcast set [" + idx + "] with size:" + itemPartialModelSet.size)
-//        	
-//        	blockPredFiles(idx) = sampledPredBlockFiles + "_" + idx
-//        	
-//        	if (jobInfo.outputResource(blockPredFiles(idx))){
-//		        val bcItemPartialModels = sc.broadcast(itemPartialModelSet) 
-//		        //for each user compute the prediction for all items in this block. 
-//		        sampledTestUserFeatures.flatMap{x=>
-//		            val userId: Int = x._1
-//		            val userFeature:Vector = x._2
-//		            
-//		            //itemPartialModelMap will be shipped to executors.  
-//		            bcItemPartialModels.value.map{x =>
-//		                val itemId:Int = x._1
-//		                (userId, (itemId, x._2(userFeature) ))
-//		            }
-//		        }.saveAsObjectFile(blockPredFiles(idx))
-//        	}
-//        }
-        
-        //load all predict blocks and aggregate. 
-        Logger.info("Loading and aggregating " + predBlockSize + " blocks.")
-        var aggregatedPredBlock:RDD[(Int, (Int, Double))] = sc.emptyRDD[(Int, (Int, Double))]
-        for (idx <- 0 until predBlockSize){
-            aggregatedPredBlock = aggregatedPredBlock ++ 
-            		sc.objectFile[(Int, (Int, Double))](blockPredFiles(idx))
-        }
-        aggregatedPredBlock.coalesce(Pipeline.getPartitionNum)
-        
-    }else{
-	    //for each user get all possible user item features
-	    Logger.info("Generating all possible user-item features")
-	
-	    if (jobInfo.outputResource(sampledItemUserFeatFile)){
-	        val sampledUFIFRDD = sampledTestUserFeatures.cartesian(itemFeaturesRDD
-	            ).map{ x=> //((userID, userFeature), (itemID, itemFeature))
-	                val userID:Int = x._1._1
-	                val itemID:Int = x._2._1
-	                val feature:Vector = x._1._2 ++ x._2._2
-	                (userID, (itemID, feature))
-	            }
-	        //NOTE: by rearranging (userID, (itemID, feature)) we want to use
-	        //      the partitioner by userID.
-	        sampledUFIFRDD.coalesce(1000).saveAsObjectFile(sampledItemUserFeatFile)
-	    }
-	    val userItemFeat = sc.objectFile[(Int, (Int, Vector))](sampledItemUserFeatFile)
-	    		
-	    //for each user in test get prediction on all train items
-	    userItemFeat.mapPartitions{iter =>                 
-	              def pred: (Vector) => Double = model.predict
-	              //(item, prediction)
-	              iter.map( x => (x._1, (x._2._1, pred(x._2._2)))) 
-	            }
-    }
-
     
+    val userItemPred:RDD[(Int, (Int, Double))] = computePrediction (
+            	model, sampledTestUserFeatures, itemFeaturesRDD,
+            	(resLoc: String) => jobInfo.outputResource(resLoc),
+            	sampledPredBlockFiles, sampledItemUserFeatFile,
+            	sc, partitionNum, partialModelBatchNum
+    		)                                             
     
     //get top N predicted items for user
     val topPredictedItems = getTopAllNNewItems(userItemPred, sampledUserTrainItemsSet, N)

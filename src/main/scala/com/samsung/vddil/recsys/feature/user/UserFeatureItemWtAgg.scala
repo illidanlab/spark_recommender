@@ -69,7 +69,7 @@ trait UserFeatureItemWtAgg extends Serializable {
         (rating.user, (bIFeatMap.value(rating.item), rating.rating)))
 
     //group by user, to get all preferred item and features 
-    val userGroupedItemFeats = userItemFeats.groupByKey
+    val userGroupedItemFeats = userItemFeats.groupByKey(1000)
 
     //get weighted aggregation of item features per user
     val aggFeatureFunc:(Iterable[(Vector, Double)]) => Vector = this.aggByItemFeature
@@ -109,27 +109,33 @@ trait UserFeatureItemWtAgg extends Serializable {
 		}
 
     itemFeatureFile match {
-      case None => throw new Exception("ERROR: Dependent item feature not ready")
-           //TODO: if not found we need to generate it!
+      case None => 
+           Logger.error("ERROR: Dependent item feature not ready")
+           return FeatureResource.fail
+           
       case Some(itemFeatureFileName) => {
-        val ratingDataFileName = jobInfo.jobStatus.resourceLocation_CombineData 
+        val ratingDataFileName = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.resourceLoc
         val userFeatures:RDD[(Int, Vector)] =
           getAllUserFeatures(itemFeatureFileName, ratingDataFileName, sc)
         //save generated userFeatures at specified file path
         if(jobInfo.outputResource(featureFilePath)) {
             Logger.info("Dumping feature resource: " + featureFilePath)
-            userFeatures.coalesce(Pipeline.getPartitionNum).saveAsObjectFile(featureFilePath)
+            userFeatures.coalesce(jobInfo.partitionNum_unit * 2).saveAsObjectFile(featureFilePath)
         }
       }
     }
 
+    val featureSize:Int = sc.objectFile[(Int,Vector)](itemFeatureFile.get).first._2.size
     
     // 4. Generate and return a FeatureResource that includes all resources.
     val featureStruct:UserFeatureStruct = 
-          	new UserFeatureStruct(idenPrefix, resourceIden, featureFilePath, itemFeatureMapFile.get)
+          	new UserFeatureStruct(
+          	        idenPrefix, resourceIden, featureFilePath, 
+          	        itemFeatureMapFile.get, featureParams, featureSize)
+    
     val resourceMap:HashMap[String, Any] = new HashMap()
 		resourceMap(FeatureResource.ResourceStr_UserFeature) = featureStruct
-
+		resourceMap(FeatureResource.ResourceStr_FeatureDim)  = featureSize
 		Logger.info("Saved user features and feature map")
 		new FeatureResource(true, Some(resourceMap), resourceIden)
   } 

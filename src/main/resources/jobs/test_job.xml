@@ -1,7 +1,7 @@
 <jobList xmlns:recsys="Samsung Recsys">
   <jobEntry>
     <jobType>recommendation</jobType>
-    <jobName>exp_test_20140522_20140525</jobName>
+    <jobName>exp_cold_test_20140522_20140525</jobName>
     <jobDesc>Test experiment from 20140522 to 20140525</jobDesc>
     <sparkContext>
       <master>local[4]</master>
@@ -80,47 +80,71 @@
           <name>NonColdstart</name>
           <param>
               <key>val</key>
-          </param>
+              <UserSampleSize>5000</UserSampleSize>
+            </param>
+        <metrics>
+            <metric>
+                <type>mse</type>
+                <name>MeanSquareError</name>
+                <param>
+                    <key>val</key>
+                </param>
+            </metric>
+            <metric>
+                  <type>rmse</type>
+                  <name>RootMeanSquareError</name>
+                  <param>
+                      <key>val</key>
+                  </param>
+              </metric>
+              <metric>
+                  <type>hr</type>
+                  <name>HitRate</name>
+                  <param>
+                  </param>
+              </metric>
+          </metrics>
         </test>
       <test>
           <type>futureColdItems</type>
           <name>ColdStartItems</name>
           <param>
               <key>val</key>
-          </param>
-      </test>
-   </tests>
-    <metrics>
-      <metric>
-          <type>mse</type>
-          <name>MeanSquareError</name>
-          <param>
-              <key>val</key>
-          </param>
-      </metric>
-      <metric>
-            <type>rmse</type>
-            <name>RootMeanSquareError</name>
-            <param>
-                <key>val</key>
-            </param>
-        </metric>
-        
-        <metric>
-            <type>hr</type>
-            <name>HitRate</name>
-            <param>
-                <UserSampleSize>5000</UserSampleSize>
-            </param>
-        </metric>
-      <metric>
-          <type>cold_recall</type>
-          <name>Cold_Item_Recall</name>
-          <param>
               <UserSampleSize>15000</UserSampleSize>
           </param>
-      </metric>
-    </metrics>
+          <metrics>
+            <metric>
+                <type>mse</type>
+                <name>MeanSquareError</name>
+                <param>
+                    <key>val</key>
+                </param>
+            </metric>
+            <metric>
+                  <type>rmse</type>
+                  <name>RootMeanSquareError</name>
+                  <param>
+                      <key>val</key>
+                  </param>
+              </metric>
+              <metric>
+                  <type>hr</type>
+                  <name>HitRate</name>
+                  <param>
+                      <UserSampleSize>5000</UserSampleSize>
+                  </param>
+              </metric>
+            <metric>
+                <type>cold_recall</type>
+                <name>Cold_Item_Recall</name>
+                <param>
+                    <UserSampleSize>15000</UserSampleSize>
+                </param>
+            </metric>
+          </metrics>
+      </test>
+   </tests>
+
     <ensembles>
       <ensemble>
         <type>max</type>

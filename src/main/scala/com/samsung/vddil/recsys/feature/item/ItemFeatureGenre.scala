@@ -128,6 +128,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
 
     def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
     		
+    	val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+       
     	  //get spark context
         val sc = jobInfo.sc
         
@@ -153,8 +155,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
         // 3. Feature generation algorithms (HDFS operations)
         
         //get set of items
-        val itemSet = jobInfo.jobStatus.items.toSet
-        
+        val itemSet = trainCombData.getItemList().collect.toSet
         
         //get RDDs of genres only for param_GenreLang if exists
         var fileName = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + jobInfo.trainDates(0) + "/genre*" 
@@ -202,7 +203,8 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
        
         Logger.info("Created itemGenres list: ")
         
-        val itemIdMap = jobInfo.jobStatus.itemIdMap
+        val itemIdMap = trainCombData.getItemMap().collectAsMap
+        
         val bItemMap = sc.broadcast(itemIdMap)
         //generate feature vector for each items    
         val itemFeature:RDD[(Int, Vector)] =
@@ -232,12 +234,17 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
           }.saveAsTextFile(featureMapFileName)
         }
         
+        val featureSize = itemFeature.first._2.size
+        
         val featureStruct:ItemFeatureStruct = 
-          	new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName)
+          	new ItemFeatureStruct(
+          	        IdenPrefix, resourceIden, featureFileName, 
+          	        featureMapFileName, featureParams, featureSize, ItemFeatureGenre)
+        
         // 4. Generate and return a FeatureResource that includes all resources.  
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
-        
+        resourceMap(FeatureResource.ResourceStr_FeatureDim)  = featureSize
         Logger.info("Saved item features and feature map")
         
         new FeatureResource(true, Some(resourceMap), resourceIden)

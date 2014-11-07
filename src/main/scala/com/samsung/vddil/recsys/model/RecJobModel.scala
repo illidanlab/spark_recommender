@@ -5,76 +5,95 @@ import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.data.DataAssemble
 import com.samsung.vddil.recsys.data.DataSplitting
+import com.samsung.vddil.recsys.data.AssembledDataSet
 
-/** The learning to rank models */
-sealed trait RecJobModel{
+/** 
+ *  The learning to rank models
+ *  @param modelName name of the model
+ *  @param modelParams model parameters
+ */
+abstract class RecJobModel(val modelName:String, val modelParams: HashMap[String, String]){
     
-    /** name of the model */
-    def modelName:String
+    val minIFCoverage = modelParams.getOrElseUpdate(
+		        	RecJobModel.Param_MinItemFeatureCoverage, 
+		        	RecJobModel.defaultMinItemFeatureCoverage).toDouble
+		        	
+	val minUFCoverage = modelParams.getOrElseUpdate(
+		        	RecJobModel.Param_MinUserFeatureCoverage, 
+		        	RecJobModel.defaultMinUserFeatureCoverage).toDouble
     
-    /** model parameters */
-    def modelParams:HashMap[String, String]
-    
+    val useOnlineData = modelParams.getOrElseUpdate(
+            		RecJobModel.Param_UseOnlineAssembleData,
+            		RecJobModel.defaultUseOnlineAssembleData).toBoolean
+		        	
     /** build models */
 	def run(jobInfo: RecJob):Unit
 }
 
 /** Constants used in building models. */
 object RecJobModel{
-	val defaultMinUserFeatureCoverage = 0.1
-	val defaultMinItemFeatureCoverage = 0.1
-  
+	val defaultMinUserFeatureCoverage = "0.1"
+	val defaultMinItemFeatureCoverage = "0.1"
+    val defaultUseOnlineAssembleData  = "false"
+	    
+	    
 	val Param_MinUserFeatureCoverage = "minUFCoverage"
 	val Param_MinItemFeatureCoverage = "minIFCoverage"
+	val Param_UseOnlineAssembleData  = "useOnlineData"
 }
 
 /** Regression model */
-case class RecJobScoreRegModel(modelName:String, modelParams:HashMap[String, String]) extends RecJobModel{
+case class RecJobScoreRegModel(
+        override val modelName:String, 
+        override val modelParams:HashMap[String, String]) 
+	extends RecJobModel(modelName, modelParams){
+    
 	def run(jobInfo: RecJob):Unit = {
-	    //1. prepare data with continuous labels (X, y). 
+	    
+	    //1. examine parameters 
+	    val exportPlainTextFeatures = jobInfo.experimentalFeatures.getOrElse("exportPlainTextData", "false").toBoolean
+	    
+	    //2. prepare data with continuous labels (X, y). 
 		Logger.info("**assembling data")
-    	
-		var minIFCoverage = RecJobModel.defaultMinItemFeatureCoverage
-		var minUFCoverage = RecJobModel.defaultMinUserFeatureCoverage
 		
-		//TODO: parse from XML
+		val allData:AssembledDataSet = 
+		    DataAssemble.assembleContinuousData(
+		            jobInfo, minIFCoverage, minUFCoverage, useOnlineData, 
+		            exportPlainTextFeatures)
 		
-		val dataResourceStr = DataAssemble.assembleContinuousData(jobInfo, minIFCoverage, minUFCoverage)
-		
-		//2. divide training, testing, validation
+		//3. divide training, testing, validation
 		Logger.info("**divide training/testing/validation")
-		DataSplitting.splitContinuousData(jobInfo, dataResourceStr, 
+		val splitName = DataSplitting.splitContinuousData(jobInfo, allData, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio)
 		)
 		
-	    //3. train model on training and tune using validation, and testing.
+	    //4. train model on training and tune using validation, and testing.
 		Logger.info("**building and testing models")
 		
 		jobInfo.jobStatus.completedRegressModels(this) = 
-		    RegressionModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo) 
+		    RegressionModelHandler.buildModel(modelName, modelParams, allData, splitName, jobInfo) 
 	}
 }
 
 /** Classification model */
-case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, String]) extends RecJobModel{
+case class RecJobBinClassModel(
+        override val modelName:String, 
+        override val modelParams:HashMap[String, String]) 
+	extends RecJobModel(modelName, modelParams){
+    
 	def run(jobInfo: RecJob):Unit = {
 	    //1. prepare data with binary labels (X, y)
 	   Logger.info("**assembling binary data")  
 	   
-	   var minIFCoverage = RecJobModel.defaultMinItemFeatureCoverage
-	   var minUFCoverage = RecJobModel.defaultMinUserFeatureCoverage
-	   
 	   var balanceTraining = false
 	   
-	   //TODO: parse from XML
-	   
-	   val dataResourceStr = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
+	   val allData = DataAssemble.assembleBinaryData(jobInfo, minIFCoverage, minUFCoverage)
 	   
 	   //2. divide training, testing, validation
 	   Logger.info("**divide training/testing/validation")
-	   DataSplitting.splitBinaryData(jobInfo, dataResourceStr, 
+	   val splitName = DataSplitting.splitBinaryData(jobInfo, allData, 
 		    jobInfo.dataSplit(RecJob.DataSplitting_trainRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_testRatio),
 		    jobInfo.dataSplit(RecJob.DataSplitting_validRatio),
@@ -85,7 +104,7 @@ case class RecJobBinClassModel(modelName:String, modelParams:HashMap[String, Str
 	   Logger.info("**building and testing models")
 	   
 	   jobInfo.jobStatus.completedClassifyModels(this) = 
-	       ClassificationModelHandler.buildModel(modelName, modelParams, dataResourceStr, jobInfo)
+	       ClassificationModelHandler.buildModel(modelName, modelParams, allData, splitName, jobInfo)
        
 	}
 }

@@ -13,31 +13,12 @@ import org.apache.spark.mllib.linalg.{Vectors => SVs, Vector => SV}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.prediction._
 
-object RegItemColdHitTestHandler extends ColdTestHandler with
-LinearRegTestHandler {
-
-
-  def resourceIdentity(
-          testParams:HashMap[String, String], 
-          metricParams:HashMap[String, String], 
-          modelStr:String
-          ):String = {
-        IdenPrefix + "_" + 
-        		HashString.generateHash(testParams.toString) + "_" + 
-        		HashString.generateHash(metricParams.toString)  + "_" +
-        		modelStr
-  }
+object TestResourceRegItemColdHit{
   
   val IdenPrefix = "RegItemColdHit"
-  
-  //  /**
-  //   * In case the partial models are used, this parameter 
-  //   * determines how many models we compute together. A 
-  //   * larger number can accelerate the batch computing 
-  //   * performance but may cause memory issue.  
-  //   */
-  //  val partialModelBatchSize = 400
   
   /**
    * In case the partial models are used, this parameter 
@@ -59,17 +40,20 @@ LinearRegTestHandler {
    * @return RDD of user, his topN predicted cold items and size of intersection
    * with actual preferred cold items
    */
-  def performTest(jobInfo:RecJob, testName: String,
+  def generateResource(jobInfo:RecJob,
     testParams:HashMap[String, String], 
-    metricParams:HashMap[String, String],
-    model: ModelStruct):RDD[(Int, (List[String], Int))]  = {
+    model: ModelStruct, 
+    testResourceDir:String):
+    RDD[(Int, (List[String], Int))]  = {
 
+    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+      
     //get the value of "N" in Top-N from parameters
     val N:Int = testParams.getOrElseUpdate("N", "10").toInt
     
     //get percentage of user sample to predict on as it takes really long to
     //compute on all users
-    val userSampleParam:Double = metricParams.getOrElseUpdate("UserSampleSize",
+    val userSampleParam:Double = testParams.getOrElseUpdate("UserSampleSize",
                                                   "0.2").toDouble
     Logger.info("User sample parameter: " + userSampleParam)
     
@@ -79,25 +63,23 @@ LinearRegTestHandler {
 
     //get spark context
     val sc = jobInfo.sc
-  
-    val resourceIden = resourceIdentity(testParams, metricParams, model.resourceStr)
-    
-    val testResourceDir = jobInfo.resourceLoc(RecJob.ResourceLoc_JobTest) + "/" + resourceIden 
     
     //cache intermediate files, helpful in case of crash  
-    val itemFeatObjFile         = testResourceDir + "/itemFeat"   
-    val userFeatObjFile         = testResourceDir + "/userFeat" 
-    val sampledUserFeatObjFile  = testResourceDir + "/sampledUserFeat" 
-    val sampledItemUserFeatFile = testResourceDir + "/sampledUserItemFeat"
-    val sampledPredBlockFiles   = testResourceDir + "/sampledPred/BlockFiles"
+    val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/itemFeat"   
+    val userFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/userFeat" 
+    val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
+    val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
+    val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
    
     //get test dates
     val testDates = jobInfo.testDates
+    val partitionNum = jobInfo.partitionNum_test
+    
     //get test data from test dates
     val testData:RDD[(String, String, Double)] = DataProcess.getDataFromDates(testDates, 
-      jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), sc).get
+      jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), sc, partitionNum).get
     //get training items
-    val trainItems:Set[String] = jobInfo.jobStatus.itemIdMap.keySet
+    val trainItems:Set[String] = trainCombData.getItemList().collect.toSet
     //get cold items not seen in training
     val coldItems:Set[String] = getColdItems(testData, trainItems, sc)
     Logger.info("Cold items not seen in training: " + coldItems.size) 
@@ -108,7 +90,7 @@ LinearRegTestHandler {
     val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
                                         .userFeatureOrder
     val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-                                        .itemFeatureOrder
+                                        .itemFeatureOrder.map{feature => feature.asInstanceOf[ItemFeatureStruct]}
       
     //get cold item features
     Logger.info("Preparing item features..")
@@ -132,7 +114,7 @@ LinearRegTestHandler {
         bColdItems.value(x._2)).map(_._1)
     
     //get users in training
-    val trainUsers:RDD[String] = sc.parallelize(jobInfo.jobStatus.userIdMap.keys.toList)
+    val trainUsers:RDD[String] = trainCombData.getUserList() 
     
     //filter out training users
     val allColdUsers:RDD[String] = preferredUsers.intersection(trainUsers)
@@ -151,8 +133,10 @@ LinearRegTestHandler {
 
 
     //replace coldItemUsers from training with corresponding int id
-    val userIdMap:Map[String, Int] = jobInfo.jobStatus.userIdMap
-    val userMapRDD = sc.parallelize(userIdMap.toList)
+    //val userIdMap:Map[String, Int] = trainCombData.userMap.mapObj
+    //val userMapRDD:RDD[(String, Int)] = sc.parallelize(userIdMap.toList)
+    val userMapRDD:RDD[(String, Int)] = trainCombData.getUserMap()
+    
     val coldItemUsers:RDD[Int] = sampledColdUsers.map(x =>
         (x,1)).join(userMapRDD).map{_._2._2}
     val coldItemUsersCount = coldItemUsers.count
@@ -183,94 +167,19 @@ LinearRegTestHandler {
     //get user features
     Logger.info("Preparing user features...")
     if (jobInfo.outputResource(userFeatObjFile)){
-      val userFeatures:RDD[(Int, Vector)] = getOrderedFeatures(coldItemUsers, userFeatureOrder, 
-        jobInfo.jobStatus.resourceLocation_UserFeature, sc)
+      val userFeatures:RDD[(Int, Vector)] = getOrderedFeatures(coldItemUsers, userFeatureOrder, sc)
       userFeatures.saveAsObjectFile(userFeatObjFile)
     }
     val userFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)
     Logger.info("No. of users of cold items: " + userFeatures.count)
 
-
-    val userItemPred:RDD[(Int, (String, Double))] = if (model.isInstanceOf[PartializableModel]){
-        //if the model is a partializable model, then we use partial model 
-        //and apply the models in batch. 
-        
-        Logger.info("Generating item enclosed partial models")
-        var itemPartialModels = coldItemFeatures.map{x=>
-            val itemId:String = x._1
-            val partialModel = model.asInstanceOf[PartializableModel].applyItemFeature(x._2)
-            (itemId, partialModel)
-        }.coalesce(partialModelBatchNum)
-        
-        val predBlockSize = itemPartialModels.partitions.size
-        val blockPredFiles = new Array[String](predBlockSize)
-        Logger.info("Item enclosed partial models are divdided into " + predBlockSize + " blocks.")
-        
-        Logger.info("Preceed with partial models")
-        for ((partialModelBlock, blockId) <- itemPartialModels.partitions.zipWithIndex){
-            val idx = partialModelBlock.index
-            val blockRdd = itemPartialModels.mapPartitionsWithIndex(
-                    (ind, x) => if (ind == idx) x else Iterator(), true)
-            
-            //collect the models by block 
-            var blockItemPartialModels = blockRdd.collect()
-        	Logger.info("Broadcast block [ " + blockId + ":" + idx + "] with size:" + blockItemPartialModels.size)
-        	
-        	//block file location. 
-        	blockPredFiles(idx) = sampledPredBlockFiles + "_" + idx
-        	
-        	if (jobInfo.outputResource(blockPredFiles(idx))){
-		        val bcItemPartialModels = sc.broadcast(blockItemPartialModels) 
-		        //for each user compute the prediction for all items in this block. 
-		        userFeatures.flatMap{x=>
-		            val userId: Int = x._1
-		            val userFeature:Vector = x._2
-		            
-		            //itemPartialModelMap will be shipped to executors.  
-		            bcItemPartialModels.value.map{x =>
-		                val itemId:String = x._1
-		                (userId, (itemId, x._2(userFeature) ))
-		            }
-		        }.saveAsObjectFile(blockPredFiles(idx))
-        	}
-        }
-        
-        //load all predict blocks and aggregate. 
-        Logger.info("Loading and aggregating " + predBlockSize + " blocks.")
-        var aggregatedPredBlock:RDD[(Int, (String, Double))] = sc.emptyRDD[(Int, (String, Double))]
-        for (idx <- 0 until predBlockSize){
-            aggregatedPredBlock = aggregatedPredBlock ++ 
-            		sc.objectFile[(Int, (String, Double))](blockPredFiles(idx))
-        }
-        aggregatedPredBlock.coalesce(Pipeline.getPartitionNum)
-        
-    }else{
-	    //for each user get all possible user item features
-	    Logger.info("Generating all possible user-item features")
-	
-	    if (jobInfo.outputResource(sampledItemUserFeatFile)){
-	        val sampledUFIFRDD = userFeatures.cartesian(coldItemFeatures
-	            ).map{ x=> //((userID, userFeature), (itemID, itemFeature))
-	                val userID:Int = x._1._1
-	                val itemID:String = x._2._1
-	                val feature:Vector = x._1._2 ++ x._2._2
-	                (userID, (itemID, feature))
-	            }
-	        //NOTE: by rearranging (userID, (itemID, feature)) we want to use
-	        //      the partitioner by userID.
-	        sampledUFIFRDD.coalesce(1000).saveAsObjectFile(sampledItemUserFeatFile)
-	    }
-	    val userItemFeat = sc.objectFile[(Int, (String, Vector))](sampledItemUserFeatFile)
-	    		
-	    //for each user in test get prediction on all train items
-	    userItemFeat.mapPartitions{iter =>                 
-	              def pred: (Vector) => Double = model.predict
-	              //(item, prediction)
-	              iter.map( x => (x._1, (x._2._1, pred(x._2._2)))) 
-	            }
-    }
-      
     //use predictions to get recall and hits
+    val userItemPred:RDD[(Int, (String, Double))] = computePrediction (
+            	model,  userFeatures, coldItemFeatures,
+            	(resLoc: String) => jobInfo.outputResource(resLoc),
+            	sampledPredBlockFiles, sampledItemUserFeatFile,
+            	sc, partitionNum, partialModelBatchNum
+    		)    
 
     //get cold item sets for each user
     val userColdItems:RDD[(Int, Set[String])] = repTestData.map{x =>

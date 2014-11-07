@@ -5,6 +5,7 @@ import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.model.regression.RegressionModelRidge
 import com.samsung.vddil.recsys.model.regression.RegressionModelFactorizationMachine
+import com.samsung.vddil.recsys.data.AssembledDataSet
 
 /**
  * The model handler implementations are used to process a specified type of model.  
@@ -17,7 +18,12 @@ trait ModelHandler {
 	 * is built successfully or failed. For the successful ones, this method should push resource 
 	 * information to jobInfo.jobStatus 
 	 */
-	def buildModel(modelName:String, modelParam:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob): Boolean
+	def buildModel(
+	        modelName:String, 
+	        modelParam:HashMap[String, String], 
+	        allData:AssembledDataSet,
+	        splitName: String,
+	        jobInfo:RecJob): Boolean
 }
 
 
@@ -27,15 +33,21 @@ object RegressionModelHandler extends ModelHandler {
 	val RegModelLasso:String = "lasso_reg"
 	val RegModelFML2:String  = "fm_l2_reg"
 	
-	def buildModel(modelName:String, modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob): Boolean = {
+	def buildModel(
+	        modelName:String, 
+	        modelParams:HashMap[String, String], 
+	        allData:AssembledDataSet,
+	        splitName: String,
+	        jobInfo:RecJob
+	    ): Boolean = {
 	    
 		Logger.info("Processing regression model [%s:%s]".format(modelName, modelParams))
 	  
 	    var resource:ModelResource = ModelResource.fail
 		modelName match{
-		  case RegModelRidge => resource = RegressionModelRidge.learnModel(modelParams, dataResourceStr, jobInfo)
+		  case RegModelRidge => resource = RegressionModelRidge.learnModel(modelParams, allData, splitName, jobInfo)
 		  //case RegModelLasso => resource = ModelResource.fail
-		  case RegModelFML2  => resource = RegressionModelFactorizationMachine.learnModel(modelParams, dataResourceStr, jobInfo)
+		  case RegModelFML2  => resource = RegressionModelFactorizationMachine.learnModel(modelParams, allData, splitName, jobInfo)
 		  case _ => Logger.warn("Unknown regression model name [%s]".format(modelName))
 		}
 	  
@@ -56,7 +68,12 @@ object ClassificationModelHandler extends ModelHandler {
 	val ClsModelLogisticL2:String = "lrl2_cls"
 	val ClsModelLogisticL1:String = "lrl1_cls"
   
-	def buildModel(modelName:String, modelParams:HashMap[String, String], dataResourceStr:String, jobInfo:RecJob): Boolean = {
+	def buildModel(
+	        modelName:String, 
+	        modelParams:HashMap[String, String], 
+	        allData:AssembledDataSet,
+	        splitName: String, 
+	        jobInfo:RecJob): Boolean = {
 	    
 		Logger.info("Processing classification model [%s:%s]".format(modelName, modelParams))
 	  

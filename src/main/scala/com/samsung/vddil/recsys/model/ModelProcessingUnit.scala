@@ -5,6 +5,7 @@ import org.apache.hadoop.mapred.JobInfo
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.utils.HashString
 import org.apache.spark.SparkContext
+import com.samsung.vddil.recsys.data.AssembledDataSet
 
 
 /**
@@ -30,7 +31,11 @@ trait ModelProcessingUnit {
 	 * 5. Generate and return a ModelResource that includes all resources.  
 	 * 
 	 */
-	def learnModel(modelParams:HashMap[String, String], dataResourceStr:String, JobInfo:RecJob):ModelResource
+	def learnModel(
+	        modelParams:HashMap[String, String], 
+	        allData:AssembledDataSet,
+	        splitName: String, 
+	        JobInfo:RecJob):ModelResource
 
 	/*
 	 * Given a model parameter map, this method provides a string that uniquely determines this model.
@@ -40,8 +45,8 @@ trait ModelProcessingUnit {
 	 * dataResourceIden is the identity of data used to train/test/validate the model
 	 */
 	val IdenPrefix:String
-	def resourceIdentity(modelParams:HashMap[String, String], dataResourceStr:String):String = {
-	    IdenPrefix + "_" + HashString.generateHash(modelParams.toString) + "_" + dataResourceStr
+	def resourceIdentity(modelParams:HashMap[String, String], dataResourceStr:String, splitName:String):String = {
+	    IdenPrefix + "_" + HashString.generateHash(modelParams.toString + "_" + dataResourceStr + "_" + splitName) 
 	}
 	
 	def checkIdentity(idenString:String):Boolean = {

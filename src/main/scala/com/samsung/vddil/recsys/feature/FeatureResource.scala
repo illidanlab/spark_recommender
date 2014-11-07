@@ -34,7 +34,8 @@ object FeatureResource{
 	//here we specify some field names for resourceMap
 	val ResourceStr_UserFeature = "userFeature"
 	val ResourceStr_ItemFeature = "itemFeature"
-	  
+	val ResourceStr_FeatureDim  = "featureDimension"
+	    
 	/*
 	 * Provides a shortcut with an empty FeatureResource indicating a failed status. 
 	 */

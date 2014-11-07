@@ -11,6 +11,7 @@ import org.apache.hadoop.fs.Path
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.utils.Logger
+import org.apache.spark.storage.StorageLevel
 
 /**
  * Provides functions to aggregate data. The main functions are [[DataProcess.prepareTrain]] 
@@ -31,16 +32,74 @@ object DataProcess {
      */
     def substituteIntId(idMap:Map[String, Int], 
                       dataRDD:RDD[(String, (Int,Double))],
-                      sc:SparkContext):RDD[(Int, Int, Double)] = {
-        sc.parallelize(idMap.toList).join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
-            val intID:Int = x._2._1 
-            val otherField = x._2._2._1
-            val value:Double = x._2._2._2
-            (intID, otherField, value) 
+                      sc:SparkContext,
+                      partitionNum:Int
+                ):RDD[(Int, Int, Double)] = {
+        val idMapList = idMap.toList
+
+        val idMapRDD = sc.parallelize(idMap.toList)
+        Logger.info("Parallelized idMap.toList")
+
+	    Logger.info("Starting to repartition and persist")
+        
+        idMapRDD.persist(StorageLevel.MEMORY_AND_DISK_SER)
+        //dataRDD .repartition(3200)
+        //Consider HashPartitioner.
+
+	    val pData = dataRDD.partitionBy(Pipeline.getHashPartitioner(partitionNum))
+                           .persist(StorageLevel.DISK_ONLY)	
+
+        Logger.info("Repartition done with paritions" + partitionNum)
+
+	
+        //var result = dataRDD.partitionBy(Pipeline.getHashPartitioner(3200)).
+        var result = pData.
+                 join(idMapRDD, partitionNum).map{x => //(StringId, ((Int, Double), intd))
+            val intID:Int    = x._2._2
+            val otherField   = x._2._1._1
+            val value:Double = x._2._1._2
+            (intID, otherField, value)
         }
+
+        //val result = idMapRDD.join(dataRDD).map{x => //(StringId,(intId,(Int, Double)))
+        //    val intID:Int = x._2._1 
+        //    val otherField = x._2._2._1
+        //    val value:Double = x._2._2._2
+        //    (intID, otherField, value) 
+        //}
+        Logger.info("substituteIntId completes")
+        result
     }
 
 
+    def substituteIntId(
+            dataRDD:RDD[(String, String, Double)],
+            userIdMapRDD:RDD[(String, Int)],
+            itemIdMapRDD:RDD[(String, Int)],
+            partitionNum:Int
+        ): RDD[(Int, Int, Double)] = {
+    	
+        val pData = dataRDD.map{line =>
+            val userIdStr:String = line._1
+            val itemIdStr:String = line._2
+            val rating:Double = line._3
+            (userIdStr, (itemIdStr, rating))
+        }//.partitionBy(Pipeline.getHashPartitioner(1000))
+        
+        pData.join(userIdMapRDD, partitionNum).map{ line => //(userIdStr, ((itemIdStr, rating), userIdInt))
+            val userIdInt:Int    = line._2._2
+            val itemIdStr:String = line._2._1._1
+            val rating:Double    = line._2._1._2
+            (itemIdStr, (userIdInt, rating))
+        }.join(itemIdMapRDD, partitionNum).map{ line => //(itemIdStr, ((userIdInt, rating), itemIdInt)) 
+            val itemIdInt:Int    = line._2._2
+            val userIdInt:Int    = line._2._1._1
+            val rating:Double    = line._2._1._2
+            (userIdInt, itemIdInt, rating)
+        }
+    }
+    
+    
     /**
      * Returns the combined data, given the physical location of data repository and a set of dates.
      * 
@@ -58,7 +117,9 @@ object DataProcess {
      */
 	def getDataFromDates(dates:Array[String], 
 							pathPrefix: String,
-							sc: SparkContext):Option[RDD[(String, String, Double)]] = {
+							sc: SparkContext, 
+							unitParitionNum: Int
+						):Option[RDD[(String, String, Double)]] = {
 		//read all data mentioned in test dates l date
 		//get RDD of data of each individua
 		val arrRatingsRDD = dates.map{date => 
@@ -66,7 +127,7 @@ object DataProcess {
 										.map {line =>    //convert each line of file to rating
 										  	  val fields = line.split('\t')
 										  	  (fields(0), fields(1), fields(2).toDouble)
-										   }
+								      }//.repartition(unitParitionNum)
 								  }
 		
 		//combine RDDs to get the full data
@@ -96,91 +157,115 @@ object DataProcess {
      *   
      */
 	def prepareTrain(jobInfo:RecJob) {
-	    
-      val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
-	  
-	    val dataLocCombine  = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/combineData_" + dataHashingStr
-	    val dataLocUserList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userList_" + dataHashingStr
-	    val dataLocItemList = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemList_" + dataHashingStr
-	    val dataLocUserMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/userMap_" + dataHashingStr
-      val dataLocItemMap = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/itemMap_" + dataHashingStr
-
-	    val jobStatus:RecJobStatus = jobInfo.jobStatus
-	    
-
-	    //get the spark context
+    	val dataDates = jobInfo.trainDates
+	    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
 	    val sc = jobInfo.sc
-	    
+	    val outputResource = (x:String) => jobInfo.outputResource(x)
+	    val outputDataResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData)
+	    val partitionNum = jobInfo.partitionNum_train 
+	        
+	    val combData:Option[CombinedDataSet] = combineWatchTimeData(
+	        dataDates:Array[String], 
+	        watchTimeResLoc:String, 
+	        sc:SparkContext, 
+	        partitionNum:Int,
+	        outputResource: String=>Boolean,
+	        outputDataResLoc: String ) 
+	        
+	    if (combData.isDefined){
+	        val comDataStruct = combData.get 
+		    val jobStatus:RecJobStatus = jobInfo.jobStatus
+		    
+		    jobStatus.resourceLocation_CombinedData_train = combData
+	    }else{
+	        Logger.error("Failed to combine training data!")
+	    }
+	}
+	
+	/**
+	 * Generates combined watch time data set. 
+	 * 
+	 * @param dataDates
+	 * @param watchTimeResLoc
+	 * @param sc the instance of Spark Context. 
+	 * @param outputResource whether the resource should be output. 
+	 * @param outputDataResLoc the directory in which data resources are output.
+	 */
+	def combineWatchTimeData(
+	        dataDates:Array[String], 
+	        watchTimeResLoc:String, 
+	        sc:SparkContext, 
+	        partitionNum:Int,
+	        outputResource: String=>Boolean,
+	        outputDataResLoc: String ): Option[CombinedDataSet] = {
+	  
+        val resourceStr = CombinedDataSet.resourcePrefix + HashString.generateOrderedArrayHash(dataDates) 
+        
+	    val dataLocCombine  = outputDataResLoc + "/" + resourceStr
+	    val dataLocUserList = dataLocCombine + "_userList"
+	    val dataLocItemList = dataLocCombine + "_itemList"
+	    val dataLocUserMap  = dataLocCombine + "_userMap"
+        val dataLocItemMap  = dataLocCombine + "_itemMap"
+
 	    //1. aggregate the dates and generate sparse matrix in JobStatus
 	    //read
-	    val trainData = getDataFromDates(jobInfo.trainDates, 
-	    							jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
-	    							sc)
+	    val trainData = getDataFromDates(dataDates, watchTimeResLoc, sc, partitionNum)
 	    
-    	trainData foreach { data =>
+    	if(trainData.isDefined){ 
+    	    val data = trainData.get.persist(StorageLevel.DISK_ONLY)
+    	    
             //2. generate and maintain user list in JobStatus
-            val users = data.map(_._1).distinct
-            users.persist 
-            jobStatus.users = users.collect
-            
+    	    if (outputResource(dataLocUserList)){
+    	        Logger.info("Dumping user list")
+    	    	data.map(_._1).distinct.saveAsTextFile(dataLocUserList)
+    	    }
+    	    val userListRDD  = sc.textFile(dataLocUserList)
+            val userSize:Int = userListRDD.count.toInt
+            Logger.info("User number: " + userSize) 
+
             //3. generate and maintain item list in JobStatus
-            val items = data.map(_._2).distinct
-            items.persist 
-            jobStatus.items = items.collect
-            
-            //create mapping from string id to int
-            val userIdMap =  (jobStatus.users zip (1 to jobStatus.users.length)).toMap
-            jobStatus.userIdMap = userIdMap
-
-            val itemIdMap = (jobStatus.items zip (1 to jobStatus.items.length)).toMap
-            jobStatus.itemIdMap = itemIdMap
-
-            //broadcast only item map as its small to worker nodes
-            val bIMap = sc.broadcast(itemIdMap)
-
-            //save merged data
-            jobStatus.resourceLocation_CombineData = dataLocCombine
-            if(jobInfo.outputResource(dataLocCombine)) {
-                Logger.info("Dumping combined data")
-                val replacedItemIds =  data.map{record => 
-                  (record._1, (bIMap.value(record._2), record._3))
-                }
-                val replacesUserIds = substituteIntId(userIdMap,
-                                        replacedItemIds, sc).map {x =>
-                                          x._1 + "," + x._2 + "," + x._3
-                                        }
-                replacesUserIds.saveAsTextFile(dataLocCombine) 
-            }
-            
-            //save users list
-            jobStatus.resourceLocation_UserList    = dataLocUserList
-            if(jobInfo.outputResource(dataLocUserList)){
-               Logger.info("Dumping user list")
-               users.saveAsTextFile(dataLocUserList)
-            }
-
-            //save user map
-            if (jobInfo.outputResource(dataLocUserMap)) {
-              Logger.info("Dumping user map")
-              sc.parallelize(userIdMap.toList).saveAsTextFile(dataLocUserMap)
-            }
-
-            //save items list
-            jobStatus.resourceLocation_ItemList    = dataLocItemList
-            if(jobInfo.outputResource(dataLocItemList)){
+            if (outputResource(dataLocItemList)){
                 Logger.info("Dumping item list")
-                items.saveAsTextFile(dataLocItemList)
-            } 
-
-            //save items map
-            if (jobInfo.outputResource(dataLocItemMap)) {
-              Logger.info("Dumping item map")
-              sc.parallelize(itemIdMap.toList).saveAsTextFile(dataLocItemMap)
+            	data.map(_._2).distinct.saveAsTextFile(dataLocItemList)
             }
-
-            //unpersist the persisted objects
-            users.unpersist(false)
-            items.unpersist(false)
+    	    val itemListRDD  = sc.textFile(dataLocItemList)
+            val itemSize:Int = itemListRDD.count.toInt
+            Logger.info("Item number: " + itemSize)
+            
+            //4. create mappings from string id to integer id
+            if (outputResource(dataLocUserMap)){
+                Logger.info("Dumping user map")
+                val zippedUserIdMap: RDD[(String, Int)] = 
+                    userListRDD.zipWithIndex.map{line => (line._1, line._2.toInt)}
+                zippedUserIdMap.saveAsObjectFile(dataLocUserMap)
+            }
+            if (outputResource(dataLocItemMap)){
+                Logger.info("Dumping item map")
+                val zippedItemIdMap: RDD[(String, Int)] = 
+                    itemListRDD.zipWithIndex.map{line => (line._1, line._2.toInt)}
+                zippedItemIdMap.saveAsObjectFile(dataLocItemMap)
+            }
+    	    
+    	    //5. substitute Id. 
+    	    if (outputResource(dataLocCombine)){
+    	        val userIdMapRDD = sc.objectFile[(String, Int)](dataLocUserMap)
+    	        val itemIdMapRDD = sc.objectFile[(String, Int)](dataLocItemMap)
+    	        
+    	        Logger.info("Dumping integer id combined data.")
+    	        substituteIntId(data,userIdMapRDD,itemIdMapRDD,partitionNum).
+    	        	map(x => x._1 + "," + x._2 + "," + x._3).
+    	        	saveAsTextFile(dataLocCombine)
+    	    }
+    	    //val recordNum:Long = sc.objectFile[(Int, Int, Double)](dataLocCombine).count
+    	    val recordNum:Long = sc.textFile(dataLocCombine).count
+            
+            //create a data structure maintaining all resources. 
+            Some(new CombinedDataSet(
+                resourceStr, dataLocCombine,
+                dataLocUserList, dataLocItemList, dataLocUserMap, dataLocItemMap,
+                userSize, itemSize, recordNum, dataDates))
+		}else{
+			None
 		}
 	}
 	
@@ -197,13 +282,16 @@ object DataProcess {
     
     val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
     val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
-	 
+	
+    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+    
     //get spark context
-	  val sc  = jobInfo.sc
+	val sc  = jobInfo.sc
+	val partitionNum = jobInfo.partitionNum_test
 
     //get userMap and itemMap
-    val userMap = jobInfo.jobStatus.userIdMap 
-    val itemMap = jobInfo.jobStatus.itemIdMap   
+    val userMap = trainCombData.getUserMap()
+    val itemMap = trainCombData.getItemMap()   
     
     //broadcast item map
     val bIMap = sc.broadcast(itemMap)
@@ -212,25 +300,19 @@ object DataProcess {
     //get RDD of data of each individua
     val testData = getDataFromDates(jobInfo.testDates, 
                     jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
-                    sc)
+                    sc, partitionNum)
 
-    //include only users and items seen in training
-    testData foreach {data =>
-      val replacedItemIds =  data.filter(x => bIMap.value.contains(x._2)
-                                  ).map{record =>
-                      (record._1, (bIMap.value(record._2), record._3))
-                    }
-      val replacedUserIds = substituteIntId(userMap,
-                                            replacedItemIds, sc)    
-      jobInfo.jobStatus.testWatchTime = Some(replacedUserIds.map{x => 
-                                            Rating(x._1, x._2, x._3)
-                                        })
-      jobInfo.jobStatus.testWatchTime foreach {testData=>
+    if (testData.isDefined){
+        val data = testData.get
+        
+        //include only users and items seen in training
         if (jobInfo.outputResource(dataLocTest)) {
-          testData.saveAsObjectFile(dataLocTest)
+        	substituteIntId(data, userMap, itemMap, partitionNum).
+    	        	map(x => Rating(x._1, x._2, x._3)).
+    	        	saveAsObjectFile(dataLocTest)
         }
-      }
-      jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](dataLocTest))
+        
+        jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](dataLocTest).persist(StorageLevel.DISK_ONLY))
     }
 
   }
