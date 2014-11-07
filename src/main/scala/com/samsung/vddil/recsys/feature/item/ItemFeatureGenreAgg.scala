@@ -2,6 +2,8 @@ package com.samsung.vddil.recsys.feature.item
 
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.utils.Logger
+import org.apache.hadoop.conf._
+import org.apache.hadoop.fs._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
@@ -21,23 +23,33 @@ object ItemFeatureGenreAgg {
   //for each passed date generate "duid, genre, time, date"
   def getDailyAggGenreWTime(
     dates:Array[String],
-    jobInfo:RecJob):RDD[(String, String, Double, String)] = {
+    jobInfo:RecJob):RDD[(String, String, Int, String)] = {
 
     //get spark context
     val sc = jobInfo.sc
     
+    //get hadoop config
+    val hadoopConf = sc.hadoopConfiguration
+    val fileSystem = FileSystem.get(hadoopConf)
     val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
+    
+    val wTimeACRPaths = dates.map{date => 
+      (date, watchTimeResLoc + date)
+    }.filter(x => fileSystem.exists(new Path(x._2)))
 
     //for each date 
-    val aggWtimeByGenre:RDD[(String, String, Double, String)] = dates.map{ date =>
+    val aggWtimeByGenre:RDD[(String, String, Int, String)] =
+      wTimeACRPaths.map{ dateNACRPath =>
+      
+      val date    = dateNACRPath._1
+      val acrPath = dateNACRPath._2
+
       //get all watchtimes for duids with items
-      //TODO: confirm if following is unique
-      val watchTimes:RDD[(String, String, Double)] = sc.textFile(watchTimeResLoc +
-        date).map {line =>
-          val fields = line.split('\t')
-          //duid, item, watchtime
-          (fields(0), fields(1), fields(2).toDouble)
-        }
+      val watchTimes:RDD[(String, String, Int)] = sc.textFile(acrPath).map{line =>
+        val fields = line.split('\t')
+        //duid, item, watchtime
+        (fields(0), fields(1), fields(2).toInt)
+      }
 
       //Logger.info("watchTimesCount: " + watchTimes.count)
       
@@ -50,7 +62,7 @@ object ItemFeatureGenreAgg {
       //Logger.info("itemGroupedGenre count: " + itemGroupedGenre.count)
 
     
-      val itemGenresWTime:RDD[(String, ((String, Double),(Iterable[String])))]= watchTimes.map{ x =>
+      val itemGenresWTime:RDD[(String, ((String, Int),(Iterable[String])))]= watchTimes.map{ x =>
         //item, (duid, wtime)
         (x._2, (x._1, x._3))
       }.join(
@@ -60,30 +72,30 @@ object ItemFeatureGenreAgg {
       //Logger.info("itemGenresWTime count: " + itemGenresWTime.count)
 
       //get 'duid, genre, watchtime'
-      val duidGenres:RDD[(String, String, Double, String)] = itemGenresWTime.map{x => //item, ((duid,wtime), Iterable[Genre])
+      val duidGenres:RDD[(String, String, Int, String)] = itemGenresWTime.map{x => //item, ((duid,wtime), Iterable[Genre])
         
         val duid:String             = x._2._1._1
-        val wtime:Double            = x._2._1._2
+        val wtime:Int            = x._2._1._2
         val genres:Iterable[String] = x._2._2
         
         (duid, (genres, wtime)) 
-      }.flatMapValues{ genreNWtime =>
+      }.flatMapValues{genreNWtime =>
           val genres:Iterable[String] = genreNWtime._1
-          val wtime:Double            = genreNWtime._2
+          val wtime:Int            = genreNWtime._2
           genres.map{genre =>
             (genre, wtime)
           }
       }.map{x =>
         val duid:String  = x._1
-        val wtime:Double = x._2._2
+        val wtime:Int = x._2._2
         val genre:String = x._2._1
         ((duid, genre), wtime)
-      }.reduceByKey( (wtime1:Double, wtime2:Double) => 
+      }.reduceByKey( (wtime1:Int, wtime2:Int) => 
           wtime1 + wtime2
       ).map{x =>
         val duid:String = x._1._1
         val genre:String = x._1._2
-        val wtime:Double = x._2
+        val wtime:Int = x._2
         (duid, genre, wtime, date)
       }
       
@@ -127,7 +139,7 @@ object ItemFeatureGenreAgg {
     val dates:Array[String] = jobInfo.trainDates 
     
     //(duid, genre, wtime, date)
-    val aggGenreTime:RDD[(String, String, Double, String)] =
+    val aggGenreTime:RDD[(String, String, Int, String)] =
       getDailyAggGenreWTime(dates, jobInfo)
 
     //save aggregated time spent on genre to text file
@@ -138,12 +150,74 @@ object ItemFeatureGenreAgg {
      
      val duid:String  = x._1
      val genre:String = x._2
-     val wtime:Double = x._3
+     val wtime:Int = x._3
      val date:String  = x._4
      
      duid + "," + genre + "," + wtime + "," + date 
-    }.saveAsTextFile(aggGenreFileName)
+    }.coalesce(100).saveAsTextFile(aggGenreFileName)
 
   }
+
+
+  def saveAggGenreWeekly(jobInfo:RecJob) = {
+   
+    //get spark context
+    val sc = jobInfo.sc
+    val dates:Array[String] = jobInfo.trainDates 
+    
+    //(duid, genre, wtime, date)
+    val dailyAggGenreTime:RDD[(String, String, Int, String)] =
+      getDailyAggGenreWTime(dates, jobInfo)
+
+    //(duid, genre, watchtime, week, month)
+    val weeklyAggGenreTime:RDD[(String, String, Int, Int, Int)] =
+      getAggGenreWeekMonthDay(jobInfo, dailyAggGenreTime)  
+
+    //save aggregated time spent on genre to text file
+    val aggGenreFileName:String =
+      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" +
+       "aggGenreWTimeWeekly"
+    weeklyAggGenreTime.map{x =>
+     
+     val duid:String  = x._1
+     val genre:String = x._2
+     val wtime:Int = x._3
+     val week:Int     = x._4
+     val month:Int    = x._5
+     
+     duid + "," + genre + "," + wtime + "," + week + "," + month 
+    }.coalesce(100).saveAsTextFile(aggGenreFileName)
+
+  }
+
+
+  //duid, genre, watchtime, week, month
+  def getAggGenreWeekMonthDay(
+      jobInfo:RecJob,
+      dailyAgg:RDD[(String, String, Int, String)]
+    ):RDD[(String, String, Int, Int, Int)] = {
+    
+    dailyAgg.map{x =>
+
+      val duid:String  = x._1
+      val genre:String = x._2
+      val wtime:Int    = x._3.toInt
+      val dtStr:String = x._4
+      val year:Int     = dtStr.substring(0,4).toInt
+      val month:Int    = dtStr.substring(4,6).toInt
+      val day:Int      = dtStr.substring(6,8).toInt
+      val week:Int     = day / 7  
+      ((duid, genre, week, month), wtime)
+      }.reduceByKey((a:Int,b:Int) => a+b ).map {x =>
+        val duid:String = x._1._1
+        val genre:String = x._1._2
+        val week:Int = x._1._3
+        val month:Int = x._1._4
+        val wtime:Int = x._2
+        (duid, genre, wtime, week, month)
+      }
+
+  }
+
 
 }
