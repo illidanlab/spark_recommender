@@ -129,8 +129,6 @@ object ItemFeatureGenreAgg {
   }
 
 
-
-
   //for each passed date generate "duid, genre, time, date"
   def getDailyAggGenreWTime(
     dates:Array[String],
@@ -265,6 +263,45 @@ object ItemFeatureGenreAgg {
   }
 
 
+  def saveAggGenreWeeklyFromDailyFile(jobInfo:RecJob) = {
+   
+    val sc:SparkContext = jobInfo.sc
+    val dailyFile:String = "s3n://vddil.recsys.east/mohit/aggGenre/201407/"
+
+    val dailyAgg:RDD[(String, String, Int, String)] =
+      sc.textFile(dailyFile).map{ line =>
+        val fields = line.split(',')
+        val duid:String = fields(0)
+        val genre:String = fields(1)
+        val wtime:Int = fields(2).toInt
+        val date:String = fields(3)
+        (duid, genre, wtime, date)
+      }
+
+    val aggGenreFileName:String =
+      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeWeekly"
+    
+    val weeklyAggGenreTime:RDD[(String, String, Int, Int, Int)] =
+      getAggGenreWeekMonthDay(jobInfo, dailyAgg)
+
+    weeklyAggGenreTime.persist()
+
+    Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
+
+    weeklyAggGenreTime.map{x =>
+     
+     val duid:String  = x._1
+     val genre:String = x._2
+     val wtime:Int    = x._3
+     val week:Int     = x._4
+     val month:Int    = x._5
+     
+     duid + "," + genre + "," + wtime + "," + week + "," + month 
+    }.saveAsTextFile(aggGenreFileName)
+  
+  }
+
+
   def saveAggGenreWeekly(jobInfo:RecJob) = {
    
     //get spark context
@@ -278,7 +315,9 @@ object ItemFeatureGenreAgg {
     //save aggregated time spent on genre to text file
     val aggGenreFileName:String =
       jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeWeekly"
-    
+ 
+    Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
+
     weeklyAggGenreTime.map{x =>
      
      val duid:String  = x._1
