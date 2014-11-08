@@ -20,6 +20,117 @@ object ItemFeatureGenreAgg {
     val Param_GenreLang = "lang"
 
 
+
+  def getValidACRPaths(dates:Array[String], 
+    watchTimeResLoc:String,
+    sc:SparkContext):Array[(String, String)] = {
+    
+    val hadoopConf = sc.hadoopConfiguration
+    val wTimeACRPaths = dates.map{date => 
+      (date, watchTimeResLoc + date)
+    }.filter(x => {
+      val path = new Path(x._2)
+      val fileSystem = path.getFileSystem(hadoopConf)
+      fileSystem.exists(new Path(x._2))
+    })
+    wTimeACRPaths
+  }
+
+
+  //for each passed date generate 
+  //duid, genre, watchtime, week, month
+  def getWeeklyAggGenreWTime(
+    dates:Array[String],
+    jobInfo:RecJob):RDD[(String, String, Int, Int, Int)] = {
+
+    //get spark context
+    val sc = jobInfo.sc
+    
+    //get hadoop config
+    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
+    val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
+
+    //for each date 
+    val aggWtimeByGenre:RDD[(String, String, Int, Int, Int)] =
+      wTimeACRPaths.map{ dateNACRPath =>
+      
+      val date    = dateNACRPath._1
+      val acrPath = dateNACRPath._2
+
+      //get all watchtimes for duids with items
+      val watchTimes:RDD[(String, String, Int)] = sc.textFile(acrPath).map{line =>
+        val fields = line.split('\t')
+        //duid, item, watchtime
+        (fields(0), fields(1), fields(2).toInt)
+      }
+
+      //Logger.info("watchTimesCount: " + watchTimes.count)
+      
+      //get genres for the items (item, genre)
+      val items:RDD[String] = watchTimes.map(_._2)
+      val itemGenre:RDD[(String, String)] = getItemGenre(date, items, jobInfo)
+      val itemGroupedGenre:RDD[(String, Iterable[String])] =
+        itemGenre.groupByKey()
+      
+      //Logger.info("itemGroupedGenre count: " + itemGroupedGenre.count)
+    
+      val itemGenresWTime:RDD[(String, ((String, Int),(Iterable[String])))]= watchTimes.map{ x =>
+        //item, (duid, wtime)
+        (x._2, (x._1, x._3))
+      }.join(
+        itemGroupedGenre
+      )
+      
+      //Logger.info("itemGenresWTime count: " + itemGenresWTime.count)
+
+      //get 'duid, genre, watchtime'
+      val duidGenres:RDD[((String, String, Int, Int), Int)] = itemGenresWTime.map{x => //item, ((duid,wtime), Iterable[Genre])
+        
+        val duid:String             = x._2._1._1
+        val wtime:Int               = x._2._1._2
+        val genres:Iterable[String] = x._2._2
+        
+        (duid, (genres, wtime)) 
+      }.flatMapValues{genreNWtime =>
+          
+        val genres:Iterable[String] = genreNWtime._1
+        val wtime:Int               = genreNWtime._2
+          
+        genres.map{genre =>
+          (genre, wtime)
+        }
+      }.map{x =>
+        
+        val duid:String  = x._1
+        val wtime:Int    = x._2._2
+        val genre:String = x._2._1
+        val month:Int    = date.substring(4,6).toInt
+        val day:Int      = date.substring(6,8).toInt
+        val week:Int     = day / 7
+
+        ((duid, genre, week, month), wtime)
+      }
+     
+      //for each date following RDD is output
+      duidGenres      
+      }.reduce((a,b) => a.union(b)).reduceByKey((a:Int,b:Int) => a+b).map{x =>
+        
+        val duid:String  = x._1._1
+        val genre:String = x._1._2
+        val week:Int     = x._1._3
+        val month:Int    = x._1._4
+        val wtime:Int    = x._2
+        
+        (duid, genre, wtime, week, month)
+      }
+
+    //Logger.info("Aggreagated records count: " + aggWtimeByGenre.count)
+    aggWtimeByGenre
+  }
+
+
+
+
   //for each passed date generate "duid, genre, time, date"
   def getDailyAggGenreWTime(
     dates:Array[String],
@@ -29,13 +140,8 @@ object ItemFeatureGenreAgg {
     val sc = jobInfo.sc
     
     //get hadoop config
-    val hadoopConf = sc.hadoopConfiguration
-    val fileSystem = FileSystem.get(hadoopConf)
     val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
-    
-    val wTimeACRPaths = dates.map{date => 
-      (date, watchTimeResLoc + date)
-    }.filter(x => fileSystem.exists(new Path(x._2)))
+    val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
 
     //for each date 
     val aggWtimeByGenre:RDD[(String, String, Int, String)] =
@@ -165,28 +271,24 @@ object ItemFeatureGenreAgg {
     val sc = jobInfo.sc
     val dates:Array[String] = jobInfo.trainDates 
     
-    //(duid, genre, wtime, date)
-    val dailyAggGenreTime:RDD[(String, String, Int, String)] =
-      getDailyAggGenreWTime(dates, jobInfo)
-
     //(duid, genre, watchtime, week, month)
     val weeklyAggGenreTime:RDD[(String, String, Int, Int, Int)] =
-      getAggGenreWeekMonthDay(jobInfo, dailyAggGenreTime)  
+      getWeeklyAggGenreWTime(dates, jobInfo)  
 
     //save aggregated time spent on genre to text file
     val aggGenreFileName:String =
-      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" +
-       "aggGenreWTimeWeekly"
+      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeWeekly"
+    
     weeklyAggGenreTime.map{x =>
      
      val duid:String  = x._1
      val genre:String = x._2
-     val wtime:Int = x._3
+     val wtime:Int    = x._3
      val week:Int     = x._4
      val month:Int    = x._5
      
      duid + "," + genre + "," + wtime + "," + week + "," + month 
-    }.coalesce(100).saveAsTextFile(aggGenreFileName)
+    }.saveAsTextFile(aggGenreFileName)
 
   }
 
@@ -208,14 +310,14 @@ object ItemFeatureGenreAgg {
       val day:Int      = dtStr.substring(6,8).toInt
       val week:Int     = day / 7  
       ((duid, genre, week, month), wtime)
-      }.reduceByKey((a:Int,b:Int) => a+b ).map {x =>
-        val duid:String = x._1._1
-        val genre:String = x._1._2
-        val week:Int = x._1._3
-        val month:Int = x._1._4
-        val wtime:Int = x._2
-        (duid, genre, wtime, week, month)
-      }
+    }.reduceByKey((a:Int,b:Int) => a+b ).map {x =>
+      val duid:String = x._1._1
+      val genre:String = x._1._2
+      val week:Int = x._1._3
+      val month:Int = x._1._4
+      val wtime:Int = x._2
+      (duid, genre, wtime, week, month)
+    }
 
   }
 
