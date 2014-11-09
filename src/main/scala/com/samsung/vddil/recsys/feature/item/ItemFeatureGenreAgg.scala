@@ -36,6 +36,7 @@ object ItemFeatureGenreAgg {
     wTimeACRPaths
   }
 
+
   //return list of active duids throughout the week
   def getActiveDuids(wTimeACRPaths:Array[(String, String)],
     sc:SparkContext):RDD[String] = {
@@ -61,7 +62,6 @@ object ItemFeatureGenreAgg {
     }.filter{_._2 > 2}.map{x =>
       x._1  
     }
-  
     activeDuids  
   }
 
@@ -93,11 +93,9 @@ object ItemFeatureGenreAgg {
       val watchTimes:RDD[(String, String, Int)] = sc.textFile(acrPath).map{line =>
         val fields = line.split('\t')
         //duid, item, watchtime
-        (fields(0), (fields(1), fields(2).toInt))
+        (fields(0), fields(1), fields(2).toInt)
       }.filter{x => 
-          x._2._2 > 200 //filter watchtime greater than 200 seconds
-      }.join(activeDuids.map{x => (x,1)}).map{x =>
-        (x._1, x._2._1._1, x._2._1._2)      
+          x._3 > 200 //filter watchtime greater than 200 seconds
       }
 
       //Logger.info("watchTimesCount: " + watchTimes.count)
@@ -157,8 +155,15 @@ object ItemFeatureGenreAgg {
         val month:Int    = x._1._4
         val wtime:Int    = x._2
         
-        (duid, genre, wtime, week, month)
-      }
+        (duid, (genre, wtime, week, month))
+        }.join(activeDuids.map{x => (x,1)}).map{x =>
+          val duid:String = x._1
+          val genre:String = x._2._1._1
+          val wtime:Int = x._2._1._2
+          val week:Int = x._2._1._3
+          val month:Int = x._2._1._4
+          (duid, genre, wtime, week, month)
+        }
 
     //Logger.info("Aggreagated records count: " + aggWtimeByGenre.count)
     aggWtimeByGenre
