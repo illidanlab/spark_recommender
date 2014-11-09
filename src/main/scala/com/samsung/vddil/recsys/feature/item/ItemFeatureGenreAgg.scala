@@ -18,8 +18,8 @@ object ItemFeatureGenreAgg {
     val GenreDescInd    = 3
     val GenreLangFilt   = "en" //default language
     val Param_GenreLang = "lang"
-
-
+    val Min_Wtime       = 300;
+    
 
   def getValidACRPaths(dates:Array[String], 
     watchTimeResLoc:String,
@@ -128,7 +128,7 @@ object ItemFeatureGenreAgg {
         //duid, item, watchtime
         (fields(0), fields(1), fields(2).toInt)
       }.filter{x => 
-          x._3 > 200 //filter watchtime greater than 200 seconds
+        x._3 >= Min_Wtime //filter watchtime >= Min_Wtime seconds
       }
 
       //Logger.info("watchTimesCount: " + watchTimes.count)
