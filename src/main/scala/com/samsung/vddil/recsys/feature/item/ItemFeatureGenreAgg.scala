@@ -18,8 +18,8 @@ object ItemFeatureGenreAgg {
     val GenreDescInd    = 3
     val GenreLangFilt   = "en" //default language
     val Param_GenreLang = "lang"
-
-
+    val Min_Wtime       = 300;
+    
 
   def getValidACRPaths(dates:Array[String], 
     watchTimeResLoc:String,
@@ -37,6 +37,68 @@ object ItemFeatureGenreAgg {
   }
 
 
+  //return list of active duids throughout the week
+  def getActiveDuids(wTimeACRPaths:Array[(String, String)],
+    sc:SparkContext):RDD[String] = {
+    
+    val activeDuids:RDD[String] = wTimeACRPaths.map{dateNACRPath =>
+      
+      val date      = dateNACRPath._1
+      val acrPath   = dateNACRPath._2
+      val month:Int = date.substring(4,6).toInt
+      val day:Int   = date.substring(6,8).toInt
+      val week:Int  = day / 7
+   
+
+      val duidsWeek:RDD[(String, Int)] = sc.textFile(acrPath).map{line =>
+        val fields = line.split('\t')
+        fields(0)
+      }.map{x => (x, week)}
+      duidsWeek
+    }.reduce((a,b) => a.union(b)).distinct.groupByKey.map{x =>
+      val duid = x._1
+      val numWeeks = x._2.size
+      (duid, numWeeks)
+    }.filter{_._2 >= 2}.map{x =>
+      x._1  
+    }
+    activeDuids  
+  }
+
+
+  def getGenreMapping(dates:Array[String],
+    jobInfo:RecJob):RDD[(String, String)] = {
+    
+    val sc:SparkContext        = jobInfo.sc
+    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
+    val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
+    
+    wTimeACRPaths.map{dateNACRPath =>
+   
+      val date:String            = dateNACRPath._1
+      val acrPath:String         = dateNACRPath._2
+      val param_GenreLang:String = GenreLangFilt
+      val genreSource            = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/genre*"
+    
+      //genreId, genreDesc
+      val genreMap:RDD[(String, String)] =
+        sc.textFile(genreSource).map{line =>
+          val fields = line.split('|')
+          (fields(GenreIdInd), fields(GenreLangInd), fields(GenreDescInd))
+        }.filter{genreTriplet =>
+          val genreLang = genreTriplet._2
+          genreLang == param_GenreLang
+        }.map{x =>
+          val genreId:String   = x._1
+          val genreDesc:String = x._3
+          (genreId, genreDesc)
+        }.distinct
+
+      genreMap
+    }.reduce((a,b) => a.union(b)).distinct
+  }
+
+
   //for each passed date generate 
   //duid, genre, watchtime, week, month
   def getWeeklyAggGenreWTime(
@@ -50,6 +112,9 @@ object ItemFeatureGenreAgg {
     val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
     val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
 
+    //get active duids based on usage
+    val activeDuids:RDD[String] = getActiveDuids(wTimeACRPaths, sc)
+
     //for each date 
     val aggWtimeByGenre:RDD[(String, String, Int, Int, Int)] =
       wTimeACRPaths.map{ dateNACRPath =>
@@ -62,6 +127,8 @@ object ItemFeatureGenreAgg {
         val fields = line.split('\t')
         //duid, item, watchtime
         (fields(0), fields(1), fields(2).toInt)
+      }.filter{x => 
+        x._3 >= Min_Wtime //filter watchtime >= Min_Wtime seconds
       }
 
       //Logger.info("watchTimesCount: " + watchTimes.count)
@@ -121,8 +188,15 @@ object ItemFeatureGenreAgg {
         val month:Int    = x._1._4
         val wtime:Int    = x._2
         
-        (duid, genre, wtime, week, month)
-      }
+        (duid, (genre, wtime, week, month))
+        }.join(activeDuids.map{x => (x,1)}).map{x =>
+          val duid:String = x._1
+          val genre:String = x._2._1._1
+          val wtime:Int = x._2._1._2
+          val week:Int = x._2._1._3
+          val month:Int = x._2._1._4
+          (duid, genre, wtime, week, month)
+        }
 
     //Logger.info("Aggreagated records count: " + aggWtimeByGenre.count)
     aggWtimeByGenre
@@ -164,7 +238,6 @@ object ItemFeatureGenreAgg {
         itemGenre.groupByKey()
       
       //Logger.info("itemGroupedGenre count: " + itemGroupedGenre.count)
-
     
       val itemGenresWTime:RDD[(String, ((String, Int),(Iterable[String])))]= watchTimes.map{ x =>
         //item, (duid, wtime)
@@ -220,6 +293,28 @@ object ItemFeatureGenreAgg {
     val featSrc:String = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_genre*"
     //TODO: verify toSet
     val bItemSet = sc.broadcast(items.collect.toSet)
+    
+    
+    val param_GenreLang:String = GenreLangFilt
+    val genreSource = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/genre*" 
+    
+    //genreId, genreDesc
+    val genreMap:RDD[(String, String)] =
+      sc.textFile(genreSource).map{line =>
+        val fields = line.split('|')
+        (fields(GenreIdInd), fields(GenreLangInd), fields(GenreDescInd))
+      }.filter{genreTriplet =>
+        val genreLang = genreTriplet._2
+        genreLang == param_GenreLang
+      }.map{x =>
+        val genreId:String   = x._1
+        val genreDesc:String = x._3
+        (genreId, genreDesc)
+      }.distinct
+
+    val genreIds = genreMap.map{x => x._1}.collect.toSet  
+    val bGenreIdSet = sc.broadcast(genreIds)
+
     val itemGenre:RDD[(String, String)] = sc.textFile(featSrc).map{line =>
       
       val fields = line.split(FeatSepChar)
@@ -229,7 +324,8 @@ object ItemFeatureGenreAgg {
       (item, genre)
     }.filter{itemGenre =>
       val item = itemGenre._1
-      bItemSet.value(item)
+      val genre = itemGenre._2
+      bItemSet.value(item) && bGenreIdSet.value(genre) 
     }
     
     itemGenre 
@@ -343,6 +439,11 @@ object ItemFeatureGenreAgg {
       duid + "," + week + "," + month + "," +genreWTimes
     }.saveAsTextFile(aggGenreFileName)
 
+    val genreMapFileName:String =
+      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreMap"
+    val genreMapping:RDD[(String, String)] = getGenreMapping(dates, jobInfo)
+    genreMapping.map{x => x._1 + "," + x._2}.saveAsTextFile(genreMapFileName)
+  
   }
 
 
