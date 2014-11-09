@@ -59,10 +59,43 @@ object ItemFeatureGenreAgg {
       val duid = x._1
       val numWeeks = x._2.size
       (duid, numWeeks)
-    }.filter{_._2 > 2}.map{x =>
+    }.filter{_._2 >= 2}.map{x =>
       x._1  
     }
     activeDuids  
+  }
+
+
+  def getGenreMapping(dates:Array[String],
+    jobInfo:RecJob):RDD[(String, String)] = {
+    
+    val sc:SparkContext        = jobInfo.sc
+    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
+    val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
+    
+    wTimeACRPaths.map{dateNACRPath =>
+   
+      val date:String            = dateNACRPath._1
+      val acrPath:String         = dateNACRPath._2
+      val param_GenreLang:String = GenreLangFilt
+      val genreSource            = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/genre*"
+    
+      //genreId, genreDesc
+      val genreMap:RDD[(String, String)] =
+        sc.textFile(genreSource).map{line =>
+          val fields = line.split('|')
+          (fields(GenreIdInd), fields(GenreLangInd), fields(GenreDescInd))
+        }.filter{genreTriplet =>
+          val genreLang = genreTriplet._2
+          genreLang == param_GenreLang
+        }.map{x =>
+          val genreId:String   = x._1
+          val genreDesc:String = x._3
+          (genreId, genreDesc)
+        }.distinct
+
+      genreMap
+    }.reduce((a,b) => a.union(b)).distinct
   }
 
 
@@ -205,7 +238,6 @@ object ItemFeatureGenreAgg {
         itemGenre.groupByKey()
       
       //Logger.info("itemGroupedGenre count: " + itemGroupedGenre.count)
-
     
       val itemGenresWTime:RDD[(String, ((String, Int),(Iterable[String])))]= watchTimes.map{ x =>
         //item, (duid, wtime)
@@ -393,6 +425,11 @@ object ItemFeatureGenreAgg {
      duid + "," + genre + "," + wtime + "," + week + "," + month 
     }.saveAsTextFile(aggGenreFileName)
 
+    val genreMapFileName:String =
+      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreMap"
+    val genreMapping:RDD[(String, String)] = getGenreMapping(dates, jobInfo)
+    genreMapping.map{x => x._1 + "," + x._2}.saveAsTextFile(genreMapFileName)
+  
   }
 
 
