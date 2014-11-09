@@ -320,13 +320,27 @@ object ItemFeatureGenreAgg {
 
     weeklyAggGenreTime.map{x =>
      
-     val duid:String  = x._1
-     val genre:String = x._2
-     val wtime:Int    = x._3
-     val week:Int     = x._4
-     val month:Int    = x._5
-     
-     duid + "," + genre + "," + wtime + "," + week + "," + month 
+      val duid:String  = x._1
+      val genre:String = x._2
+      val wtime:Int    = x._3
+      val week:Int     = x._4
+      val month:Int    = x._5
+      
+      ((duid, week, month),(genre, wtime))
+       
+    }.groupByKey.map{x =>
+      
+      val duid:String = x._1._1
+      val week:Int = x._1._2
+      val month:Int = x._1._3
+      val iterGenTime:Iterable[(String, Int)] = x._2
+      val genreWTimes:String = iterGenTime.map{genreTime =>
+        val genre:String = genreTime._1
+        val wTime:Int = genreTime._2
+        genre + "," + wTime
+      }.mkString(",")
+
+      duid + "," + week + "," + month + "," +genreWTimes
     }.saveAsTextFile(aggGenreFileName)
 
   }
