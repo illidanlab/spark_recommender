@@ -220,6 +220,28 @@ object ItemFeatureGenreAgg {
     val featSrc:String = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_genre*"
     //TODO: verify toSet
     val bItemSet = sc.broadcast(items.collect.toSet)
+    
+    
+    val param_GenreLang:String = GenreLangFilt
+    val genreSource = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/genre*" 
+    
+    //genreId, genreDesc
+    val genreMap:RDD[(String, String)] =
+      sc.textFile(genreSource).map{line =>
+        val fields = line.split('|')
+        (fields(GenreIdInd), fields(GenreLangInd), fields(GenreDescInd))
+      }.filter{genreTriplet =>
+        val genreLang = genreTriplet._2
+        genreLang == param_GenreLang
+      }.map{x =>
+        val genreId:String   = x._1
+        val genreDesc:String = x._3
+        (genreId, genreDesc)
+      }.distinct
+
+    val genreIds = genreMap.map{x => x._1}.collect.toSet  
+    val bGenreIdSet = sc.broadcast(genreIds)
+
     val itemGenre:RDD[(String, String)] = sc.textFile(featSrc).map{line =>
       
       val fields = line.split(FeatSepChar)
@@ -229,7 +251,8 @@ object ItemFeatureGenreAgg {
       (item, genre)
     }.filter{itemGenre =>
       val item = itemGenre._1
-      bItemSet.value(item)
+      val genre = itemGenre._2
+      bItemSet.value(item) && bGenreIdSet.value(genre) 
     }
     
     itemGenre 
