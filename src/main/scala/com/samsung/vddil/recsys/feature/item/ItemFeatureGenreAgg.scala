@@ -36,6 +36,35 @@ object ItemFeatureGenreAgg {
     wTimeACRPaths
   }
 
+  //return list of active duids throughout the week
+  def getActiveDuids(wTimeACRPaths:Array[(String, String)],
+    sc:SparkContext):RDD[String] = {
+    
+    val activeDuids:RDD[String] = wTimeACRPaths.map{dateNACRPath =>
+      
+      val date      = dateNACRPath._1
+      val acrPath   = dateNACRPath._2
+      val month:Int = date.substring(4,6).toInt
+      val day:Int   = date.substring(6,8).toInt
+      val week:Int  = day / 7
+   
+
+      val duidsWeek:RDD[(String, Int)] = sc.textFile(acrPath).map{line =>
+        val fields = line.split('\t')
+        fields(0)
+      }.map{x => (x, week)}
+      duidsWeek
+    }.reduce((a,b) => a.union(b)).distinct.groupByKey.map{x =>
+      val duid = x._1
+      val numWeeks = x._2.size
+      (duid, numWeeks)
+    }.filter{_._2 > 2}.map{x =>
+      x._1  
+    }
+  
+    activeDuids  
+  }
+
 
   //for each passed date generate 
   //duid, genre, watchtime, week, month
@@ -50,6 +79,9 @@ object ItemFeatureGenreAgg {
     val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
     val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
 
+    //get active duids based on usage
+    val activeDuids:RDD[String] = getActiveDuids(wTimeACRPaths, sc)
+
     //for each date 
     val aggWtimeByGenre:RDD[(String, String, Int, Int, Int)] =
       wTimeACRPaths.map{ dateNACRPath =>
@@ -61,7 +93,11 @@ object ItemFeatureGenreAgg {
       val watchTimes:RDD[(String, String, Int)] = sc.textFile(acrPath).map{line =>
         val fields = line.split('\t')
         //duid, item, watchtime
-        (fields(0), fields(1), fields(2).toInt)
+        (fields(0), (fields(1), fields(2).toInt))
+      }.filter{x => 
+          x._2._2 > 200 //filter watchtime greater than 200 seconds
+      }.join(activeDuids.map{x => (x,1)}).map{x =>
+        (x._1, x._2._1._1, x._2._1._2)      
       }
 
       //Logger.info("watchTimesCount: " + watchTimes.count)
