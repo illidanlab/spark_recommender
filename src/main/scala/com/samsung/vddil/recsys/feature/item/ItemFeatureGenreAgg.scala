@@ -382,7 +382,7 @@ object ItemFeatureGenreAgg {
 
     weeklyAggGenreTime.persist()
 
-    Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
+    //Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
 
     weeklyAggGenreTime.map{x =>
      
@@ -412,7 +412,7 @@ object ItemFeatureGenreAgg {
     val aggGenreFileName:String =
       jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeWeekly"
  
-    Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
+    //Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
 
     weeklyAggGenreTime.map{x =>
      

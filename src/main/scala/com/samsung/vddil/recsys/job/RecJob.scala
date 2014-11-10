@@ -165,8 +165,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     def run():Unit= {
     	val logger = Logger.logger 
 
-      ItemFeatureGenreAgg.saveAggGenreWtime(this)
-      
+      //ItemFeatureGenreAgg.saveAggGenreWtime(this)
+      ItemFeatureGenreAgg.saveAggGenreWeekly(this)
+
       /*
     	//Preparing processing data. 
     	//In this step the user/item lists are available in the JobStatus. 
