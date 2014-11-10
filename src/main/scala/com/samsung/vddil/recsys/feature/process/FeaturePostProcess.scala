@@ -99,6 +99,7 @@ trait FeaturePostProcessor{
     def processFeatureVector[T](trainingData:RDD[(T, Vector)]):RDD[(T, Vector)]
     def processFeatureMap[T](trainingDataMap:RDD[(Int, String)]):RDD[(Int, String)]
     
+
     def process(input: FeatureStruct) : (String, String) = {
         
         val transformedFeatureMap     = processFeatureMap(input.getFeatureMapRDD)
@@ -157,6 +158,7 @@ trait FeaturePostProcessorFactory{
     /** training step */
     def train(input: FeatureStruct, params:HashMap[String, String]) : Option[FeaturePostProcessor]
 }
+
 
 
 
