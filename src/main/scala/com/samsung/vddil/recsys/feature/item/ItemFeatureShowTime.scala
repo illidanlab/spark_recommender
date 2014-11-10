@@ -119,7 +119,7 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         // get feature map
         val featureMap = getFeatureMap(rangeSlot).toList
         if(jobInfo.outputResource(featureMapFileName)){
-            FeatureStruct.saveText_featureMapRDD(sc.parallelize(featureMap), featureMapFileName)
+            FeatureStruct.saveText_featureMapRDD(sc.parallelize(featureMap), featureMapFileName, jobInfo)
         }
         
         //

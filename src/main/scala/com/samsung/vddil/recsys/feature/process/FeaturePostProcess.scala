@@ -10,6 +10,7 @@ import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
+import com.samsung.vddil.recsys.job.RecJob
 
 /**
  * @author jiayu.zhou
@@ -100,7 +101,8 @@ trait FeaturePostProcessor{
     def processFeatureMap[T](trainingDataMap:RDD[(Int, String)]):RDD[(Int, String)]
     
 
-    def process(input: FeatureStruct) : (String, String) = {
+    def process(input: FeatureStruct, jobInfo:RecJob) : (String, String) = {
+        
         
         val transformedFeatureMap     = processFeatureMap(input.getFeatureMapRDD)
         val transformedFeatureMapFile = transformFeatureMapFile(input.featureMapFileName)
@@ -108,16 +110,21 @@ trait FeaturePostProcessor{
         val transformedFeatureVector     = processFeatureVector(input.getFeatureRDD) 
         val transformedFeatureVectorFile = transformFeatureFile(input.featureFileName)
         
-        FeatureStruct.saveText_featureMapRDD(transformedFeatureMap, transformedFeatureMapFile)
-        transformedFeatureVector.saveAsObjectFile(transformedFeatureVectorFile)
+        if(jobInfo.outputResource(transformedFeatureMapFile)){
+        	FeatureStruct.saveText_featureMapRDD(transformedFeatureMap, transformedFeatureMapFile, jobInfo)
+        }
+        if(jobInfo.outputResource(transformedFeatureVectorFile)){
+        	transformedFeatureVector.saveAsObjectFile(transformedFeatureVectorFile)
+        }
+        
         
         (transformedFeatureMapFile, transformedFeatureVectorFile)
     }
     
     /** process a UserFeatureStruct */
-    def processStruct(input: UserFeatureStruct) : UserFeatureStruct ={
+    def processStruct(input: UserFeatureStruct, jobInfo:RecJob) : UserFeatureStruct ={
         
-        val (featureMapFile, featureVectorFile) = process(input: FeatureStruct)
+        val (featureMapFile, featureVectorFile) = process(input: FeatureStruct, jobInfo)
         
         new UserFeatureStruct(
 			input.featureIden, 
@@ -132,9 +139,9 @@ trait FeaturePostProcessor{
     }
     
     /** process a ItemFeatureStruct, returns a new one with processed feature. */
-    def processStruct(input: ItemFeatureStruct) : ItemFeatureStruct = {
+    def processStruct(input: ItemFeatureStruct, jobInfo:RecJob) : ItemFeatureStruct = {
         //get features and transform it. 
-        val (featureMapFile, featureVectorFile) = process(input: FeatureStruct)
+        val (featureMapFile, featureVectorFile) = process(input: FeatureStruct, jobInfo)
         
         new ItemFeatureStruct(
 			input.featureIden,

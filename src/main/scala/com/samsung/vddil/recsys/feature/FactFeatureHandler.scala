@@ -43,7 +43,7 @@ object FactFeatureHandler extends FeatureHandler{
 		        var processedFeatureStruct = featureStruct
 		        postProcessing.foreach{processUnit=>
 		            processUnit.train(processedFeatureStruct).foreach{processor=>
-		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct)
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct, jobInfo)
 		            }
 		        }
 		        
@@ -55,7 +55,7 @@ object FactFeatureHandler extends FeatureHandler{
 		        var processedFeatureStruct = featureStruct
 		        postProcessing.foreach{processUnit=>
 		            processUnit.train(processedFeatureStruct).foreach{processor=>
-		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct)
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct, jobInfo)
 		            }
 		        }
 		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = processedFeatureStruct

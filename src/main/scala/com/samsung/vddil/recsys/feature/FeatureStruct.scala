@@ -7,6 +7,7 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.job.RecJob
 
 /**
  * This data structure stores the information of feature
@@ -66,18 +67,21 @@ trait FeatureStruct extends ResourceStruct{
 }
 
 object FeatureStruct{
-    def saveText_featureMapRDD(rdd: RDD[(Int, String)], fileName:String ) = {
-        rdd.map{pair =>
-            pair._1.toString + "," + pair._2
-        }.saveAsTextFile(fileName)
+    def saveText_featureMapRDD(rdd: RDD[(Int, String)], fileName:String, jobInfo:RecJob) = {
+        if (jobInfo.outputResource(fileName)){
+        	rdd.map{pair =>
+            	pair._1.toString + "," + pair._2
+        	}.saveAsTextFile(fileName)
+        }
     }
     
-    def saveText_featureMapRDD(rdd: => RDD[(Int, (Int, String))], fileName:String) = {
-        rdd.map{pair =>
-            pair._1.toString + "," + pair._2._1.toString + "," + pair._2._2
-        }.saveAsTextFile(fileName)
+    def saveText_featureMapRDD(rdd: => RDD[(Int, (Int, String))], fileName:String, jobInfo:RecJob) = {
+        if (jobInfo.outputResource(fileName)){
+        	rdd.map{pair =>
+	            pair._1.toString + "," + pair._2._1.toString + "," + pair._2._2
+	        }.saveAsTextFile(fileName)
+        }
     }
-    
 }
 
 
