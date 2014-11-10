@@ -107,7 +107,7 @@ trait FeaturePostProcessor{
         val transformedFeatureVector     = processFeatureVector(input.getFeatureRDD) 
         val transformedFeatureVectorFile = transformFeatureFile(input.featureFileName)
         
-        transformedFeatureMap.saveAsTextFile(transformedFeatureMapFile)
+        FeatureStruct.saveText_featureMapRDD(transformedFeatureMap, transformedFeatureMapFile)
         transformedFeatureVector.saveAsObjectFile(transformedFeatureVectorFile)
         
         (transformedFeatureMapFile, transformedFeatureVectorFile)

@@ -53,7 +53,10 @@ trait FeatureStruct extends ResourceStruct{
 	}
 	
 	def getFeatureMapRDD():RDD[(Int, String)] = {
-	    throw new NotImplementedError()
+	    Pipeline.instance.get.sc.textFile(featureMapFileName).map{ line =>
+	        val sp = line.split(",", 2)
+	        (sp(0).toInt, sp(1))
+	    }
 	}
 	
 	/**
@@ -61,6 +64,22 @@ trait FeatureStruct extends ResourceStruct{
 	 */
 	def featurePostProcessor:List[FeaturePostProcessor]
 }
+
+object FeatureStruct{
+    def saveText_featureMapRDD(rdd: RDD[(Int, String)], fileName:String ) = {
+        rdd.map{pair =>
+            pair._1.toString + "," + pair._2
+        }.saveAsTextFile(fileName)
+    }
+    
+    def saveText_featureMapRDD(rdd: => RDD[(Int, (Int, String))], fileName:String) = {
+        rdd.map{pair =>
+            pair._1.toString + "," + pair._2._1.toString + "," + pair._2._2
+        }.saveAsTextFile(fileName)
+    }
+    
+}
+
 
 /**
  * The data structure of user feature 

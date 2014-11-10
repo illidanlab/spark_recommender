@@ -19,6 +19,7 @@ import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import scala.util.control.Breaks._
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.feature.FeatureStruct
 /**
  * @author jiayu.zhou
  *
@@ -116,9 +117,9 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         val rangeSlot = Range(0, 2400, 2400/ timeWindow) :+ 9999 
         
         // get feature map
-        val featureMap = getFeatureMap(rangeSlot)
+        val featureMap = getFeatureMap(rangeSlot).toList
         if(jobInfo.outputResource(featureMapFileName)){
-            sc.parallelize(featureMap).saveAsTextFile(featureMapFileName)
+            FeatureStruct.saveText_featureMapRDD(sc.parallelize(featureMap), featureMapFileName)
         }
         
         //
@@ -210,10 +211,11 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         Vectors.sparse(feature)
     }
     
-    def getFeatureMap(rangeSlot:IndexedSeq[Int]):List[String] = {
-        var featureMap = List[String]()
+    def getFeatureMap(rangeSlot:IndexedSeq[Int]):Map[Int,String] = {
+        var featureMap = Map[Int, String]()
         for (i <- Range(1, rangeSlot.size)){
-            featureMap = featureMap :+ ( "TimeWindow["+rangeSlot(i-1)+"]["+ rangeSlot(i) +"]")
+            val featureNameEntry:String = "TimeWindow["+rangeSlot(i-1).toString +"]["+ rangeSlot(i).toString +"]"
+            featureMap = featureMap + (0 -> featureNameEntry)
         }
         
         featureMap
