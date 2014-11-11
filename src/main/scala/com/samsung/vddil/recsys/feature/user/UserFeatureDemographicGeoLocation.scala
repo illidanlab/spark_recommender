@@ -16,7 +16,7 @@ import scala.io.Source
 import scala.collection.immutable
 import java.io._
 import scala.collection.Parallel
-import org.apache.tools.ant.taskdefs.Parallel
+
 import scala.collection.immutable.Vector
 
 /*
@@ -104,7 +104,8 @@ object UserFeatureDemographicGeoLocation extends FeatureProcessingUnit {
             a.union(b)
         }.distinct
         
-        val uMap   = sc.parallelize(jobInfo.jobStatus.userIdMap.toList)
+        val uMap   = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getUserMap(None)
+        //val uMap   =  sc.parallelize(jobInfo.jobStatus.userIdMap.toList)
         val userF  = userFeatureMap.join(uMap)
         val userFeatureMap2Sparse = userF.map{
             x => (x._2._2, Vectors.sparse(x._2._1))
@@ -139,9 +140,13 @@ object UserFeatureDemographicGeoLocation extends FeatureProcessingUnit {
         }
         
         
+        val featureSize = userFeatureMap2Sparse.first._2.size
+        
     	// 4. Generate and return a FeatureResource that includes all resources.  
 		val featureStruct:UserFeatureStruct = 
-  			new UserFeatureStruct(IdenPrefix, resourceIden, featureFileName, featureMapFileName)
+  			new UserFeatureStruct(
+  			        IdenPrefix, resourceIden, featureFileName, 
+  			        featureMapFileName, featureParams, featureSize)
         	
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_UserFeature) = featureStruct
