@@ -12,6 +12,7 @@ object ItemFeatureGenreAgg {
 
     val ItemGenreInd    = 2
     val ItemIdInd       = 1
+    val isItemGenreTop  = 3
     val FeatSepChar     = '|'
     val GenreIdInd      = 1
     val GenreLangInd    = 2
@@ -40,7 +41,13 @@ object ItemFeatureGenreAgg {
   //return list of active duids throughout the week
   def getActiveDuids(wTimeACRPaths:Array[(String, String)],
     sc:SparkContext):RDD[String] = {
-    
+   
+    val numMonths:Int = wTimeACRPaths.map{dateNACRPath =>
+      val date = dateNACRPath._1
+      val month:Int = date.substring(4,6).toInt
+      month
+    }.distinct.size
+
     val activeDuids:RDD[String] = wTimeACRPaths.map{dateNACRPath =>
       
       val date      = dateNACRPath._1
@@ -48,20 +55,26 @@ object ItemFeatureGenreAgg {
       val month:Int = date.substring(4,6).toInt
       val day:Int   = date.substring(6,8).toInt
       val week:Int  = day / 7
-   
 
-      val duidsWeek:RDD[(String, Int)] = sc.textFile(acrPath).map{line =>
+      val duidsMonthWeek:RDD[((String,Int), Int)] = sc.textFile(acrPath).map{line =>
         val fields = line.split('\t')
         fields(0)
-      }.map{x => (x, week)}
-      duidsWeek
+      }.map{x => ((x, month), week)}
+
+      duidsMonthWeek
     }.reduce((a,b) => a.union(b)).distinct.groupByKey.map{x =>
-      val duid = x._1
-      val numWeeks = x._2.size
-      (duid, numWeeks)
-    }.filter{_._2 >= 2}.map{x =>
-      x._1  
+      val duidMonth = x._1
+      val numWeeks  = x._2.size
+      (duidMonth, numWeeks)
+    }.filter{_._2 > 2}.map{x =>
+      val duid:String = x._1._1
+      val month:Int   = x._1._2
+      (duid, month)
+    }.groupByKey.filter(_._2.size == numMonths).map{x=>
+      val duid:String = x._1
+      duid
     }
+    
     activeDuids  
   }
 
@@ -90,7 +103,7 @@ object ItemFeatureGenreAgg {
           genreLang == param_GenreLang
         }.map{x =>
           val genreId:String   = x._1
-          val genreDesc:String = x._3
+          val genreDesc:String = x._3.replaceAll("""\s""", "-")
           (genreId, genreDesc)
         }.distinct
 
@@ -317,15 +330,23 @@ object ItemFeatureGenreAgg {
 
     val itemGenre:RDD[(String, String)] = sc.textFile(featSrc).map{line =>
       
-      val fields = line.split(FeatSepChar)
-      val item   = fields(ItemIdInd)
-      val genre  = fields(ItemGenreInd)
+      val fields     = line.split(FeatSepChar)
+      val item       = fields(ItemIdInd)
+      val genre      = fields(ItemGenreInd)
+      val isGenreTop = fields(isItemGenreTop)
       
-      (item, genre)
+      (item, genre, isGenreTop)
     }.filter{itemGenre =>
-      val item = itemGenre._1
-      val genre = itemGenre._2
-      bItemSet.value(item) && bGenreIdSet.value(genre) 
+
+      val item       = itemGenre._1
+      val genre      = itemGenre._2
+      val isGenreTop = itemGenre._3
+      //filter by broadcast items and genre present and if sub genre 
+      bItemSet.value(item) && bGenreIdSet.value(genre) && isGenreTop != 1 
+    }.map {x =>
+      val item = x._1
+      val genre = x._2
+      (item, genre)
     }
     
     itemGenre 
