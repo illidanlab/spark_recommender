@@ -12,7 +12,7 @@ object ItemFeatureGenreAgg {
 
     val ItemGenreInd    = 2
     val ItemIdInd       = 1
-    val isItemGenreTop  = 3
+    val ItemIfGenreTop  = 3
     val FeatSepChar     = '|'
     val GenreIdInd      = 1
     val GenreLangInd    = 2
@@ -333,7 +333,7 @@ object ItemFeatureGenreAgg {
       val fields     = line.split(FeatSepChar)
       val item       = fields(ItemIdInd)
       val genre      = fields(ItemGenreInd)
-      val isGenreTop = fields(isItemGenreTop)
+      val isGenreTop = fields(ItemIfGenreTop).replaceAll("""\s""","")
       
       (item, genre, isGenreTop)
     }.filter{itemGenre =>
@@ -342,7 +342,7 @@ object ItemFeatureGenreAgg {
       val genre      = itemGenre._2
       val isGenreTop = itemGenre._3
       //filter by broadcast items and genre present and if sub genre 
-      bItemSet.value(item) && bGenreIdSet.value(genre) && isGenreTop != 1 
+      bItemSet.value(item) && bGenreIdSet.value(genre) && (isGenreTop != 1) 
     }.map {x =>
       val item = x._1
       val genre = x._2
@@ -433,7 +433,7 @@ object ItemFeatureGenreAgg {
     val aggGenreFileName:String =
       jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeWeekly"
  
-    //Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
+    Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
 
     weeklyAggGenreTime.map{x =>
      
