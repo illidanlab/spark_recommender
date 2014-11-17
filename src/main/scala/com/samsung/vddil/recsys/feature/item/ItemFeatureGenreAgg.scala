@@ -7,6 +7,8 @@ import org.apache.hadoop.fs._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
+import java.util.Calendar
+
 
 object ItemFeatureGenreAgg {
 
@@ -24,17 +26,46 @@ object ItemFeatureGenreAgg {
 
   def getValidACRPaths(dates:Array[String], 
     watchTimeResLoc:String,
-    sc:SparkContext):Array[(String, String)] = {
-    
+    sc:SparkContext):Map[Int, Array[(Int, (String, String))]] = {
+   
+
+    val calDates:Array[(Calendar, String)] = dates.map{date =>
+      val month:Int = date.substring(4,6).toInt
+      val day:Int   = date.substring(6,8).toInt
+      val year:Int  = date.substring(0,4).toInt
+      val dt:Calendar = Calendar.getInstance()
+      dt.set(year, month-1, day)
+      (dt, date)
+    } 
+
+    //filter in only weekends
+    val weekends:Array[String] = calDates.filter{dt => 
+      val dayOfWeek = dt._1.get(Calendar.DAY_OF_WEEK)
+      dayOfWeek == Calendar.FRIDAY || dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
+    }.map{_._2}
+
+    //filter out weekends
+    val workdays:Array[String] = calDates.filterNot{dt => 
+      val dayOfWeek = dt._1.get(Calendar.DAY_OF_WEEK)
+      dayOfWeek == Calendar.FRIDAY || dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
+    }.map{_._2} 
+  
+    //val filtDates:Array[String] = dates
+    val filtDates:Array[String] = weekends
+    //val filtDates:Array[String] = workdays
+
     val hadoopConf = sc.hadoopConfiguration
-    val wTimeACRPaths = dates.map{date => 
-      (date, watchTimeResLoc + date)
+    val wTimeACRPaths:Map[Int, Array[(Int, (String, String))]] = filtDates.map{date =>
+      val month:Int = date.substring(4,6).toInt
+      (month, (date, watchTimeResLoc + date))
     }.filter(x => {
-      val path = new Path(x._2)
+      val path = new Path(x._2._2)
       val fileSystem = path.getFileSystem(hadoopConf)
-      fileSystem.exists(new Path(x._2))
-    })
+      fileSystem.exists(path)
+    }).groupBy(_._1)
+    
     wTimeACRPaths
+  
   }
 
 
@@ -47,6 +78,8 @@ object ItemFeatureGenreAgg {
       val month:Int = date.substring(4,6).toInt
       month
     }.distinct.size
+
+    Logger.info("\nNo. of months: " + numMonths)
 
     val activeDuids:RDD[String] = wTimeACRPaths.map{dateNACRPath =>
       
@@ -66,7 +99,7 @@ object ItemFeatureGenreAgg {
       val duidMonth = x._1
       val numWeeks  = x._2.size
       (duidMonth, numWeeks)
-    }.filter{_._2 > 2}.map{x =>
+    }.filter{_._2 >= 2}.map{x =>
       val duid:String = x._1._1
       val month:Int   = x._1._2
       (duid, month)
@@ -79,12 +112,10 @@ object ItemFeatureGenreAgg {
   }
 
 
-  def getGenreMapping(dates:Array[String],
+  def getGenreMapping(wTimeACRPaths:Array[(String, String)],
     jobInfo:RecJob):RDD[(String, String)] = {
     
     val sc:SparkContext        = jobInfo.sc
-    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
-    val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
     
     wTimeACRPaths.map{dateNACRPath =>
    
@@ -115,16 +146,12 @@ object ItemFeatureGenreAgg {
   //for each passed date generate 
   //duid, genre, watchtime, week, month
   def getWeeklyAggGenreWTime(
-    dates:Array[String],
+    wTimeACRPaths:Array[(String, String)],
     jobInfo:RecJob):RDD[(String, String, Int, Int, Int)] = {
 
     //get spark context
     val sc = jobInfo.sc
     
-    //get hadoop config
-    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
-    val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
-
     //get active duids based on usage
     val activeDuids:RDD[String] = getActiveDuids(wTimeACRPaths, sc)
 
@@ -218,7 +245,7 @@ object ItemFeatureGenreAgg {
 
   //for each passed date generate "duid, genre, time, date"
   def getDailyAggGenreWTime(
-    dates:Array[String],
+    wTimeACRPaths:Array[(String, String)],
     jobInfo:RecJob):RDD[(String, String, Int, String)] = {
 
     //get spark context
@@ -226,7 +253,6 @@ object ItemFeatureGenreAgg {
     
     //get hadoop config
     val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
-    val wTimeACRPaths = getValidACRPaths(dates, watchTimeResLoc, sc)
 
     //for each date 
     val aggWtimeByGenre:RDD[(String, String, Int, String)] =
@@ -333,7 +359,7 @@ object ItemFeatureGenreAgg {
       val fields     = line.split(FeatSepChar)
       val item       = fields(ItemIdInd)
       val genre      = fields(ItemGenreInd)
-      val isGenreTop = fields(ItemIfGenreTop).replaceAll("""\s""","")
+      val isGenreTop:Int = fields(ItemIfGenreTop).replaceAll("""\s""","").toInt
       
       (item, genre, isGenreTop)
     }.filter{itemGenre =>
@@ -342,7 +368,8 @@ object ItemFeatureGenreAgg {
       val genre      = itemGenre._2
       val isGenreTop = itemGenre._3
       //filter by broadcast items and genre present and if sub genre 
-      bItemSet.value(item) && bGenreIdSet.value(genre) && (isGenreTop != 1) 
+      bItemSet.value(item) && bGenreIdSet.value(genre) && ((isGenreTop == 1) || (isGenreTop == 2) || (isGenreTop == 3))
+      //bItemSet.value(item) && bGenreIdSet.value(genre)
     }.map {x =>
       val item = x._1
       val genre = x._2
@@ -359,23 +386,33 @@ object ItemFeatureGenreAgg {
     val sc = jobInfo.sc
     val dates:Array[String] = jobInfo.trainDates 
     
-    //(duid, genre, wtime, date)
-    val aggGenreTime:RDD[(String, String, Int, String)] =
-      getDailyAggGenreWTime(dates, jobInfo)
+    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
+    val wTimeMonthlyACRPaths:Map[Int, Array[(Int, (String, String))]] = getValidACRPaths(dates, watchTimeResLoc, sc)
+    
+    //for each month save aggregate Genre
+    wTimeMonthlyACRPaths.map{case (month, monthPaths) =>
+      
+      val wTimeACRPaths:Array[(String, String)] = monthPaths.map(_._2)
+      
+      //(duid, genre, wtime, date)
+      val aggGenreTime:RDD[(String, String, Int, String)] =
+        getDailyAggGenreWTime(wTimeACRPaths, jobInfo)
 
-    //save aggregated time spent on genre to text file
-    val aggGenreFileName:String =
-      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" +
-       "aggGenreWTime"
-    aggGenreTime.map{x =>
-     
-     val duid:String  = x._1
-     val genre:String = x._2
-     val wtime:Int = x._3
-     val date:String  = x._4
-     
-     duid + "," + genre + "," + wtime + "," + date 
-    }.coalesce(100).saveAsTextFile(aggGenreFileName)
+      //save aggregated time spent on genre to text file
+      val aggGenreFileName:String =
+        jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTime_month_" + month
+      
+      aggGenreTime.map{x =>
+       
+       val duid:String  = x._1
+       val genre:String = x._2
+       val wtime:Int    = x._3
+       val date:String  = x._4
+       
+       duid + "," + genre + "," + wtime + "," + date 
+      }.coalesce(100).saveAsTextFile(aggGenreFileName)
+
+    }
 
   }
 
@@ -421,50 +458,65 @@ object ItemFeatureGenreAgg {
 
   def saveAggGenreWeekly(jobInfo:RecJob) = {
    
+    Logger.info("\nRunning weekly genre aggregation")
+
     //get spark context
     val sc = jobInfo.sc
     val dates:Array[String] = jobInfo.trainDates 
-    
-    //(duid, genre, watchtime, week, month)
-    val weeklyAggGenreTime:RDD[(String, String, Int, Int, Int)] =
-      getWeeklyAggGenreWTime(dates, jobInfo)  
+   
+    Logger.info("No. of dates: " + dates.size)
 
-    //save aggregated time spent on genre to text file
-    val aggGenreFileName:String =
-      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeWeekly"
- 
-    Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
-
-    weeklyAggGenreTime.map{x =>
-     
-      val duid:String  = x._1
-      val genre:String = x._2
-      val wtime:Int    = x._3
-      val week:Int     = x._4
-      val month:Int    = x._5
-      
-      ((duid, week, month),(genre, wtime))
-       
-    }.groupByKey.map{x =>
-      
-      val duid:String = x._1._1
-      val week:Int = x._1._2
-      val month:Int = x._1._3
-      val iterGenTime:Iterable[(String, Int)] = x._2
-      val genreWTimes:String = iterGenTime.map{genreTime =>
-        val genre:String = genreTime._1
-        val wTime:Int = genreTime._2
-        genre + "," + wTime
-      }.mkString(",")
-
-      duid + "," + week + "," + month + "," +genreWTimes
-    }.saveAsTextFile(aggGenreFileName)
-
-    val genreMapFileName:String =
-      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreMap"
-    val genreMapping:RDD[(String, String)] = getGenreMapping(dates, jobInfo)
-    genreMapping.map{x => x._1 + "," + x._2}.saveAsTextFile(genreMapFileName)
+    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
+    val wTimeMonthlyACRPaths:Map[Int, Array[(Int, (String, String))]] = getValidACRPaths(dates, watchTimeResLoc, sc)
   
+    Logger.info("\nNo. of ACR paths: " + wTimeMonthlyACRPaths.size)
+
+    //for each month save aggregate Genre
+    wTimeMonthlyACRPaths.map{case (month, monthPaths) =>
+      
+      Logger.info("\nMonth: " + month)
+
+      val wTimeACRPaths:Array[(String, String)] = monthPaths.map(_._2)
+     
+      //(duid, genre, watchtime, week, month)
+      val weeklyAggGenreTime:RDD[(String, String, Int, Int, Int)] =
+        getWeeklyAggGenreWTime(wTimeACRPaths, jobInfo)  
+
+      //save aggregated time spent on genre to text file
+      val aggGenreFileName:String =
+        jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeWeekly_" + month
+   
+      Logger.info("Agg genre file: " + aggGenreFileName) 
+
+      Logger.info("No. of weekly records: " + weeklyAggGenreTime.count())
+
+      weeklyAggGenreTime.map{x =>
+       
+        val duid:String  = x._1
+        val genre:String = x._2
+        val wtime:Int    = x._3
+        val week:Int     = x._4
+        val month:Int    = x._5
+        
+        ((duid, week, month),(genre, wtime))
+         
+      }.groupByKey.map{x =>
+        
+        val duid:String = x._1._1
+        val week:Int = x._1._2
+        val month:Int = x._1._3
+        val iterGenTime:Iterable[(String, Int)] = x._2
+        val genreWTimes:String = iterGenTime.map{genreTime =>
+          val genre:String = genreTime._1
+          val wTime:Int = genreTime._2
+          genre + "," + wTime
+        }.mkString(",")
+
+        duid + "," + week + "," + month + "," +genreWTimes
+      }.saveAsTextFile(aggGenreFileName)
+         
+    }
+
   }
 
 
