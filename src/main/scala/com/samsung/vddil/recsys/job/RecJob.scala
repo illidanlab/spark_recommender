@@ -357,6 +357,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
             writeline("     Feature Size:  " + feature.featureSize)
+            feature.featurePostProcessor.foreach{processor =>
+                writeline("     " + processor.toString)
+            }
             writer.newLine()
         }
         writer.newLine()
@@ -366,6 +369,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
             writeline("     Feature Size:  " + feature.featureSize)
+            feature.featurePostProcessor.foreach{processor =>
+                writeline("     " + processor.toString)
+            }
             writer.newLine()
         }
         writer.newLine()

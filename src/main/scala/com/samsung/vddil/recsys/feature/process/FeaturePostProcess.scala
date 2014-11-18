@@ -11,7 +11,7 @@ import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
 import com.samsung.vddil.recsys.job.RecJob
-
+import com.samsung.vddil.recsys.feature.process._
 /**
  * @author jiayu.zhou
  *
@@ -77,6 +77,11 @@ case class FeatureDimensionReduction(
 	    }
     }
 }
+
+
+
+
+
 
 trait FeaturePostProcessor{
     
@@ -171,27 +176,49 @@ trait FeaturePostProcessorFactory{
 
 
 /**
- * This is an example of implementing a post processor. 
+ * This is an example of implementing a post processor. In this 
  */
 case class DummyFeaturePostProcessor(
         val inputFeatureSize:Int) extends FeaturePostProcessor{
     
-    val outputFeatureSize = inputFeatureSize
-    val processorResourceId = "DUM"
+    val performReduce = inputFeatureSize > 2
+    
+    //perform feature reduction only if there are more than 
+    //two features. 
+    val outputFeatureSize = 
+        if(performReduce){  inputFeatureSize - 1
+        }else{              inputFeatureSize      }
+    
+    val processorResourceId =
+        if(performReduce){  "DUM-R"
+        }else{              "DUM" }
+    
+    val removalPositions  = List(2)
+    val inclusionPosition = ((0 until inputFeatureSize).toSet -- removalPositions.toSet).toList.sorted
     
     def processFeatureVector[T](trainingData:RDD[(T, Vector)]):RDD[(T, Vector)] = {
-        trainingData
+        if(performReduce){
+            trainingData.map{line =>
+                val id: T                = line._1
+                val reduceVector: Vector = line._2
+                (id, mapFeatureVector(inclusionPosition, reduceVector))
+            }
+        }else{
+            trainingData
+        }
+        
     }
     
     def processFeatureMap[T](trainingDataMap:RDD[(Int, String)]):RDD[(Int, String)] = {
-        trainingDataMap
+        
+        
+        if(performReduce){
+            mapFeatureMap(inputFeatureSize, inclusionPosition, trainingDataMap)
+        }else{
+            trainingDataMap
+        }
+        
     }
-
-//    override def process(input: FeatureStruct) : (String, String) = {
-//        val transformedFeatureMapFile = transformFeatureMapFile(input.featureMapFileName)
-//        val transformedFeatureVectorFile = transformFeatureFile(input.featureFileName)
-//        (transformedFeatureMapFile, transformedFeatureVectorFile)
-//    }
 }
 
 object DummyFeaturePostProcessor extends FeaturePostProcessorFactory{
@@ -200,3 +227,10 @@ object DummyFeaturePostProcessor extends FeaturePostProcessorFactory{
         Some(new DummyFeaturePostProcessor(input.featureSize))
     }
 }
+
+
+
+
+
+
+
