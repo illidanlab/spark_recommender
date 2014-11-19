@@ -1,7 +1,6 @@
 package com.samsung.vddil.recsys
 
 import scala.collection.mutable.HashMap
-
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
@@ -9,6 +8,7 @@ import org.apache.spark.SparkContext
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.evaluation.ContinuousPrediction
 import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.job.RecJob
 
 /**
  * This package provides the handlers for model units as well as a list of regression models 
@@ -76,5 +76,5 @@ package object model {
        }
     }
     
-    
+
 }

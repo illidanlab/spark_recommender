@@ -84,7 +84,7 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
 	             new CustomizedModelStruct[FactorizationMachineRegressionModel](IdenPrefix, resourceIden, 
 	            		                            dataResourceStr,
 	                                                modelFileName, modelParams, 
-	                                                bestModel.get)
+	                                                bestModel.get, allData.dimension)
 	        
 	        // 4. Compute training and testing error.
 	        
@@ -109,7 +109,8 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
             Logger.info("Loading model...")
             val modelStruct:CustomizedModelStruct[FactorizationMachineRegressionModel] = 
 	             new CustomizedModelStruct[FactorizationMachineRegressionModel](IdenPrefix, resourceIden, 
-	        		                            dataResourceStr,modelFileName, modelParams)
+	        		                            dataResourceStr,modelFileName, modelParams, allData.dimension)
+	        		                            
 	        resourceMap(ModelResource.ResourceStr_RegressModel) = modelStruct
 	        Logger.info("Factorization machine model loaded. ")
         }
