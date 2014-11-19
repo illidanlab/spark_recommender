@@ -75,7 +75,8 @@ object JobTag {
 	val RecJobResourceLocationRoviHQ = "roviHq"
 	val RecJobResourceLocationWatchTime = "watchTime"
 	val RecJobResourceLocationWorkspace = "workspace"
-	  
+	val RecJobResourceSchedLocation = "schedWTime"
+
 	val RecJobDataSplit = "dataSplit"
 	val RecJobDataSplitTestRatio = "testingRatio"
 	val RecJobDataSplitValidRatio = "validationRatio"

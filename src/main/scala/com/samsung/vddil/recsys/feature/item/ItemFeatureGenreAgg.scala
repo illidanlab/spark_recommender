@@ -51,8 +51,8 @@ object ItemFeatureGenreAgg {
     }.map{_._2} 
   
     //val filtDates:Array[String] = dates
-    val filtDates:Array[String] = weekends
-    //val filtDates:Array[String] = workdays
+    //val filtDates:Array[String] = weekends
+    val filtDates:Array[String] = workdays
 
     val hadoopConf = sc.hadoopConfiguration
     val wTimeACRPaths:Map[Int, Array[(Int, (String, String))]] = filtDates.map{date =>
@@ -190,7 +190,7 @@ object ItemFeatureGenreAgg {
       
       //Logger.info("itemGenresWTime count: " + itemGenresWTime.count)
 
-      //get 'duid, genre, watchtime'
+      //get 'duid, genre, week, watchtime'
       val duidGenres:RDD[((String, String, Int, Int), Int)] = itemGenresWTime.map{x => //item, ((duid,wtime), Iterable[Genre])
         
         val duid:String             = x._2._1._1

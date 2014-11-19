@@ -12,7 +12,7 @@ import com.samsung.vddil.recsys.testing._
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.feature.{RecJobFeature, RecJobItemFeature, RecJobUserFeature, RecJobFactFeature}
-import com.samsung.vddil.recsys.feature.item.ItemFeatureGenreAgg
+import com.samsung.vddil.recsys.feature.item.{ItemFeatureGenreAgg, ItemFeatureGenreHourlyAgg}
 import com.samsung.vddil.recsys.evaluation._
 import org.apache.hadoop.fs.Path
 import java.io.BufferedWriter
@@ -31,15 +31,15 @@ import com.samsung.vddil.recsys.prediction.RecJobPrediction
  * @author jiayu.zhou
  */
 object RecJob{
-	val ResourceLoc_RoviHQ     = "roviHq"
-	val ResourceLoc_WatchTime  = "watchTime"
-	val ResourceLoc_Workspace  = "workspace"
-	val ResourceLoc_JobFeature = "jobFeature"
-	val ResourceLoc_JobData    = "jobData"
-	val ResourceLoc_JobModel   = "jobModel"
-	val ResourceLoc_JobTest    = "jobTest"
-	val ResourceLoc_JobDir     = "job"
-	    
+	val ResourceLoc_RoviHQ      = "roviHq"
+	val ResourceLoc_WatchTime   = "watchTime"
+	val ResourceLoc_Workspace   = "workspace"
+	val ResourceLoc_JobFeature  = "jobFeature"
+	val ResourceLoc_JobData     = "jobData"
+	val ResourceLoc_JobModel    = "jobModel"
+	val ResourceLoc_JobTest     = "jobTest"
+	val ResourceLoc_JobDir      = "job"
+	val ResourceLoc_SchedWTime  = "schedWTime"
 	val ResourceLocAddon_GeoLoc = "geoLocation"
 	    
 	val DataSplitting_trainRatio = "trainRatio"
@@ -166,7 +166,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
     	val logger = Logger.logger 
 
       //ItemFeatureGenreAgg.saveAggGenreWtime(this)
-      ItemFeatureGenreAgg.saveAggGenreWeekly(this)
+      //ItemFeatureGenreAgg.saveAggGenreWeekly(this)
+      ItemFeatureGenreHourlyAgg.saveAggGenreHourly(this)
 
       /*
     	//Preparing processing data. 
@@ -553,6 +554,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        
        if ((nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).size > 0) 
     	   resourceLoc(RecJob.ResourceLoc_WatchTime)  = (nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).text
+       
+       if ((nodeList(0) \ JobTag.RecJobResourceSchedLocation).size > 0) 
+    	   resourceLoc(RecJob.ResourceLoc_SchedWTime)  = (nodeList(0) \ JobTag.RecJobResourceSchedLocation).text
        
        if ((nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).size > 0){ 
 	       resourceLoc(RecJob.ResourceLoc_Workspace)  = (nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).text
