@@ -4,14 +4,14 @@
 package com.samsung.vddil.recsys.feature.process
 
 import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.linalg.Vector
+
 import org.apache.spark.rdd.RDD
+
 import com.samsung.vddil.recsys.feature.FeatureStruct
-import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
-import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
+import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.job.RecJob
-import com.samsung.vddil.recsys.feature.process._
+import com.samsung.vddil.recsys.linalg.Vector
 /**
  * @author jiayu.zhou
  *
@@ -137,8 +137,8 @@ trait FeaturePostProcessor{
 			featureVectorFile, 
 			featureMapFile,
 			input.featureParams,
-			inputFeatureSize,
 			outputFeatureSize,
+			inputFeatureSize,
 			input.featurePostProcessor:+ this
         )
     }
@@ -154,8 +154,8 @@ trait FeaturePostProcessor{
 			featureVectorFile, 
 			featureMapFile,
 			input.featureParams,
-			inputFeatureSize,
 			outputFeatureSize,
+			inputFeatureSize,
 			input.featurePostProcessor:+ this,
 			input.extractor
 		) 
@@ -176,12 +176,14 @@ trait FeaturePostProcessorFactory{
 
 
 /**
- * This is an example of implementing a post processor. In this 
+ *  This is an example of implementing a post processor. It removes *the third* feature if there 
+ *  are more than three features. 
+ *  
  */
 case class DummyFeaturePostProcessor(
         val inputFeatureSize:Int) extends FeaturePostProcessor{
     
-    val performReduce = inputFeatureSize > 2
+    val performReduce = inputFeatureSize > 3
     
     //perform feature reduction only if there are more than 
     //two features. 

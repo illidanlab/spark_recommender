@@ -353,7 +353,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         
         writehead("User Features", 2)
         for ((featureId, feature) <- this.jobStatus.resourceLocation_UserFeature){
-            writeline("  Feature Identity:   " + feature.resourceStr)
+            writeline("  Feature Identity:   " + feature.resourceStr + " (OID:" + System.identityHashCode(feature) + ")")
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
             writeline("     Feature Size:  " + feature.featureSize)
@@ -365,7 +365,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         writer.newLine()
         writehead("Item Features", 2)
         for ((featureId, feature) <- this.jobStatus.resourceLocation_ItemFeature){
-            writeline("  Feature Identity:   " + feature.resourceStr)
+            writeline("  Feature Identity:   " + feature.resourceStr + " (OID:" + System.identityHashCode(feature) + ")")
             writeline("  Feature Parameters: " + feature.featureParams.toString)
             writeline("  Feature File:       " + feature.featureFileName)
             writeline("     Feature Size:  " + feature.featureSize)
@@ -385,17 +385,23 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
             writeline("  Data Dimension:     " + data.dimension)
             writeline("  User Features:")
             for (feature <- data.userFeatureOrder){
-                writeline("     Feature Name:  " + feature.featureIden)
+                writeline("     Feature Name:  " + feature.featureIden  + " (OID:" + System.identityHashCode(feature) + ")")
                 writeline("     Feature Iden:  " + feature.resourceStr)
                 writeline("     Feature Size:  " + feature.featureSize)
                 writeline("     Feature Param: " + feature.featureParams.toString)
+                feature.featurePostProcessor.foreach{processor =>
+	                writeline("         " + processor.toString)
+	            }
             }
             writeline("  Item Features:")
             for (feature <- data.itemFeatureOrder){
-                writeline("     Feature Name: " + feature.featureIden)
+                writeline("     Feature Name: " + feature.featureIden  + " (OID:" + System.identityHashCode(feature) + ")")
                 writeline("     Feature Iden: " + feature.resourceStr)
                 writeline("     Feature Size: " + feature.featureSize)
                 writeline("     Feature Param: " + feature.featureParams.toString)
+                feature.featurePostProcessor.foreach{processor =>
+	                writeline("         " + processor.toString)
+	            }
             }
             writer.newLine()
         }
