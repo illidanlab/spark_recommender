@@ -1,6 +1,7 @@
 <jobList xmlns:recsys="Samsung Recsys">
   <jobEntry>
-    <jobType>recommendation</jobType>
+    <!--<jobType>recommendation</jobType>-->
+    <jobType>temporalagg</jobType>
     <jobName>exp_cold_test_20140522_20140525</jobName>
     <jobDesc>Test experiment from 20140522 to 20140525</jobDesc>
     <sparkContext>
