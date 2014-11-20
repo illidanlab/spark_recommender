@@ -32,13 +32,14 @@ case class TemporalAggJob (jobName:String,
   //populate resources
   val resourceLoc:HashMap[String, String] = populateResourceLoc() 
   
+  val dateParser = new SimpleDateFormat("yyyyMMdd") // a parser/formatter for date. 
+  
   /** a list of dates used to generate training data/features */
   val trainDates:Array[String] = populateTrainDates()
   
-  val dateParser = new SimpleDateFormat("yyyyMMdd") // a parser/formatter for date. 
   
   def run():Unit = {
-    ItemFeatureGenreHourlyAgg.saveAggGenreHourly(this)
+    //ItemFeatureGenreHourlyAgg.saveAggGenreHourly(this)
     ItemFeatureGenreAgg.saveAggGenreWeekly(this)
   }
   
