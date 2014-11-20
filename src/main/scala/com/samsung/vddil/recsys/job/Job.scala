@@ -18,7 +18,8 @@ object JobType extends Enumeration {
      	type JobType = Value
      	val Recommendation = Value(JobTag.JobType_Recommendation) 
      	val HelloWorld = Value(JobTag.JobType_HelloWorld)
-     	val Unknown = Value
+     	val TemporalAgg = Value(JobTag.JobType_TemporalAgg)
+      val Unknown = Value
 }
 import JobType._
 
