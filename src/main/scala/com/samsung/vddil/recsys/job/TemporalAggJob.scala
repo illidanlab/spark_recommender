@@ -39,6 +39,7 @@ case class TemporalAggJob (jobName:String,
   
   def run():Unit = {
     ItemFeatureGenreHourlyAgg.saveAggGenreHourly(this)
+    ItemFeatureGenreAgg.saveAggGenreWeekly(this)
   }
   
   def getStatus():TemporalAggJobStatus = {
