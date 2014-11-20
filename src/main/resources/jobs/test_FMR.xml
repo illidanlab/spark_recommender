@@ -54,6 +54,13 @@
 				</processes>
 			</feature>
 			<feature>
+		        <type>itemFeature</type>
+		        <name>syn_tfidf</name>
+		        <param>
+		            <N>100</N>
+		        </param>
+		    </feature>
+			<feature>
 				<type>userFeature</type>
 				<name>genre</name>
 			</feature>
@@ -65,6 +72,10 @@
 				<type>userFeature</type>
 				<name>channel</name>
 			</feature>
+			<feature>
+		        <type>userFeature</type>
+		        <name>showTime</name>
+		    </feature>
 		</features>
 		<dataSplit>
 			<testingRatio>0.2</testingRatio>
