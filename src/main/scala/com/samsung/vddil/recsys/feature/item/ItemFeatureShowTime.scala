@@ -213,9 +213,9 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
     
     def getFeatureMap(rangeSlot:IndexedSeq[Int]):Map[Int,String] = {
         var featureMap = Map[Int, String]()
-        for (i <- Range(1, rangeSlot.size)){
+        for (i <- (1 until rangeSlot.size)){
             val featureNameEntry:String = "TimeWindow["+rangeSlot(i-1).toString +"]["+ rangeSlot(i).toString +"]"
-            featureMap = featureMap + (0 -> featureNameEntry)
+            featureMap = featureMap + (i -> featureNameEntry)
         }
         
         featureMap
