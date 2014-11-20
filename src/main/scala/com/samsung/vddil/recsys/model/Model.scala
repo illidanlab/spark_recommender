@@ -72,7 +72,7 @@ trait ModelStruct extends Serializable with ResourceStruct{
 	def predict(testData: Vector): Double = {
 	    val vectorDim = testData.size 
 	    
-	    if (vectorDim != this.modelDimension){
+	    if (vectorDim == this.modelDimension){
 	        predictVector(testData: Vector)
 	    }else{
 	        throw new IllegalArgumentException(
