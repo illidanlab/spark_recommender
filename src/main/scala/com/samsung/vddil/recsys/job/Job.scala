@@ -126,7 +126,8 @@ object Job{
 	            //register Job types. 
 	            case JobTag.JobType_Recommendation => RecJob(jobNameStr, jobDescStr, node) 
 	            case JobTag.JobType_HelloWorld     => HelloWorldJob(jobNameStr, jobDescStr, node)
-	            case _ => UnknownJob(jobNameStr, jobDescStr, node)
+              case JobTag.JobType_TemporalAgg    => TemporalAggJob(jobNameStr, jobDescStr, node)  
+              case _ => UnknownJob(jobNameStr, jobDescStr, node)
 	        } 
 	           
 	        jobList = jobList ::: List(jobEntry)

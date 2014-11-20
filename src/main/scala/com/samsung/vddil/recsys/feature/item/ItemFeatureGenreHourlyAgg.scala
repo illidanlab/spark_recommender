@@ -1,7 +1,6 @@
 package com.samsung.vddil.recsys.feature.item
 
-
-import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.job.TemporalAggJob
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.hadoop.conf._
 import org.apache.hadoop.fs._
@@ -26,7 +25,7 @@ object ItemFeatureGenreHourlyAgg {
   val Min_Wtime       = 300;
 
   def getValidSchedulePaths(dates:Array[String],
-    jobInfo:RecJob):Array[(String, String)] = {
+    jobInfo:TemporalAggJob):Array[(String, String)] = {
      
     val sc = jobInfo.sc
 
@@ -58,7 +57,7 @@ object ItemFeatureGenreHourlyAgg {
     val hadoopConf = sc.hadoopConfiguration
 
     val valSchedPaths = filtDates.map{date =>
-      (date, jobInfo.resourceLoc(RecJob.ResourceLoc_SchedWTime) + date)
+      (date, jobInfo.resourceLoc(TemporalAggJob.ResourceLoc_SchedWTime) + date)
     }.filter(x => {
       val path = new Path(x._2)
       val fileSystem = path.getFileSystem(hadoopConf)
@@ -115,18 +114,18 @@ object ItemFeatureGenreHourlyAgg {
   
   //return RDD of item and Genrefor passed date 
   def getItemGenre(date:String, items:RDD[String], 
-    jobInfo:RecJob):RDD[(String, String)] = {
+    jobInfo:TemporalAggJob):RDD[(String, String)] = {
     
     //spark context
     val sc:SparkContext = jobInfo.sc
 
-    val featSrc:String = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_genre*"
+    val featSrc:String = jobInfo.resourceLoc(TemporalAggJob.ResourceLoc_RoviHQ) + date + "/program_genre*"
     //TODO: verify toSet
     val bItemSet = sc.broadcast(items.collect.toSet)
     
     
     val param_GenreLang:String = GenreLangFilt
-    val genreSource = jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/genre*" 
+    val genreSource = jobInfo.resourceLoc(TemporalAggJob.ResourceLoc_RoviHQ) + date + "/genre*" 
     
     //genreId, genreDesc
     val genreMap:RDD[(String, String)] =
@@ -189,7 +188,7 @@ object ItemFeatureGenreHourlyAgg {
 
   //duid, hour_slot, genre, time    
   def getHourlyAggGenreWTime(schedPaths:Array[(String, String)],
-    jobInfo:RecJob):RDD[(String, Int, String, Int)] = {
+    jobInfo:TemporalAggJob):RDD[(String, Int, String, Int)] = {
     
     //spark context
     val sc = jobInfo.sc
@@ -267,7 +266,7 @@ object ItemFeatureGenreHourlyAgg {
   }
 
 
-  def saveAggGenreHourly(jobInfo:RecJob) = {
+  def saveAggGenreHourly(jobInfo:TemporalAggJob) = {
     
     //spark context
     val sc = jobInfo.sc
@@ -280,7 +279,7 @@ object ItemFeatureGenreHourlyAgg {
       getHourlyAggGenreWTime(schedPaths, jobInfo)
 
     val hourlyAggGenreFileName:String =
-      jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeHourly"
+      jobInfo.resourceLoc(TemporalAggJob.ResourceLoc_JobFeature) + "/" + "aggGenreWTimeHourly"
 
     hourlyAggGenreWTime.map{x =>
       val duid:String  = x._1
