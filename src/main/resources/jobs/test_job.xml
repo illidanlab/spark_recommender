@@ -1,8 +1,8 @@
 <jobList xmlns:recsys="Samsung Recsys">
   <jobEntry>
     <jobType>recommendation</jobType>
-    <jobName>exp_cold_test_20140523_20140524</jobName>
-    <jobDesc>Test experiment from 20140523 to 20140524</jobDesc>
+    <jobName>exp_cold_test_20140522_20140525</jobName>
+    <jobDesc>Test experiment from 20140522 to 20140525</jobDesc>
     <sparkContext>
       <master>local[4]</master>
     </sparkContext>
