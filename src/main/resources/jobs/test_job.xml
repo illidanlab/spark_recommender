@@ -1,18 +1,18 @@
 <jobList xmlns:recsys="Samsung Recsys">
   <jobEntry>
     <jobType>recommendation</jobType>
-    <jobName>exp_cold_test_20140522_20140525</jobName>
-    <jobDesc>Test experiment from 20140522 to 20140525</jobDesc>
+    <jobName>exp_cold_test_20140523_20140524</jobName>
+    <jobDesc>Test experiment from 20140523 to 20140524</jobDesc>
     <sparkContext>
       <master>local[4]</master>
     </sparkContext>
     <resourceLocation>
-      <roviHq>hdfs://gnosis-01-01-01.crl.samsung.com:8020/apps/vddil/rovi_hq/</roviHq>
-      <watchTime>hdfs://gnosis-01-01-01.crl.samsung.com:8020/apps/vddil/duid-program-watchTime/</watchTime>
-      <workspace>hdfs://gnosis-01-01-01.crl.samsung.com:8020/user/m3.sharma/rec_spark_wsp/</workspace>
+      <roviHq>/data/ROVI/</roviHq>
+      <watchTime>/data/ACR/</watchTime>
+      <workspace>/work/</workspace>
+      <schedWTime>/duid-prog-st-chan-watchTime/</schedWTime>
     </resourceLocation>
     <trainDates>
-      <date>20140522</date>
       <date>20140523</date>
       <date>20140524</date>
     </trainDates>
