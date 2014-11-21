@@ -17,6 +17,7 @@ import scala.math.log
 import scala.io.Source
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.feature.FeatureStruct
 
 /*
  * Item Feature: extract TFIDF numerical features from synopsis
@@ -95,11 +96,15 @@ ItemFeatureExtractor {
     itemText.reduceByKey{(a, b) => a + " " + b}
   }
 
-
-  def getItemTerms(itemsText:RDD[(String, String)], minTermLen:Int
-    ):RDD[(String, List[String])] = {
-    //tokenize item texts and apply some filters
-    val itemTerms:RDD[(String, List[String])] = itemsText.map{itemText =>
+  /**
+   * Tokenizes and turns the item description into a set of words.  
+   */
+  def getItemTerms(
+          itemsText:RDD[(String, String)], 
+          minTermLen:Int):RDD[(String, List[String])] = {
+      
+     //tokenize item texts and apply some filters
+     val itemTerms:RDD[(String, List[String])] = itemsText.map{itemText =>
       val itemId:String = itemText._1
       val text:String = itemText._2
       val tokens:List[String] = text.split("""\b""").filter{token =>
@@ -124,9 +129,20 @@ ItemFeatureExtractor {
     itemTerms
   }
       
-
-  def getTermCounts(itemTerms:RDD[(String, List[String])], 
-    topTerms:Array[String], sc:SparkContext):RDD[(String, Vector)] = {
+  /**
+   * Given a tokenized words for each item, this method generates a 
+   * vector, where each dimension corresponds to the tfidf value at  
+   * the corresponding term in the input topTerms.
+   * 
+   * @param itemTerms 
+   * @param topTerms represents the ordered keywords, where tfidf is computed.
+   * @param sc SparkContext instance 
+   * @deprecated
+   */
+  def getTermCounts(
+          itemTerms:RDD[(String, List[String])], 
+          topTerms:Array[String], 
+          sc:SparkContext):RDD[(String, Vector)] = {
     
     //broadcast top terms to each partition
     val bTopTerms = sc.broadcast(topTerms) 
@@ -145,6 +161,45 @@ ItemFeatureExtractor {
     itemTermCounts
   }
 
+  /**
+   * Given a tokenized words for each item, this method generates a 
+   * vector, where each dimension corresponds to the tfidf value at  
+   * the corresponding term in the input topTerms.
+   * 
+   * @param itemTerms 
+   * @param topTerms represents the ordered keywords, where tfidf is computed.
+   * @param sc SparkContext instance 
+   */
+  def getTermCounts(
+          itemTerms:RDD[(String, List[String])], 
+          topTermsWithId:Map[String,(Int, Double)], 
+          sc:SparkContext):RDD[(String, Vector)] = {
+    
+    //broadcast top terms to each partition
+    val bTopTerms = sc.broadcast(topTermsWithId) 
+    
+    val numTopTerms = topTermsWithId.size
+    //get top term counts per item
+    val itemTermCounts:RDD[(String, Vector)] = itemTerms.map{x =>
+      val item = x._1
+      val termsList = x._2
+      
+      var featureVecPair = Map[Int, Double]()
+      termsList.foreach{ term =>
+          if(topTermsWithId.isDefinedAt(term)){
+              val entry = topTermsWithId(term)
+              val termIdx = entry._1
+              // update 
+              val value = featureVecPair.getOrElse(termIdx, 0.0)
+        	  featureVecPair = featureVecPair.updated(termIdx, value + 1.0)
+          }
+      }
+      val featureVec = Vectors.sparse(numTopTerms, featureVecPair.toList)
+      (item, featureVec)
+    }
+
+    itemTermCounts
+  }
 
   def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
     dates.map{date =>
@@ -160,18 +215,17 @@ ItemFeatureExtractor {
     
     //get default parameters
     val N:Int = featureParams.getOrElse("N",  "500").toInt
-	  val MinTermLen:Int = featureParams.getOrElse("MINTERMLEN", "2").toInt
-
-    val tfIdfs:RDD[(String, Double)] = sc.textFile(featureMapFileName).map{line =>
-      val fields = line.split(',')
-      val term = fields(0)
-      val score = fields(1).toDouble
-      (term, score)
-    }
-
-    //get top N tf-idf terms sorted by decreasing score
-    val sortedTerms = tfIdfs.collect.sortBy(-_._2) 
-    val topTerms = sortedTerms.slice(0, N).map(_._1)
+	val MinTermLen:Int = featureParams.getOrElse("MINTERMLEN", "2").toInt
+    
+	  
+	val topTermsWithId = sc.textFile(featureMapFileName).map{line => 
+        val fields        = line.split(',')
+        val idx:Int       = fields(0).toInt
+        val term:String   = fields(1)
+        val value:Double  = fields(2).toDouble
+        //(idx, (term, value))
+        (term, (idx,  value))
+    }.collectAsMap.toMap
     
     //broadcast item set
     val bItemsSet = sc.broadcast(items)
@@ -184,8 +238,7 @@ ItemFeatureExtractor {
       MinTermLen)
     
     //get top term counts or itemFeatures
-    val itemFeatures:RDD[(String, Vector)] = getTermCounts(itemTerms,
-      topTerms, sc)
+    val itemFeatures:RDD[(String, Vector)] = getTermCounts(itemTerms, topTermsWithId, sc)
 
     itemFeatures
   }
@@ -263,12 +316,43 @@ ItemFeatureExtractor {
 	                                                             }
 	 
 	    //get top N tf-idf terms sorted by decreasing score
-	    val sortedTerms = tfIdfs.collect.sortBy(-_._2) 
-	    val topTerms = sortedTerms.slice(0, N).map(_._1)
-	
+	    val sortedTerms = tfIdfs.collect.sortBy(-_._2)
+	    //val topTerms = sortedTerms.slice(0, N).map(_._1)
+	    
+	    //associate an id for order purpose. 
+	    val topTermsWithIdArray:Array[(Int, (String, Double))] = 
+	        sortedTerms.slice(0, N).zipWithIndex.map{line =>
+	        	val idx   = line._2
+	        	val term  = line._1._1
+	        	val value = line._1._2
+	        	(idx, (term, value))
+	    	}
+	    
+	    //save the terms with score
+	    if (jobInfo.outputResource(featureMapFileName)){
+	        Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
+
+	        val featureMapRdd = sc.parallelize(topTermsWithIdArray.map{line => 
+	            val idx   = line._1
+	            val term  = line._2._1
+	            val score = line._2._2
+	            (idx, term + "," + score) 
+	        })
+	        	        
+	        FeatureStruct.saveText_featureMapRDD(featureMapRdd, featureMapFileName, jobInfo)
+	    }
+	    
+	    val topTermsWithId = topTermsWithIdArray.map{line => 
+	        val idx   = line._1
+	        val term  = line._2._1
+	        val value = line._2._2
+	        (term, (idx, value))
+	    }.toMap
+	    
 	    //get top term counts per item
-	    val itemTermCounts:RDD[(String, Vector)] = getTermCounts(itemTerms,
-	      topTerms, sc)
+	    val itemTermCounts:RDD[(String, Vector)] = getTermCounts(itemTerms, topTermsWithId, sc)
+	      
+	      
 	    //replace string id with int id for items
 	    val subItemTermCounts:RDD[(Int, Vector)] =
 	      itemTermCounts.map{itemTermCount =>
@@ -282,20 +366,12 @@ ItemFeatureExtractor {
 	      Logger.logger.info("Dumping feature resource: " + featureFileName)
 	      subItemTermCounts.saveAsObjectFile(featureFileName)
 	    }
-	    
-	    //save the terms with score
-	    if (jobInfo.outputResource(featureMapFileName)){
-	      Logger.logger.info("Dumping featureMap resource: " + featureMapFileName)
-	      tfIdfs.map {x =>
-	        val term = x._1
-	        val score = x._2
-	        term + "," + score
-	      }.saveAsTextFile(featureMapFileName)
-	    }
+	    //Enable plain dump to check the features manually. 
+	    //subItemTermCounts.saveAsTextFile(featureFileName + "_txtDump")
+
 	    
 	    val featureSize = subItemTermCounts.first._2.size;
 	    
-	    //TODO: Feature Selection 
 	    val featurePostProcessor:List[FeaturePostProcessor] = List()
 	    val featureStruct:ItemFeatureStruct = 
 	        new ItemFeatureStruct(
