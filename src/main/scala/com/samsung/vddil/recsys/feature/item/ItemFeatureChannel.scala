@@ -19,7 +19,6 @@ import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtractor {
     val IdenPrefix:String = "ItemFeatureChannel"
-	var trFeatureParams = new HashMap[String,String]()
 	
 	def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
     	dates.map{date =>
@@ -262,7 +261,7 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 		            IdenPrefix, resourceIden, featureFileName, 
 		            featureMapFileName, featureParams, featureSize, 
 		            featureSize, featurePostProcessor, 
-		            ItemFeatureGenre)
+		            ItemFeatureGenre, None)
 		  
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct

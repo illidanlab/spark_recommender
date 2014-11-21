@@ -25,7 +25,7 @@ import com.samsung.vddil.recsys.feature.FeatureStruct
 object ItemFeatureSynopsisTFIDF extends FeatureProcessingUnit with
 ItemFeatureExtractor {
 
-  var trFeatureParams = new HashMap[String,String]()
+  
   val ItemIdInd = 1
   val ItemDescInd = 4
   val FeatSepChar = '|'
@@ -251,9 +251,6 @@ ItemFeatureExtractor {
     
 	  	val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
 	    
-	    //assign feature params
-	    trFeatureParams = featureParams
-	    
 	    //get spark context
 	    val sc = jobInfo.sc
 	
@@ -378,7 +375,7 @@ ItemFeatureExtractor {
 	                IdenPrefix, resourceIden, featureFileName, 
 	                featureMapFileName, featureParams, featureSize, 
 	                featureSize, featurePostProcessor, 
-	                ItemFeatureSynopsisTFIDF)
+	                ItemFeatureSynopsisTFIDF, None)
 	
 	    // 4. Generate and return a FeatureResource that includes all resources.  
 			val resourceMap:HashMap[String, Any] = new HashMap()

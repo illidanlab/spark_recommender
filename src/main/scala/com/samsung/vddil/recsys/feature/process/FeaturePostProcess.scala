@@ -157,8 +157,9 @@ trait FeaturePostProcessor{
 			outputFeatureSize,
 			inputFeatureSize,
 			input.featurePostProcessor:+ this,
-			input.extractor
-		) 
+			input.extractor,
+			Some(input)
+		)
     }
     
     override def toString():String = {

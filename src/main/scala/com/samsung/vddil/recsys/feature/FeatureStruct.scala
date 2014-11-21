@@ -60,9 +60,7 @@ trait FeatureStruct extends ResourceStruct{
 	    }
 	}
 	
-	/**
-	 * A list of processors. 
-	 */
+	/** A list of processors. */
 	def featurePostProcessor:List[FeaturePostProcessor]
 }
 
@@ -115,6 +113,8 @@ case class ItemFeatureStruct(
 				val featureSize:Int,
 				val featureSizeOriginal:Int,
 				val featurePostProcessor:List[FeaturePostProcessor],
-				val extractor:ItemFeatureExtractor
+				val extractor:ItemFeatureExtractor,
+				/** ItemFeatureStruct before current processing */
+				val originalItemFeatureStruct:Option[ItemFeatureStruct]
 			) extends FeatureStruct{
 }

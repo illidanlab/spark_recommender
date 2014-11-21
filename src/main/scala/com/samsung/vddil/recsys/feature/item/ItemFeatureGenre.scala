@@ -19,7 +19,6 @@ import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor {
 
-    var trFeatureParams = new HashMap[String,String]()
     val ItemGenreInd = 2
     val ItemIdInd = 1
     val FeatSepChar = '|'
@@ -137,9 +136,6 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
        
     	  //get spark context
         val sc = jobInfo.sc
-        
-        //assign feature params
-        trFeatureParams = featureParams
 
         // 1. Complete default parameters
         //  default parameter for genre: lang filtering. 
@@ -248,7 +244,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
           	        IdenPrefix, resourceIden, featureFileName, 
           	        featureMapFileName, featureParams, featureSize,
           	        featureSize, featurePostProcessor, 
-          	        ItemFeatureGenre)
+          	        ItemFeatureGenre, None)
         
         // 4. Generate and return a FeatureResource that includes all resources.  
         val resourceMap:HashMap[String, Any] = new HashMap()

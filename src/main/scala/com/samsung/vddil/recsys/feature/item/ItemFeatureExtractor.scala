@@ -7,10 +7,14 @@ import org.apache.spark.SparkContext
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 
 
 trait ItemFeatureExtractor {
   
+  
+    
   /**
    * Extracts features from feature locations for passed items
    * @param items set of items for which features will be extracted
@@ -23,6 +27,8 @@ trait ItemFeatureExtractor {
           featureParams:HashMap[String, String], featureMapFileName:String,
           sc:SparkContext): RDD[(String, Vector)]
 
+  
+  
   /**
    * Uses the extractFeature function to construct original feature vectors, and apply 
    * featurePostProcessors.   
@@ -30,12 +36,46 @@ trait ItemFeatureExtractor {
   def extract(
           items:Set[String], 
           featureSources:List[String],
+          featureStruct:ItemFeatureStruct,
+          sc:SparkContext): RDD[(String, Vector)] = {
+      
+      //first we look for the base feature structure
+      //which contains the original feature map to construct raw features.
+      
+      //we need to retrieve the original extractor
+      //because the feature map contains the original
+      //feature mapping.
+      var baseFeatureStruct = featureStruct
+      while(baseFeatureStruct.originalItemFeatureStruct.isDefined){
+          baseFeatureStruct = baseFeatureStruct.originalItemFeatureStruct.get
+      }
+      
+      extract(
+          items:Set[String], 
+          featureSources:List[String],
+          baseFeatureStruct.featureParams, 
+          baseFeatureStruct.featureMapFileName,
+          featureStruct.featurePostProcessor,
+          sc:SparkContext)
+  }
+  
+  
+  /**
+   * Uses the extractFeature function to construct original feature vectors, and apply 
+   * featurePostProcessors.   
+   */
+  private def extract(
+          items:Set[String], 
+          featureSources:List[String],
           featureParams:HashMap[String, String], 
           featureMapFileName:String,
           featurePostProcessors: List[FeaturePostProcessor],
           sc:SparkContext): RDD[(String, Vector)] = {
       
-      var featureRDD: RDD[(String, Vector)] = this.extractFeature(items, featureSources, featureParams, featureMapFileName, sc)
+      var featureRDD: RDD[(String, Vector)] 
+    		  = this.extractFeature(
+    		           items, featureSources, 
+    		           featureParams, featureMapFileName, sc)
       
       //post processing. 
       featurePostProcessors.foreach{processor =>
@@ -55,5 +95,5 @@ trait ItemFeatureExtractor {
   def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String]
 
   //feature parameters in train 
-  var trFeatureParams:HashMap[String, String]
+  //var trFeatureParams:HashMap[String, String]
 }

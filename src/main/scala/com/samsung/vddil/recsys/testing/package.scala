@@ -126,19 +126,10 @@ package object testing {
     val sc = jobInfo.sc
 
     val itemFeatures:List[RDD[(String, Vector)]] = featureOrder.map{feature =>
-      val itemFeatureExtractor:ItemFeatureExtractor =
-           feature.extractor
-        
-      val featMapFileName:String =
-           featureResourceMap(feature.resourceStr).featureMapFileName
-        
-      val featParams = itemFeatureExtractor.trFeatureParams
+      
+      val itemFeatureExtractor:ItemFeatureExtractor = feature.extractor
       val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)
-      
-      
-      itemFeatureExtractor.extract(
-              items, featureSources, featParams, featMapFileName, 
-              feature.featurePostProcessor, sc)
+      itemFeatureExtractor.extract(items, featureSources, feature, sc)
       
     }
 

@@ -59,6 +59,11 @@
 		        <param>
 		            <N>100</N>
 		        </param>
+		        <processes>
+                    <process>
+                        <name>dummy</name>
+                    </process>
+                </processes>
 		    </feature>
 			<feature>
 				<type>userFeature</type>

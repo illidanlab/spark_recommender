@@ -25,8 +25,6 @@ import com.samsung.vddil.recsys.feature.FeatureStruct
  *
  */
 object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtractor {
-
-    var trFeatureParams = new HashMap[String,String]()
     
     val ScheduleField_StartTime = 2
     val ScheduleField_EndTime   = 3
@@ -88,9 +86,6 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         val timeWindowStr = 
             featureParams.getOrElseUpdate(Param_TimeWindow, Param_TimeWindow_Default)
         val timeWindow = timeWindowStr.toInt
-        
-        //assign feature parameters for future use
-        trFeatureParams = featureParams
         
         //2. Generate resource identity
         val dataHasingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
@@ -175,7 +170,7 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
                     IdenPrefix, resourceIden, featureFileName, 
                     featureMapFileName, featureParams, featureSize,
                     featureSize, featurePostProcessor, 
-                    ItemFeatureShowTime)
+                    ItemFeatureShowTime, None)
         
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
