@@ -61,8 +61,28 @@ trait ModelStruct extends Serializable with ResourceStruct{
 	 */
 	var learnDataResourceStr:String
 	
-	/** Predicts the result, given a data point */
-	def predict(testData: Vector): Double
+	/** model vector dimensionality (length of the vectorized model) */
+	val modelDimension:Int
+	
+	/** 
+	 *  Predicts the result, given a data point. 
+	 *  The method first checks if the dimensionality of the vector is 
+	 *  consistent, and if not, throws IllegalArgumentException
+	 */
+	def predict(testData: Vector): Double = {
+	    val vectorDim = testData.size 
+	    
+	    if (vectorDim == this.modelDimension){
+	        predictVector(testData: Vector)
+	    }else{
+	        throw new IllegalArgumentException(
+	                s"Dimension inconsistent: desire $modelDimension actual $vectorDim"
+	                )
+	    }
+	}
+	
+	/** The prediction function */
+	def predictVector(testData: Vector): Double
 }
 
 object ModelStruct{
@@ -141,11 +161,12 @@ case class GeneralizedLinearModelStruct(
 		    override var learnDataResourceStr:String, 
 		    var modelFileName:String,
 		    var modelParams:HashMap[String, String] = new HashMap(), 
-		    override var model:GeneralizedLinearModel
+		    override var model:GeneralizedLinearModel,
+		    val modelDimension:Int
 	    )(implicit val ev: ClassTag[GeneralizedLinearModel]) 
 	      extends SerializableModel[GeneralizedLinearModel] with PartializableModel{
     
-    def predict(testData: Vector) = model.predict(testData.toMLLib)
+    def predictVector(testData: Vector) = model.predict(testData.toMLLib)
     
     override def saveModel() = {
         val out = Pipeline.instance.get.fs.create(new Path(modelFileName))
@@ -174,21 +195,23 @@ case class CustomizedModelStruct[M >: Null <: CustomizedModel](
         	override var learnDataResourceStr:String, 
         	var modelFileName:String,
 			var modelParams:HashMap[String, String] = new HashMap(), 
-			override var model:M
+			override var model:M,
+			val modelDimension:Int
         )(implicit val ev: ClassTag[M]) extends SerializableModel[M] with PartializableModel{
     
     def this(modelName:String, 
         	resourceStr:String, 
         	learnDataResourceStr:String, 
         	modelFileName:String,
-			modelParams:HashMap[String, String])(implicit mf: Manifest[M])
-		= this(modelName, resourceStr, learnDataResourceStr, modelFileName, modelParams, null)
+			modelParams:HashMap[String, String], 
+			modelDimensionality:Int)(implicit mf: Manifest[M])
+		= this(modelName, resourceStr, learnDataResourceStr, modelFileName, modelParams, null, modelDimensionality)
 		
 	if (this.model == null){
 	    this.loadModel()
 	}
 		
-    def predict(testData: Vector) = model.predict(testData.toMLLib)
+    def predictVector(testData: Vector) = model.predict(testData.toMLLib)
     
     override def saveModel() = {
         val out = Pipeline.instance.get.fs.create(new Path(modelFileName))

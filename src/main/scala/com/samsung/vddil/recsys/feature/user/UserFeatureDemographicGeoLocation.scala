@@ -8,6 +8,7 @@ import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.SparkContext
 import com.samsung.vddil.recsys.linalg.Vectors
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 /*
  * User Feature: Geo Location features. 
@@ -25,7 +26,9 @@ object UserFeatureDemographicGeoLocation extends FeatureProcessingUnit {
     val _MAX_Longitude          = 125
     
     
-	def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
+	def processFeature(
+	        featureParams:HashMap[String, String], 
+	        jobInfo:RecJob):FeatureResource = {
 		//Logger.error("%s has not been implmented.".format(getClass.getName()))
 		
 		// 1. Load defined parameters or use default parameters

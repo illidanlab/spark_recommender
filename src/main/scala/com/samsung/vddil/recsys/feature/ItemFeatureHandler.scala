@@ -10,6 +10,7 @@ import com.samsung.vddil.recsys.utils.Logger
 import scala.collection.mutable.{Map=>MMap}
 import com.samsung.vddil.recsys.feature.item.ItemFeatureShowTime
 import com.samsung.vddil.recsys.feature.item.ItemFeatureChannel
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 /*
  * This is the main entrance of the item (program) feature processing.
  * 
@@ -26,7 +27,11 @@ object ItemFeatureHandler extends FeatureHandler{
     //this will contain reverse mapping from resource string to Feature object 
     //val revItemFeatureMap:MMap[String, ItemFeatureExtractor] = MMap.empty
 
-	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean = {
+	def processFeature(
+	        featureName:String, 
+	        featureParams:HashMap[String, String],
+	        postProcessing:List[FeaturePostProcess], 
+	        jobInfo:RecJob):Boolean = {
 		Logger.logger.info("Processing item feature [%s:%s]".format(featureName, featureParams))
 		 
 		var resource:FeatureResource = FeatureResource.fail
@@ -45,14 +50,16 @@ object ItemFeatureHandler extends FeatureHandler{
 		if(resource.success){
 		   resource.resourceMap.get(FeatureResource.ResourceStr_ItemFeature) match{
 		      case featureStruct:ItemFeatureStruct=> 
-		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
+		        //perform feature selection 
+		        var processedFeatureStruct = featureStruct
+		        postProcessing.foreach{processUnit=>
+		            processUnit.train(processedFeatureStruct).foreach{processor=>
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct, jobInfo)
+		            }
+		        }   
+		        
+		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = processedFeatureStruct
 		   }
-
-//       featureName match{
-//		    case IFSynopsisTFIDF => revItemFeatureMap(resource.resourceIden) = ItemFeatureSynopsisTFIDF
-//		    case IFGenre =>         revItemFeatureMap(resource.resourceIden) = ItemFeatureGenre
-//		    case _ => Logger.logger.warn("Unknown item feature type for reverse feature map [%s]".format(featureName))
-//		  }
 
 		}
 		

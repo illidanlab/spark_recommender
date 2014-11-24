@@ -89,6 +89,11 @@ trait Vector extends Serializable {
     * copy 
     */
    def copy():Vector
+   
+   /**
+    * Constructs another array with a specified list of indices. 
+    */
+   def slice(indexArrange: List[Int]): Vector
 }
 
 
@@ -310,6 +315,10 @@ class DenseVector(val data:BDV[Double]) extends Vector {
   def copy():DenseVector = {
      new DenseVector(this.data.copy)
   }
+  
+  def slice(indexArrange: List[Int]): DenseVector = {
+       new DenseVector(data(indexArrange).toDenseVector)
+  }
 }
 
 /**
@@ -363,5 +372,11 @@ class SparseVector(val data:BSV[Double]) extends Vector{
     
     def copy():SparseVector = {
        new SparseVector(this.data.copy)
+    }
+    
+    def slice(indexArrange: List[Int]): SparseVector = {
+       //Here we have a hack to re-use the toDenseVector in the Vector. Actually it is not
+       // as efficient as implementing a native sparse slicing method.
+       new SparseVector(Vectors.breezeDenseToSparse(data(indexArrange).toDenseVector))
     }
 }

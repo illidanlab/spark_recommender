@@ -63,7 +63,7 @@ object RegressionModelRidge extends ModelProcessingUnit with RegLinearModel {
             = new GeneralizedLinearModelStruct(IdenPrefix, resourceIden, 
             		                            dataResourceStr,
                                                 modelFileName, modelParams, 
-                                                bestModel.get)
+                                                bestModel.get, allData.dimension)
         
         // 4. Compute training and testing error.
         

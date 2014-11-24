@@ -6,6 +6,8 @@ import com.samsung.vddil.recsys.ResourceStruct
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.rdd.RDD
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.job.RecJob
 
 /**
  * This data structure stores the information of feature
@@ -18,7 +20,10 @@ trait FeatureStruct extends ResourceStruct{
 	def featureIden:String
 	def resourcePrefix = featureIden
 	
+	/** this is the feature size*/
 	def featureSize:Int
+	/** this is the original feature size */
+	def featureSizeOriginal:Int
 	
 	/**
 	 * The resource string (identity plus parameter hash)
@@ -47,7 +52,36 @@ trait FeatureStruct extends ResourceStruct{
 	def getFeatureRDD():RDD[(Int, Vector)] = {
 	    Pipeline.instance.get.sc.objectFile[(Int, Vector)](featureFileName)
 	}
+	
+	def getFeatureMapRDD():RDD[(Int, String)] = {
+	    Pipeline.instance.get.sc.textFile(featureMapFileName).map{ line =>
+	        val sp = line.split(",", 2)
+	        (sp(0).toInt, sp(1))
+	    }
+	}
+	
+	/** A list of processors. */
+	def featurePostProcessor:List[FeaturePostProcessor]
 }
+
+object FeatureStruct{
+    def saveText_featureMapRDD(rdd: RDD[(Int, String)], fileName:String, jobInfo:RecJob) = {
+        if (jobInfo.outputResource(fileName)){
+        	rdd.map{pair =>
+            	pair._1.toString + "," + pair._2
+        	}.saveAsTextFile(fileName)
+        }
+    }
+    
+    def saveText_featureMapRDD(rdd: => RDD[(Int, (Int, String))], fileName:String, jobInfo:RecJob) = {
+        if (jobInfo.outputResource(fileName)){
+        	rdd.map{pair =>
+	            pair._1.toString + "," + pair._2._1.toString + "," + pair._2._2
+	        }.saveAsTextFile(fileName)
+        }
+    }
+}
+
 
 /**
  * The data structure of user feature 
@@ -58,7 +92,9 @@ case class UserFeatureStruct(
 				val featureFileName:String, 
 				val featureMapFileName:String,
 				val featureParams:HashMap[String, String],
-				val featureSize:Int
+				val featureSize:Int,
+				val featureSizeOriginal:Int,
+				val featurePostProcessor:List[FeaturePostProcessor]
 			) extends FeatureStruct {
 }
 
@@ -75,6 +111,10 @@ case class ItemFeatureStruct(
 				val featureMapFileName:String,
 				val featureParams:HashMap[String, String],
 				val featureSize:Int,
-				val extractor:ItemFeatureExtractor
+				val featureSizeOriginal:Int,
+				val featurePostProcessor:List[FeaturePostProcessor],
+				val extractor:ItemFeatureExtractor,
+				/** ItemFeatureStruct before current processing */
+				val originalItemFeatureStruct:Option[ItemFeatureStruct]
 			) extends FeatureStruct{
 }

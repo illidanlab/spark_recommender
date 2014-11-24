@@ -14,10 +14,11 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import scala.collection.Map
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor {
 
-    var trFeatureParams = new HashMap[String,String]()
     val ItemGenreInd = 2
     val ItemIdInd = 1
     val FeatSepChar = '|'
@@ -100,9 +101,10 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
    * @param sc spark context instance
    * @return paired RDD of item and its feature vector
    */
-  def extractFeature(items:Set[String], featureSources:List[String],
-    featureParams:HashMap[String, String], featureMapFileName:String, 
-    sc:SparkContext): RDD[(String, Vector)] = {
+  def extractFeature(
+          items:Set[String], featureSources:List[String],
+          featureParams:HashMap[String, String], featureMapFileName:String,
+          sc:SparkContext): RDD[(String, Vector)] = {
     
     val genreInd2KeyDesc:RDD[(Int, String, String)] =
       sc.textFile(featureMapFileName).map{line =>
@@ -126,15 +128,14 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
 
 
 
-    def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
+    def processFeature(
+            featureParams:HashMap[String, String], 
+            jobInfo:RecJob):FeatureResource = {
     		
     	val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
        
     	  //get spark context
         val sc = jobInfo.sc
-        
-        //assign feature params
-        trFeatureParams = featureParams
 
         // 1. Complete default parameters
         //  default parameter for genre: lang filtering. 
@@ -236,10 +237,14 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
         
         val featureSize = itemFeature.first._2.size
         
+        //TODO: Feature Selection 
+	    val featurePostProcessor:List[FeaturePostProcessor] = List()
         val featureStruct:ItemFeatureStruct = 
           	new ItemFeatureStruct(
           	        IdenPrefix, resourceIden, featureFileName, 
-          	        featureMapFileName, featureParams, featureSize, ItemFeatureGenre)
+          	        featureMapFileName, featureParams, featureSize,
+          	        featureSize, featurePostProcessor, 
+          	        ItemFeatureGenre, None)
         
         // 4. Generate and return a FeatureResource that includes all resources.  
         val resourceMap:HashMap[String, Any] = new HashMap()

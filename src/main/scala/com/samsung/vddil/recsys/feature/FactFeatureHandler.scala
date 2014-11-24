@@ -6,6 +6,7 @@ import com.samsung.vddil.recsys.feature.fact.FactFeatureNMF
 import com.samsung.vddil.recsys.feature.fact.FactFeaturePMF
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 /*
  * This is the main entrance of the factorization feature processing.
@@ -16,7 +17,11 @@ object FactFeatureHandler extends FeatureHandler{
 	val FFNMF = "nmf"
 	val FFPMF = "pmf"
 	
-	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean = {
+	def processFeature(
+	        featureName:String, 
+	        featureParams:HashMap[String, String], 
+	        postProcessing:List[FeaturePostProcess], 
+	        jobInfo:RecJob):Boolean = {
 		Logger.logger.info("Processing factorization feature [%s:%s]".format(featureName, featureParams))
 		 
 		var resource:FeatureResource = FeatureResource.fail
@@ -35,12 +40,25 @@ object FactFeatureHandler extends FeatureHandler{
 		  
 		   resource.resourceMap.get(FeatureResource.ResourceStr_ItemFeature) match{
 		      case featureStruct:ItemFeatureStruct => 
-		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = featureStruct
+		        var processedFeatureStruct = featureStruct
+		        postProcessing.foreach{processUnit=>
+		            processUnit.train(processedFeatureStruct).foreach{processor=>
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct, jobInfo)
+		            }
+		        }
+		        
+		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = processedFeatureStruct
 		   }
 		   
 		   resource.resourceMap.get(FeatureResource.ResourceStr_UserFeature) match{
 		      case featureStruct:UserFeatureStruct => 
-		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = featureStruct
+		        var processedFeatureStruct = featureStruct
+		        postProcessing.foreach{processUnit=>
+		            processUnit.train(processedFeatureStruct).foreach{processor=>
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct, jobInfo)
+		            }
+		        }
+		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = processedFeatureStruct
 		   }
 		   
 		}
