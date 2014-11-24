@@ -26,24 +26,30 @@ object TestResourceLinearRegNotCold {
         
         
 		//hash string to cache intermediate files, helpful in case of crash    
-        val itemFeatObjFile     = testResourceDir + "/" + IdenPrefix + "/itemFeat"
-	    val userFeatObjFile     = testResourceDir + "/" + IdenPrefix + "/userFeat"
-	    val userItemFeatObjFile = testResourceDir + "/" + IdenPrefix + "/userItemFeat" 
-	    
-    	//get test data
-		var testData = jobInfo.jobStatus.testWatchTime.get
+        val itemFeatObjFile      = testResourceDir + "/" + IdenPrefix + "/itemFeat"
+	    val userFeatObjFile      = testResourceDir + "/" + IdenPrefix + "/userFeat"
+	    val userItemFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/userItemFeat" 
+	    val filterRatingDataFile = testResourceDir + "/" + IdenPrefix + "/filterTestRatingData"
 		
 		//get spark context
 		val sc = jobInfo.sc
 	    
 		//process test data
-		testData = filterTestRatingData(testData, jobInfo.jobStatus.resourceLocation_CombinedData_train.get, sc)
+		if (jobInfo.outputResource(filterRatingDataFile)){
+		    // cache the filtered rating data
+		    // 
+			val testData = filterTestRatingData(
+			        jobInfo.jobStatus.testWatchTime.get, 
+			        jobInfo.jobStatus.resourceLocation_CombinedData_train.get, 
+			        sc)
+			testData.saveAsObjectFile(filterRatingDataFile)
+		}
+        
+        val testData:RDD[com.samsung.vddil.recsys.job.Rating] = sc.objectFile(filterRatingDataFile)
 		
-		val testItems = testData.map{ _.item}
-                            .distinct
+		val testItems = testData.map{ _.item}.distinct
 
-        val testUsers = testData.map{ _.user}
-		                        .distinct
+        val testUsers = testData.map{ _.user}.distinct
 		
 		//get feature orderings
         val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
