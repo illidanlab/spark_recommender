@@ -53,7 +53,7 @@ object UserFeatureHandler extends FeatureHandler{
 		            }
 		        }   
 		        
-		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = processedFeatureStruct
+		        jobInfo.jobStatus.resourceLocation_UserFeature(processedFeatureStruct.resourceIden) = processedFeatureStruct
 		   }
 		}
 	    

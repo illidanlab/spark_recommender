@@ -58,7 +58,7 @@ object ItemFeatureHandler extends FeatureHandler{
 		            }
 		        }   
 		        
-		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = processedFeatureStruct
+		        jobInfo.jobStatus.resourceLocation_ItemFeature(processedFeatureStruct.resourceIden) = processedFeatureStruct
 		   }
 
 		}

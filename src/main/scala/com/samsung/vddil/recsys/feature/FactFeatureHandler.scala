@@ -47,7 +47,7 @@ object FactFeatureHandler extends FeatureHandler{
 		            }
 		        }
 		        
-		        jobInfo.jobStatus.resourceLocation_ItemFeature(resource.resourceIden) = processedFeatureStruct
+		        jobInfo.jobStatus.resourceLocation_ItemFeature(processedFeatureStruct.resourceIden) = processedFeatureStruct
 		   }
 		   
 		   resource.resourceMap.get(FeatureResource.ResourceStr_UserFeature) match{
@@ -58,7 +58,7 @@ object FactFeatureHandler extends FeatureHandler{
 		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct, jobInfo)
 		            }
 		        }
-		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = processedFeatureStruct
+		        jobInfo.jobStatus.resourceLocation_UserFeature(processedFeatureStruct.resourceIden) = processedFeatureStruct
 		   }
 		   
 		}
