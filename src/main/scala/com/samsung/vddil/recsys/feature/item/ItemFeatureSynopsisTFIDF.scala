@@ -32,6 +32,13 @@ ItemFeatureExtractor {
     Source.fromInputStream(inputStream).mkString.split('\n').map(_.trim).toSet
   }
 
+  /**
+   * generates the text description for each item
+   * @param itemMap RDD pair of item ID and item text description
+   * @param featureSources a list of file locations
+   * @param sc spark context instance
+   * @return RDD pair of item ID and item text description
+   */
   def getItemsText(
           itemMap:RDD[(String, Int)], 
           featureSources:List[String], 
@@ -93,7 +100,12 @@ ItemFeatureExtractor {
     itemText.reduceByKey{(a, b) => a + " " + b}
   }
 
-
+  /**
+   * generates RDD pair of item ID and text description
+   * @param RDD pair of item ID and text description
+   * @param minTermLen minimum length of a term
+   * @return RDD pair of item ID and a list of item terms (key words)
+   */
   def getItemTerms(itemsText:RDD[(String, String)], minTermLen:Int
     ):RDD[(String, List[String])] = {
     //tokenize item texts and apply some filters
@@ -122,7 +134,13 @@ ItemFeatureExtractor {
     itemTerms
   }
       
-
+  /**
+   * counts the frequency of top terms in the text description for each item
+   * @param itemTerms RDD pair of item ID and a list of terms associated with the item
+   * @param topTerms an array of top terms based on tfidf score
+   * @param sc spark context instance
+   * @return RDD pair of item ID and a sparse vector of top term frequency
+   */
   def getTermCounts(itemTerms:RDD[(String, List[String])], 
     topTerms:Array[String], sc:SparkContext):RDD[(String, Vector)] = {
     
@@ -143,14 +161,27 @@ ItemFeatureExtractor {
     itemTermCounts
   }
 
-
+  /**
+   * generates a list of program description locations for the list of dates provided
+   * @param dates a list of dates
+   * @param jobInfo RecJob instance
+   * @return a list of program description locations
+   */
   def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
     dates.map{date =>
       jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_desc*"
     }.toList
   }
   
-
+  /**
+   * extracts features based on tfidf score
+   * @param items a set of items
+   * @param featureSources a list of file locations
+   * @param featureParams mapping from parameter name to value
+   * @param featureMapFileName feature description
+   * @param sc spark context instance
+   * @return RDD pair of item ID and sparse feature vector
+   */
   def extractFeature(items:Set[String], featureSources:List[String],
     featureParams:HashMap[String, String], featureMapFileName:String, 
     sc:SparkContext): RDD[(String, Vector)] = {

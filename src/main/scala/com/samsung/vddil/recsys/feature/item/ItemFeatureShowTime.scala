@@ -20,7 +20,7 @@ import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import scala.util.control.Breaks._
 /**
  * @author jiayu.zhou
- *
+ * This is the class for generating item feature based on show time frequency.
  */
 object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtractor {
 
@@ -32,13 +32,28 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
     
     val Param_TimeWindow = "timeWindow"
     val Param_TimeWindow_Default = "12"
-        
+    
+    /**
+     * generates a list of ROVI program schedule information based on the dates provided
+     * @param dates a list of dates
+     * @param jobInfo a RecJob instance    
+     * @return a list of locations of ROVI program schedules for dates specified
+     */    
     def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
     	dates.map{date =>
       		jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/schedule*"
     	}.toList
     }
         
+    /**
+     * extracts sparse featur vector for each item. Only used for testing.
+     * @param items a set of items
+     * @param a list of locations
+     * @param featureParams parameters
+     * @param featureMapFileName UNUSED in the function
+     * @param sc spark context instance
+     * @return RDD pair of program ID and sparse feature vector
+     */
     def extractFeature(
             items:Set[String], 
             featureSources:List[String],
@@ -74,7 +89,10 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         
         programTime
     }
-        
+
+	/**
+	 * loads, processes and extracts feature for training. 
+	 */    
     def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
         
         val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
@@ -178,7 +196,10 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
     }
     
     /**
-     * generate show time features.
+     * generates show time features.
+     * @param showTimeSet a set of program starting/ending time pairs
+     * @rangeSlot a sequence of slot thresholds
+     * @return sparse feature vector
      */
     def generateFeatureVector(
             showTimeSet: Set[(Int, Int)], 
@@ -203,7 +224,11 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         //create features.
         Vectors.sparse(feature)
     }
-    
+    /**
+     * generates a human readable map for each time slot 
+     * @param rangeSlot a sequence of slot thresholds
+     * @return list of slot thresholds
+     */
     def getFeatureMap(rangeSlot:IndexedSeq[Int]):List[String] = {
         var featureMap = List[String]()
         for (i <- Range(1, rangeSlot.size)){

@@ -14,7 +14,12 @@ import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashMap
 import scala.util.control.Breaks._
 
-
+/**
+ * This is item-channel feature extractor class, which creates sparse features for each 
+ * item (program) for each date specified. For each item, the sparse feature vector indicates 
+ * on which channel the item is broadcasted.
+ * 
+ */
 object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtractor {
     val IdenPrefix:String = "ItemFeatureChannel"
 	var trFeatureParams = new HashMap[String,String]()
@@ -24,7 +29,14 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
       		jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/schedule*"
     	}.toList
     }
-	
+	/**
+	 * Creates a map from channel ID to the index of that channel in feature vector.
+	 * The index of a channel is 0-based.
+	 * @param featureMapFileName file location containing information as
+	 * sourceFeatureId + "," + sourceId + "," + sourceDesc, where sourceDesc is sourceName
+	 * @param sc spark context 
+	 * @return map channel ID to the index of a channel in feature vector
+	 */
     def loadSourceMap(featureMapFileName:String, sc:SparkContext):
     		scala.collection.Map[String,Int]= {
 	    sc.textFile(featureMapFileName).map{line=>
@@ -35,6 +47,16 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 		}.collectAsMap
     }
     
+    /**
+     * constructs sparse binary feature vector for each program ID
+     * @param scheduleFiles a list of ROVI schedules for the given dates
+     * @param items an ordered set of program IDs
+     * @param sourceMap map between channel ID to the index in feature vector
+     * @param sc spark context
+     * @return paired RDD of item and its feature vector. If a program is 
+     * broadcasted in a channel then the corresponding element will be 1 in the
+     * feature vector
+     */
     def constructChannelFeature(
             scheduleFiles:List[String], 
             items:Set[String],
@@ -69,6 +91,8 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
     
     val maximum_channel_association = 20
     /**
+     * constructs a map from channelID to an integer range from 0
+     * to the number of distinct channelID minus one
      * itemMap = trainCombData.getItemMap()
      */
     def constructChannelFeatureMap(
@@ -118,7 +142,15 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 		    
 		featureMap
     }
-    
+    /**
+     * extracts sparse binary feature vector for each program. 
+     * @param items set of passed items (programs)
+     * @param featureSources list of files to extract feature
+     * @param featureParams passed feature parameters at time of training
+     * @param featureMapFileName contains mapping from channel to indices of feature vector
+     * @param sc spark context instance
+     * @return paired RDD of item and its feature vector
+     */
 	def extractFeature(
             items:Set[String], 
             featureSources:List[String],
@@ -142,6 +174,9 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 	val ScheduleField_ProgId = 4
 	val ScheduleField_ChannelId = 1
 	
+	/**
+	 * loads, processes and extracts feature for training. 
+	 */
 	def processFeature(
 	        featureParams:HashMap[String, String], 
 	        jobInfo:RecJob):FeatureResource = {
@@ -184,7 +219,8 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 			val bFeatureMap = sc.broadcast(featureMap)
 			
 			val featureId2Desc:RDD[(String, String)] = 
-		        sourceFiles.map{sourceFile => 
+		        sourceFiles.map{
+			    	sourceFile => 
 			        val curSourceMap:RDD[(String, String)] =
 			            sc.textFile(sourceFile).map{line =>
 			            	val fields = line.split('|')
