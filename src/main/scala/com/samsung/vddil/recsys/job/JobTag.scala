@@ -16,8 +16,8 @@ object JobTag {
 	val JobDesc = "jobDesc"
   
 	val JobType_Recommendation = "recommendation"
-	val JobType_HelloWorld = "helloworld"
-	
+	val JobType_HelloWorld     = "helloworld"
+  val JobType_TemporalAgg    = "temporalagg"
 	  
 	val RecJobSparkContext = "sparkContext"
     val RecJobSparkContextMaster = "master"
@@ -80,7 +80,8 @@ object JobTag {
 	val RecJobResourceLocationRoviHQ = "roviHq"
 	val RecJobResourceLocationWatchTime = "watchTime"
 	val RecJobResourceLocationWorkspace = "workspace"
-	  
+	val RecJobResourceSchedLocation = "schedWTime"
+
 	val RecJobDataSplit = "dataSplit"
 	val RecJobDataSplitTestRatio = "testingRatio"
 	val RecJobDataSplitValidRatio = "validationRatio"
