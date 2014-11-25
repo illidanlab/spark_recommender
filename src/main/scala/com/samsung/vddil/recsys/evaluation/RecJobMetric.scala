@@ -120,18 +120,29 @@ case class RecJobMetricColdRecall(metricName:String, metricParams: HashMap[Strin
    * intersection with cold items
    */
   def run(topNPredColdItems:RDD[(Int, (List[String], Int))]):RecJobMetric.MetricResult = {
-    val (recallSum, count) = topNPredColdItems.map{x =>
-      //ideally it should be N, but some times the number of cold items can be
-      //less than N for a user
-      val topNSize:Int = x._2._1.length
-      //compute recall by dividing intersection with actual sold items by N or
-      //topNSize
-      val recall:Double = x._2._2.toDouble/topNSize
-      (recall, 1)
-    }.reduce{(a,b) =>
-      (a._1+b._1, a._2+b._2)    
+    Logger.info("topNPredColdItem" + topNPredColdItems.count)
+    
+    val recall =  if (topNPredColdItems.count == 0){
+        //no data to compute: 
+        //  this typically means there is no cold start entries. 
+        //  and one possible bug is the feature extractor is not functional. 
+        -1
+    }else{
+    	val (recallSum, count) = topNPredColdItems.map{x =>
+	      //ideally it should be N, but some times the number of cold items can be
+	      //less than N for a user
+	      val topNSize:Int = x._2._1.length
+	      //compute recall by dividing intersection with actual sold items by N or
+	      //topNSize
+	      val recall:Double = x._2._2.toDouble/topNSize
+	      (recall, 1)
+	    }.reduce{(a,b) =>
+	      (a._1+b._1, a._2+b._2)    
+	    }
+	    (recallSum*1.0)/count
     }
-    val recall = (recallSum*1.0)/count
+    
+    
     
     Map("Recall" -> recall)
   }

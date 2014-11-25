@@ -104,7 +104,7 @@ object TestResourceRegItemColdHit{
     //cold items with all features
     val finalColdItems:Set[String] = coldItemFeatures.map(_._1).collect.toSet
   
-    Logger.info("Number of cold items: " + finalColdItems.size)
+    Logger.info("Number of cold items: " + finalColdItems.size) //TODO: this could be zero. 
 
     //broadcast cold items
     val bColdItems = sc.broadcast(finalColdItems)
@@ -112,7 +112,8 @@ object TestResourceRegItemColdHit{
     //users which preferred cold items
     val preferredUsers:RDD[String] = testData.filter(x =>
         bColdItems.value(x._2)).map(_._1)
-    
+    Logger.info("The number of preferred users with cold item: " + preferredUsers.count) //TODO: this could be zero. 
+        
     //get users in training
     val trainUsers:RDD[String] = trainCombData.getUserList() 
     
@@ -122,6 +123,7 @@ object TestResourceRegItemColdHit{
 
     //If userSampleParam is larger than 1 we treat them as real counts
     //or else we treat them as percentage. 
+    //TODO: preventive treatment for allColdUsersCount.toDouble is zero. 
     val userSamplePc:Double = 
         if (userSampleParam > 1)  userSampleParam/allColdUsersCount.toDouble 
         else userSampleParam 
@@ -140,6 +142,8 @@ object TestResourceRegItemColdHit{
     val coldItemUsers:RDD[Int] = sampledColdUsers.map(x =>
         (x,1)).join(userMapRDD).map{_._2._2}
     val coldItemUsersCount = coldItemUsers.count
+    Logger.info(s"Cold-item user count: $coldItemUsersCount")
+    
     
 
     //replace userId in test with intId and contain only cold items

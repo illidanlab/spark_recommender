@@ -129,8 +129,13 @@ package object testing {
       
       val itemFeatureExtractor:ItemFeatureExtractor = feature.extractor
       val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)
-      itemFeatureExtractor.extract(items, featureSources, feature, sc)
       
+      val result: RDD[(String, com.samsung.vddil.recsys.linalg.Vector)] = 
+          itemFeatureExtractor.extract(items, featureSources, feature, sc)
+          
+      Logger.info("Feature extracted: " + result.count)
+      
+      result
     }
 
     //combine feature in order
