@@ -12,6 +12,7 @@ import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
+
 /**
  * @author jiayu.zhou
  *
@@ -46,7 +47,7 @@ case class FeatureNormalization(
     
     def train[T](input: FeatureStruct):Option[FeaturePostProcessor] = {
         name match {
-	        case "dummy" => DummyFeaturePostProcessor.train(input, params)
+	        case "l2normalize" => l2NormalizationProcessor.train(input, params)
 	        case _ => None
 	    }
     }
