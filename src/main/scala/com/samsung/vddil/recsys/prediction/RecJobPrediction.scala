@@ -68,14 +68,7 @@ case class RecJobPrediction (
             
         //generate prediction scores for all users and specified items. 
         val prediction = 
-            generatePredictionScores(jobInfo, model, contentDates, predResourceDir, itemList).
-            map{ x=> 
-                val userId:Int     = x._1 
-                val progId:String  = x._2._1
-                val predVal:Double = x._2._2 
-        		(userId, progId, predVal)
-        	}
-        
+            generatePredictionScores(jobInfo, model, contentDates, predResourceDir, itemList)
         Logger.info("Total (uid, pid, score) entries are " + prediction.count())
         
         //perform recommendation. 

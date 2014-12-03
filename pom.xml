@@ -132,8 +132,8 @@
          <configuration>
 	       <archive>
 	         <manifest>
-	           <mainClass>com.samsung.vddil.recsys.Pipeline</mainClass>
-	           <packageName>com.samsung.vddil.recsys</packageName>
+	           <mainClass>com.samsung.vddil.recsys.prediction.RecOutput</mainClass>
+	           <packageName>com.samsung.vddil.recsys.prediction</packageName>
 	         </manifest>
 	         <manifestEntries>
 	           <mode>development</mode>
