@@ -39,34 +39,34 @@ object RecOutput {
 
   var sc: SparkContext = null
 
-  def main(args: Array[String]) {
-    val date = "20140804"
-    val roviPath = s"s3://vddil.data.standard/apps/vddil/rovi_hq/${date}/schedule.txt.gz"
-    val currentHour = "201408040100"
-    val inputPath = "s3://vddil.recsys.east/input_list.txt"
-    //val outputPath = "s3://vddil.recsys.east/output/"
-    val currentTime = System.currentTimeMillis()
-    val outputPath = s"hdfs:///output-${currentTime}/"
-    val programMapPath = outputPath + "program-map.txt"
-    val appName = "OutputRec"     
-    val conf = new SparkConf().setAppName(appName)
-        .set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")
-        .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-        .set("spark.kryo.registrator", "com.samsung.vddil.recsys.SerializationRegistrator")
-        .set("spark.yarn.executor.memoryOverhead", "768")
-        .set("spark.rdd.compress", "true")
-        .set("spark.storage.memoryFraction", "0.2")
-        .set("spark.core.connection.ack.wait.timeout", "600")
-        .set("spark.akka.frameSize", "50")
-        .set("spark.executor.memory", "30g")
-        .set("spark.shuffle.spill", "true")
-
-    sc = new SparkContext(conf)
-    val paraSc: SparkContext = null
-    val K = 3
-    val programScorePaths = sc.textFile(inputPath).collect
-    doRecommendation(paraSc, date, roviPath, inputPath, programScorePaths, K)
-  }
+//  def main(args: Array[String]) {
+//    val date = "20140804"
+//    val roviPath = s"s3://vddil.data.standard/apps/vddil/rovi_hq/${date}/schedule.txt.gz"
+//    val currentHour = "201408040100"
+//    val inputPath = "s3://vddil.recsys.east/input_list.txt"
+//    //val outputPath = "s3://vddil.recsys.east/output/"
+//    val currentTime = System.currentTimeMillis()
+//    val outputPath = s"hdfs:///output-${currentTime}/"
+//    val programMapPath = outputPath + "program-map.txt"
+//    val appName = "OutputRec"     
+//    val conf = new SparkConf().setAppName(appName)
+//        .set("spark.executor.extraJavaOptions ", "-XX:+PrintGCDetails -XX:+HeapDumpOnOutOfMemoryError")
+//        .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+//        .set("spark.kryo.registrator", "com.samsung.vddil.recsys.SerializationRegistrator")
+//        .set("spark.yarn.executor.memoryOverhead", "768")
+//        .set("spark.rdd.compress", "true")
+//        .set("spark.storage.memoryFraction", "0.2")
+//        .set("spark.core.connection.ack.wait.timeout", "600")
+//        .set("spark.akka.frameSize", "50")
+//        .set("spark.executor.memory", "30g")
+//        .set("spark.shuffle.spill", "true")
+//
+//    sc = new SparkContext(conf)
+//    val paraSc: SparkContext = null
+//    val K = 3
+//    val programScorePaths = sc.textFile(inputPath).collect
+//    doRecommendation(paraSc, date, roviPath, inputPath, programScorePaths, K)
+//  }
 
   // load rdd from a list of block files.
   def loadProgramScores(paraSc: SparkContext, programScorePaths: List[String]) = {

@@ -13,6 +13,45 @@ import org.apache.spark.SparkContext
 
 package object prediction {
     
+    
+    /**
+     * Computes the prediction given features and models, returns feature files. 
+     * 
+     * @param model a model struct
+     * @param userFeaturesRDD user features 
+     * @param itemFeaturesRDD
+     * @param outputResource determines if a resource is ready to be output
+     * @param PredBlockFiles block prediction files for partial model
+     * @param ItemUserFeatFile entire prediction files for regular model 
+     * @param sc SparkContext instance
+     * @param partitionNum parallelism 
+     * @param partialModelBatchNum the number of batches for partial model. 
+     * 
+     * Type parameters:
+     * @param UserIDType typically integer or string
+     * @param ItemIDType typically integer or string
+     */
+	def computePredictionFiles[UserIDType, ItemIDType] (
+            	model:ModelStruct,
+            	userFeaturesRDD: RDD[(UserIDType, Vector)],
+            	itemFeaturesRDD: RDD[(ItemIDType, Vector)],
+            	outputResource: String => Boolean,
+            	PredBlockFiles:String,
+            	ItemUserFeatFile:String,
+            	sc: SparkContext,
+            	partitionNum:Int,
+            	partialModelBatchNum:Int = 10
+    		):Array[String] = {
+        
+	    val blockPredFiles = computePredictionWithoutPartialModel[UserIDType, ItemIDType] (
+            	model.asInstanceOf[PartializableModel],
+            	userFeaturesRDD, itemFeaturesRDD,
+            	partialModelBatchNum, PredBlockFiles,
+            	outputResource, sc, partitionNum)
+	    
+        blockPredFiles
+    }    
+    
     /**
      * Computes the prediction given features and models. 
      * 
@@ -42,12 +81,20 @@ package object prediction {
             	partialModelBatchNum:Int = 10
     		):RDD[(UserIDType, (ItemIDType, Double))] = {
         
-	    computePredictionWithoutPartialModel[UserIDType, ItemIDType] (
+	    val blockPredFiles = computePredictionWithoutPartialModel[UserIDType, ItemIDType] (
             	model.asInstanceOf[PartializableModel],
             	userFeaturesRDD, itemFeaturesRDD,
             	partialModelBatchNum, PredBlockFiles,
             	outputResource, sc, partitionNum)
 	    
+        val result:RDD[(UserIDType, (ItemIDType, Double))] 
+        		= combinePredictionFiles[UserIDType, ItemIDType](
+            partitionNum:Int,
+            blockPredFiles:Array[String],
+            sc:SparkContext) 
+	    
+        result
+        
 //        if (model.isInstanceOf[PartializableModel]){
 //        //if the model is a partializable model, then we use partial model 
 //        //and apply the models in batch. 
@@ -66,6 +113,8 @@ package object prediction {
 //	    }
 
     }
+	
+	
     
 	/**
 	 * Computes prediction using a partial model
@@ -79,8 +128,7 @@ package object prediction {
             	outputResource: String => Boolean,
             	sc:SparkContext,
             	partitionNum:Int
-            	
-            ):RDD[(UserIDType, (ItemIDType, Double))] = {
+            ):Array[String] = {
         
 		Logger.info("Generating item enclosed partial models")
         var itemPartialModels = itemFeaturesRDD.map{x=>
@@ -126,6 +174,19 @@ package object prediction {
 		        }.saveAsObjectFile(blockPredFiles(idx))
         	}
         }
+        
+        blockPredFiles
+    }
+    
+    /**
+     * Combines prediction files and returns RDD
+     */
+    def combinePredictionFiles[UserIDType, ItemIDType](
+            partitionNum:Int,
+            blockPredFiles:Array[String],
+            sc:SparkContext):RDD[(UserIDType, (ItemIDType, Double))] = {
+        
+        val predBlockSize = blockPredFiles.length  
         
         //load all predict blocks and aggregate. 
         Logger.info("Loading and aggregating " + predBlockSize + " blocks.")
@@ -176,7 +237,7 @@ package object prediction {
     }
     
 
-    	/**
+    /**
 	 * Computes prediction using a partial model
 	 */
     def computePredictionWithoutPartialModel[UserIDType, ItemIDType] (
@@ -188,8 +249,7 @@ package object prediction {
             	outputResource: String => Boolean,
             	sc:SparkContext,
             	partitionNum:Int
-            	
-            ):RDD[(UserIDType, (ItemIDType, Double))] = {
+            ):Array[String] = {
         
         Logger.info("Repartition item feature RDD")
         
@@ -232,14 +292,7 @@ package object prediction {
             }
         }
         
-        //load all predict blocks and aggregate. 
-        Logger.info("Loading and aggregating " + predBlockSize + " blocks.")
-        var aggregatedPredBlock:RDD[(UserIDType, (ItemIDType, Double))] = sc.emptyRDD[(UserIDType, (ItemIDType, Double))]
-        for (idx <- 0 until predBlockSize){
-            aggregatedPredBlock = aggregatedPredBlock ++ 
-            		sc.objectFile[(UserIDType, (ItemIDType, Double))](blockPredFiles(idx))
-        }
-        aggregatedPredBlock.coalesce(partitionNum)
+        blockPredFiles
     }
     
 }

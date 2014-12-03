@@ -69,10 +69,10 @@ case class RecJobPrediction (
         //generate prediction scores for all users and specified items. 
         val prediction = 
             generatePredictionScores(jobInfo, model, contentDates, predResourceDir, itemList)
-        Logger.info("Total (uid, pid, score) entries are " + prediction.count())
+        //Logger.info("Total (uid, pid, score) entries are " + prediction.count())
         
         //perform recommendation. 
-        RecOutput.doRecommendation(jobInfo.sc, predictDate, roviPath, prediction, predDir, topK)
+        RecOutput.doRecommendation(jobInfo.sc, predictDate, roviPath, prediction.toList, predDir, topK)
     }
     
     /**
@@ -83,8 +83,7 @@ case class RecJobPrediction (
 	        model:ModelStruct, 
 	        contentDates:List[String],
 	        predResourceDir:String,
-	        itemList:Set[String]): 
-		RDD[(Int, (String, Double))] ={
+	        itemList:Set[String]):Array[String] ={
 	    
         val sc = jobInfo.sc
         
@@ -125,14 +124,14 @@ case class RecJobPrediction (
 		Logger.info("No. of users: " + userFeatures.count)
 		
 		//use predictions to get recall and hits
-		val userItemPred:RDD[(Int, (String, Double))] = computePrediction (
+		val userItemPredFiles:Array[String] = computePredictionFiles (
             	model,  userFeatures, coldItemFeatures,
             	(resLoc: String) => jobInfo.outputResource(resLoc),
             	predBlockFiles, itemUserFeatFile,
             	sc, partitionNum, partialModelBatchNum
     		)    
 		
-		userItemPred
+		userItemPredFiles
 	}
 }
 
