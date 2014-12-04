@@ -1,31 +1,23 @@
 package com.samsung.vddil.recsys.feature.fact
 
-import org.apache.spark.SparkContext._
-import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
-import com.samsung.vddil.recsys.feature.FeatureResource
-import com.samsung.vddil.recsys.utils.HashString
-import com.samsung.vddil.recsys.utils.Logger
-import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
-import org.apache.spark.mllib.recommendation.{ALS, Rating, MatrixFactorizationModel}
-import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.linalg.Vectors
-import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
-import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
-import com.samsung.vddil.recsys.feature.ItemFeatureStruct
-import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
 import scala.collection.immutable.Range
+import org.apache.spark.SparkContext._
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import com.samsung.vddil.recsys.feature.UserFeatureStruct
-import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.linalg.Vector
+import org.apache.spark.mllib.recommendation.{ALS, Rating, MatrixFactorizationModel}
 import breeze.linalg.split
-import com.samsung.vddil.recsys.linalg.Vector
-import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.feature.FeatureProcessingUnit
+import com.samsung.vddil.recsys.feature.FeatureResource
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.feature.UserFeatureStruct
+import com.samsung.vddil.recsys.utils.{HashString, Logger}
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.linalg.{Vector,Vectors}
+import com.samsung.vddil.recsys.feature.process.{FeaturePostProcess, FeaturePostProcessor}
+import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
+
 
 /*
  * Factorization Feature: Non-Negative Matrix Factorization
