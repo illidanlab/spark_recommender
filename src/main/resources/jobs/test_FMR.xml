@@ -27,6 +27,11 @@
 				<param>
 					<lang>en</lang>
 				</param>
+				<!-- <processes>
+                    <process>
+                        <name>l2normalize</name>
+                    </process>
+                </processes> -->
 			</feature>
 			<feature>
 				<type>itemFeature</type>
@@ -34,11 +39,45 @@
 				<param>
 					<timeWindow>12</timeWindow>
 				</param>
+				<!-- <processes>
+                    <process>
+                        <name>l2normalize</name>
+                    </process>
+                </processes> -->
 			</feature>
 			<feature>
 				<type>itemFeature</type>
 				<name>channel</name>
+				<processes>
+					<process>
+						<name>randomSelection</name>
+						<param>
+							<size>100</size>
+						</param>
+					</process>
+					<process>
+						<name>l2normalize</name>
+					</process>
+					<process>
+						<name>dummy</name>
+					</process>
+				</processes>
 			</feature>
+			<feature>
+		        <type>itemFeature</type>
+		        <name>syn_tfidf</name>
+		        <param>
+		            <N>100</N>
+		        </param>
+		        <!-- <processes>
+		            <process>
+                        <name>l2normalize</name>
+                    </process>
+                    <process>
+                        <name>dummy</name>
+                    </process>
+                </processes> -->
+		    </feature>
 			<feature>
 				<type>userFeature</type>
 				<name>genre</name>
@@ -51,6 +90,10 @@
 				<type>userFeature</type>
 				<name>channel</name>
 			</feature>
+			<feature>
+		        <type>userFeature</type>
+		        <name>showTime</name>
+		    </feature>
 		</features>
 		<dataSplit>
 			<testingRatio>0.2</testingRatio>
@@ -113,6 +156,22 @@
 		          </metric>
 			  </metrics>
 		  </test>
+		  <test>
+             <type>futureColdItems</type>
+	         <name>ColdStartItems</name>
+	         <param>
+	             <UserSampleSize>15000</UserSampleSize>
+	         </param>
+	         <metrics>
+	           <metric>
+	               <type>cold_recall</type>
+	               <name>Cold_Item_Recall</name>
+	               <param>
+	                   <UserSampleSize>15000</UserSampleSize>
+	               </param>
+	           </metric>
+	         </metrics>
+	      </test>
 		</tests>
 		<ensembles>
 			<ensemble>

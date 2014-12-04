@@ -13,11 +13,12 @@ import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashMap
 import scala.util.control.Breaks._
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 
 object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtractor {
     val IdenPrefix:String = "ItemFeatureChannel"
-	var trFeatureParams = new HashMap[String,String]()
 	
 	def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
     	dates.map{date =>
@@ -253,10 +254,14 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 		val featureSize = sc.objectFile[(Int, Vector)](featureFileName).first._2.size
 		
 		// 4. Generate and return a FeatureResource that includes all resources.
+		//TODO: Feature Selection 
+	    val featurePostProcessor:List[FeaturePostProcessor] = List()
 		val featureStruct:ItemFeatureStruct = 
 		    new ItemFeatureStruct(
 		            IdenPrefix, resourceIden, featureFileName, 
-		            featureMapFileName, featureParams, featureSize, ItemFeatureGenre)
+		            featureMapFileName, featureParams, featureSize, 
+		            featureSize, featurePostProcessor, 
+		            ItemFeatureGenre, None)
 		  
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct

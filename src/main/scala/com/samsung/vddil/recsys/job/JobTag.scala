@@ -16,8 +16,8 @@ object JobTag {
 	val JobDesc = "jobDesc"
   
 	val JobType_Recommendation = "recommendation"
-	val JobType_HelloWorld = "helloworld"
-	
+	val JobType_HelloWorld     = "helloworld"
+  val JobType_TemporalAgg    = "temporalagg"
 	  
 	val RecJobSparkContext = "sparkContext"
     val RecJobSparkContextMaster = "master"
@@ -63,6 +63,11 @@ object JobTag {
 	val RecJobFeatureUnitType = "type"
 	val RecJobFeatureUnitParam = "param"
 	
+	val RecJobFeaturePostProcess      = "processes"
+	val RecJobFeaturePostProcessUnit  = "process"	    
+	val RecJobFeaturePostProcessName  = "name"
+	val RecJobFeaturePostProcessParam = "param"
+	    
 	val RecJobModelList = "models"
 	val RecJobModelType_Regress = "score_reg"
 	val RecJobModelType_Classify = "binary_cls" 
@@ -75,7 +80,8 @@ object JobTag {
 	val RecJobResourceLocationRoviHQ = "roviHq"
 	val RecJobResourceLocationWatchTime = "watchTime"
 	val RecJobResourceLocationWorkspace = "workspace"
-	  
+	val RecJobResourceSchedLocation = "schedWTime"
+
 	val RecJobDataSplit = "dataSplit"
 	val RecJobDataSplitTestRatio = "testingRatio"
 	val RecJobDataSplitValidRatio = "validationRatio"

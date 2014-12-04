@@ -16,15 +16,15 @@ import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
-
 import scala.util.control.Breaks._
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.feature.FeatureStruct
 /**
  * @author jiayu.zhou
  *
  */
 object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtractor {
-
-    var trFeatureParams = new HashMap[String,String]()
     
     val ScheduleField_StartTime = 2
     val ScheduleField_EndTime   = 3
@@ -40,10 +40,8 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
     }
         
     def extractFeature(
-            items:Set[String], 
-            featureSources:List[String],
-    		featureParams:HashMap[String, String], 
-    		featureMapFileName:String, 
+            items:Set[String], featureSources:List[String],
+    		featureParams:HashMap[String, String], featureMapFileName:String, 
     		sc:SparkContext): RDD[(String, Vector)] = {
         
         val timeWindow = featureParams.get(Param_TimeWindow).get.toInt
@@ -75,7 +73,9 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         programTime
     }
         
-    def processFeature(featureParams:HashMap[String, String], jobInfo:RecJob):FeatureResource = {
+    def processFeature(
+            featureParams:HashMap[String, String], 
+            jobInfo:RecJob):FeatureResource = {
         
         val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
         
@@ -86,9 +86,6 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         val timeWindowStr = 
             featureParams.getOrElseUpdate(Param_TimeWindow, Param_TimeWindow_Default)
         val timeWindow = timeWindowStr.toInt
-        
-        //assign feature parameters for future use
-        trFeatureParams = featureParams
         
         //2. Generate resource identity
         val dataHasingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
@@ -115,9 +112,9 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         val rangeSlot = Range(0, 2400, 2400/ timeWindow) :+ 9999 
         
         // get feature map
-        val featureMap = getFeatureMap(rangeSlot)
+        val featureMap = getFeatureMap(rangeSlot).toList
         if(jobInfo.outputResource(featureMapFileName)){
-            sc.parallelize(featureMap).saveAsTextFile(featureMapFileName)
+            FeatureStruct.saveText_featureMapRDD(sc.parallelize(featureMap), featureMapFileName, jobInfo)
         }
         
         //
@@ -165,10 +162,15 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         }
         val featureSize = sc.objectFile[(Int, Vector)](featureFileName).first._2.size 
         
-        //post-processing. 
+        //post-processing.
+        //TODO: Feature Selection 
+	    val featurePostProcessor:List[FeaturePostProcessor] = List()
         val featureStruct:ItemFeatureStruct = 
-            new ItemFeatureStruct(IdenPrefix, resourceIden, featureFileName, 
-                    featureMapFileName, featureParams, featureSize, ItemFeatureShowTime)
+            new ItemFeatureStruct(
+                    IdenPrefix, resourceIden, featureFileName, 
+                    featureMapFileName, featureParams, featureSize,
+                    featureSize, featurePostProcessor, 
+                    ItemFeatureShowTime, None)
         
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
@@ -204,10 +206,11 @@ object ItemFeatureShowTime extends FeatureProcessingUnit with ItemFeatureExtract
         Vectors.sparse(feature)
     }
     
-    def getFeatureMap(rangeSlot:IndexedSeq[Int]):List[String] = {
-        var featureMap = List[String]()
-        for (i <- Range(1, rangeSlot.size)){
-            featureMap = featureMap :+ ( "TimeWindow["+rangeSlot(i-1)+"]["+ rangeSlot(i) +"]")
+    def getFeatureMap(rangeSlot:IndexedSeq[Int]):Map[Int,String] = {
+        var featureMap = Map[Int, String]()
+        for (i <- (1 until rangeSlot.size)){
+            val featureNameEntry:String = "TimeWindow["+rangeSlot(i-1).toString +"]["+ rangeSlot(i).toString +"]"
+            featureMap = featureMap + (i -> featureNameEntry)
         }
         
         featureMap

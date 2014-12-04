@@ -126,16 +126,16 @@ package object testing {
     val sc = jobInfo.sc
 
     val itemFeatures:List[RDD[(String, Vector)]] = featureOrder.map{feature =>
-      val itemFeatureExtractor:ItemFeatureExtractor =
-           feature.extractor
-        
-      val featMapFileName:String =
-           featureResourceMap(feature.resourceStr).featureMapFileName
-        
-      val featParams = itemFeatureExtractor.trFeatureParams
+      
+      val itemFeatureExtractor:ItemFeatureExtractor = feature.extractor
       val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)
-      itemFeatureExtractor.extractFeature(items, featureSources, featParams,
-        featMapFileName, sc)
+      
+      val result: RDD[(String, com.samsung.vddil.recsys.linalg.Vector)] = 
+          itemFeatureExtractor.extract(items, featureSources, feature, sc)
+          
+      Logger.info("Feature extracted: " + result.count)
+      
+      result
     }
 
     //combine feature in order

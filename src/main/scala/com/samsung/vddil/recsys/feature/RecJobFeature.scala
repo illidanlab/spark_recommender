@@ -2,6 +2,7 @@ package com.samsung.vddil.recsys.feature
 
 import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 /**
  * The recommendation job feature data structure.  
@@ -18,27 +19,42 @@ sealed trait RecJobFeature{
     /** feature extraction parameters */
     def featureParams:HashMap[String, String]
     
+    /** feature post-processing parameters */
+    def postProcessing:List[FeaturePostProcess]
+    
     /** Extracts features and store (extracted) feature information in jobStatus */
 	def run(jobInfo: RecJob):Unit
 }
 
 /** Item feature (program feature) e.g., genre  */
-case class RecJobItemFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
+case class RecJobItemFeature(
+        featureName:String, 
+        featureParams:HashMap[String, String],
+        postProcessing:List[FeaturePostProcess]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	   jobInfo.jobStatus.completedItemFeatures(this) = ItemFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	   jobInfo.jobStatus.completedItemFeatures(this) 
+	   	  = ItemFeatureHandler.processFeature(featureName, featureParams, postProcessing, jobInfo)
 	}
 }
 
 /** User feature e.g., watch time, zapping */
-case class RecJobUserFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
+case class RecJobUserFeature(
+        featureName:String, 
+        featureParams:HashMap[String, String],
+        postProcessing:List[FeaturePostProcess]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	   jobInfo.jobStatus.completedUserFeatures(this) = UserFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	   jobInfo.jobStatus.completedUserFeatures(this) 
+	   	  = UserFeatureHandler.processFeature(featureName, featureParams, postProcessing, jobInfo)
 	}
 }
 
 /** Factorization-based (collaboration filtering) features. */
-case class RecJobFactFeature(featureName:String, featureParams:HashMap[String, String]) extends RecJobFeature{
+case class RecJobFactFeature(
+        featureName:String, 
+        featureParams:HashMap[String, String],
+        postProcessing:List[FeaturePostProcess]) extends RecJobFeature{
 	def run(jobInfo: RecJob) = {
-	    jobInfo.jobStatus.completedFactFeatures(this) = FactFeatureHandler.processFeature(featureName, featureParams, jobInfo)
+	    jobInfo.jobStatus.completedFactFeatures(this) 
+	       = FactFeatureHandler.processFeature(featureName, featureParams, postProcessing, jobInfo)
 	}
 }

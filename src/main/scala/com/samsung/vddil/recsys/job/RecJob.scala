@@ -1,28 +1,43 @@
 package com.samsung.vddil.recsys.job
 
-import scala.xml._
-import scala.collection.mutable.HashMap
-import org.apache.hadoop.fs.FileSystem
-import org.apache.spark.rdd.RDD
-import org.apache.spark.SparkContext
-import com.samsung.vddil.recsys.data.DataProcess
-import com.samsung.vddil.recsys.model._
-import com.samsung.vddil.recsys.Pipeline
-import com.samsung.vddil.recsys.testing._
-import com.samsung.vddil.recsys.utils.HashString
-import com.samsung.vddil.recsys.utils.Logger
-import com.samsung.vddil.recsys.feature.{RecJobFeature, RecJobItemFeature, RecJobUserFeature, RecJobFactFeature}
-import com.samsung.vddil.recsys.evaluation._
-import org.apache.hadoop.fs.Path
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
-import java.util.Date
-import java.util.Calendar
-import java.util.GregorianCalendar
 import java.text.SimpleDateFormat
+
+import scala.Array.canBuildFrom
+import scala.collection.mutable.HashMap
+import scala.xml.Elem
+import scala.xml.Node
+
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkContext
+
+import com.samsung.vddil.recsys.Pipeline
+import com.samsung.vddil.recsys.job._
+import com.samsung.vddil.recsys.data.DataProcess
+import com.samsung.vddil.recsys.evaluation.RecJobMetric
+import com.samsung.vddil.recsys.evaluation.RecJobMetricColdRecall
+import com.samsung.vddil.recsys.evaluation.RecJobMetricHR
+import com.samsung.vddil.recsys.evaluation.RecJobMetricMSE
+import com.samsung.vddil.recsys.evaluation.RecJobMetricRMSE
+import com.samsung.vddil.recsys.feature.RecJobFactFeature
+import com.samsung.vddil.recsys.feature.RecJobFeature
+import com.samsung.vddil.recsys.feature.RecJobItemFeature
+import com.samsung.vddil.recsys.feature.RecJobUserFeature
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.model.ModelStruct
+import com.samsung.vddil.recsys.model.RecJobBinClassModel
+import com.samsung.vddil.recsys.model.RecJobModel
+import com.samsung.vddil.recsys.model.RecJobScoreRegModel
+import com.samsung.vddil.recsys.model.SerializableModel
 import com.samsung.vddil.recsys.prediction.RecJobPrediction
-import com.samsung.vddil.recsys.prediction.RecJobPrediction
-import com.samsung.vddil.recsys.prediction.RecJobPrediction
+import com.samsung.vddil.recsys.testing.RecJobTest
+import com.samsung.vddil.recsys.testing.RecJobTestColdItem
+import com.samsung.vddil.recsys.testing.RecJobTestNoCold
+import com.samsung.vddil.recsys.testing.getBestModel
+import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.utils.Logger
 
 /**
  * The constant variables of recommendation job.
@@ -283,159 +298,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         val out = fs.create(summaryFile)
         val writer = new BufferedWriter(new OutputStreamWriter(out))
         
-        var headnum_lv1 = 0
-        var headnum_lv2 = 0
-        
-        def writeline(str:String) = {
-        		writer.write(str); writer.newLine() }
-        def writehead(str:String, level:Int){
-            if(level == 1){
-                headnum_lv1 += 1
-                headnum_lv2 = 0
-                writer.write(headnum_lv1 + ". ");
-            	writer.write(str); writer.newLine()
-            	writer.write("======="); writer.newLine()
-            	writer.newLine()
-            }else if(level == 2){
-                headnum_lv2 += 1
-                writer.write(headnum_lv1 + "." + headnum_lv2 + ". ")
-            	writer.write(str); writer.newLine()
-            	writer.write("-------"); writer.newLine()
-            }else if(level ==3){
-                writer.write("###" + str); writer.newLine()
-            }
-        }
-        
-        // start writing files
-        writeline("===RecJob Summary START===")
-        writer.newLine()
-        
-        writehead("Job Properties", 1)
-        
-        writeline("Job name:"        + this.jobName)
-        writeline("Job description:" + this.jobDesc)
-        writeline("Train Dates: " + this.trainDates.mkString("[", ",", "]"))
-        //writeline("  User number: " + this.jobStatus.users.size)
-        //writeline("  Item number: " + this.jobStatus.items.size)
-        writeline("Test Dates: "  + this.testDates.mkString("[", ",", "]"))
-        writer.newLine()
-        
-        /// training watchtime data 
-        writehead("Combined Datasets", 1)
-        
-        writehead("Training watchtime data", 2)
-        if (this.jobStatus.resourceLocation_CombinedData_train.isDefined){
-            val trainCombData = this.jobStatus.resourceLocation_CombinedData_train.get
-            writeline(" Data Identity: " + trainCombData.resourceStr)
-            writeline(" Data File:     " + trainCombData.resourceLoc)
-            writeline(" Data Dates:    " + trainCombData.dates.mkString("[",", ","]"))
-            writeline("   User Number: " + trainCombData.userNum)
-            writeline("   Item Number: " + trainCombData.itemNum)
-        }
-        writer.newLine()
-        
-        /// features
-        writehead("Features", 1)
-        
-        writehead("User Features", 2)
-        for ((featureId, feature) <- this.jobStatus.resourceLocation_UserFeature){
-            writeline("  Feature Identity:   " + feature.resourceStr)
-            writeline("  Feature Parameters: " + feature.featureParams.toString)
-            writeline("  Feature File:       " + feature.featureFileName)
-            writeline("     Feature Size:  " + feature.featureSize)
-            writer.newLine()
-        }
-        writer.newLine()
-        writehead("Item Features", 2)
-        for ((featureId, feature) <- this.jobStatus.resourceLocation_ItemFeature){
-            writeline("  Feature Identity:   " + feature.resourceStr)
-            writeline("  Feature Parameters: " + feature.featureParams.toString)
-            writeline("  Feature File:       " + feature.featureFileName)
-            writeline("     Feature Size:  " + feature.featureSize)
-            writer.newLine()
-        }
-        writer.newLine()
-        
-        /// assembled data
-        writehead("Assembled Continuous Datasets", 1)
-        for((adataId, data) <- this.jobStatus.resourceLocation_AggregateData_Continuous){
-            writeline("  Data Identity:      " + data.resourceStr)
-            writeline("  Data File:          " + data.resourceLoc)
-            writeline("  Data Size:          " + data.size)
-            writeline("  Data Dimension:     " + data.dimension)
-            writeline("  User Features:")
-            for (feature <- data.userFeatureOrder){
-                writeline("     Feature Name:  " + feature.featureIden)
-                writeline("     Feature Iden:  " + feature.resourceStr)
-                writeline("     Feature Size:  " + feature.featureSize)
-                writeline("     Feature Param: " + feature.featureParams.toString)
-            }
-            writeline("  Item Features:")
-            for (feature <- data.itemFeatureOrder){
-                writeline("     Feature Name: " + feature.featureIden)
-                writeline("     Feature Iden: " + feature.resourceStr)
-                writeline("     Feature Size: " + feature.featureSize)
-                writeline("     Feature Param: " + feature.featureParams.toString)
-            }
-            writer.newLine()
-        }
-        
-        /// models 
-        writehead("Models", 1)
-        
-        writehead("Regression Models", 2)
-        for ((modelId, model) <- this.jobStatus.resourceLocation_RegressModel){
-            writeline("  Model Name:     " + model.modelName)
-            writeline("  Model Identity: " + modelId)
-            writeline("  Model Param:    " + model.modelParams.toString)
-            writeline("  Model DataRI:   " + model.learnDataResourceStr)
-            if (model.isInstanceOf[SerializableModel[_]])
-            	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
-            writer.newLine()
-        }
-        writer.newLine()
-        writehead("Classification Models", 2)
-        for ((modelId, model) <- this.jobStatus.resourceLocation_ClassifyModel){
-            writeline("  Model Name:     " + model.modelName)
-            writeline("  Model Identity: " + modelId)
-            writeline("  Model Param:    " + model.modelParams.toString)
-            writeline("  Model DataRI:   " + model.learnDataResourceStr)
-            if (model.isInstanceOf[SerializableModel[_]])
-            	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
-            writer.newLine()
-        }
-        writer.newLine()
-        
-        /// tests
-        writehead("Tests", 1)
-        
-        for ((model, testList) <- this.jobStatus.completedTests){
-            writehead("Model: " + model.resourceStr, 2)
-            
-            writeline("  Model Name:     " + model.modelName)
-            writeline("  Model Param:    " + model.modelParams.toString)
-            writeline("  Model Test List: ")
-            
-            for ((testUnit, results) <- testList){
-                writeline("    Test Unit Class:      " + testUnit.getClass().getName())
-                writeline("    Test Unit Identity:   " + testUnit.resourceIdentity)
-                writeline("    Test Unit Parameters: " + testUnit.testParams.toString)
-                
-                writeline("    Test Metric List: ")
-                for((metric, metricResult )<- results){
-		            writer.write("      Metric Resource Identity: " + metric.resourceIdentity); writer.newLine()
-		            writer.write("      Metric Parameters:        " + metric.metricParams.toString); writer.newLine()
-		            for((resultStr, resultVal) <- metricResult) {
-		                writer.write("        [" + resultStr + "] " + resultVal.formatted("%.4g")); writer.newLine()
-		            }
-		        }
-            }
-            
-            writer.newLine()
-        }
-        writer.newLine()
-        
-        writeline("===RecJob Summary END===")
+        outputSummaryFile(this, writer)
 
         //clean
         writer.close()
@@ -613,6 +476,7 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         addonResourceLoc
     }
     
+    /** Populate experimental features */
     def populateExpFeatures():HashMap[String, String] = {
         var expFeatures:HashMap[String, String] = HashMap()
         
@@ -761,7 +625,12 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         // extract feature name 
         val featureName = (node \ JobTag.RecJobFeatureUnitName).text
         
-        // extract features 
+        // extract feature post-processing info
+        val featureProcessList = (node \ JobTag.RecJobFeaturePostProcess).flatMap{
+            node=>populateFeatureProcesses(node:Node)
+        }.toList
+        
+        // extract feature parameters 
         val featureParam = node \ JobTag.RecJobFeatureUnitParam
         
         var paramList:HashMap[String, String] = HashMap()
@@ -779,9 +648,9 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         
         //create feature structs by type
         featureType match{
-          case JobTag.RecJobFeatureType_Item => featList = featList :+ RecJobItemFeature(featureName, paramList)
-          case JobTag.RecJobFeatureType_User => featList = featList :+ RecJobUserFeature(featureName, paramList)
-          case JobTag.RecJobFeatureType_Fact => featList = featList :+ RecJobFactFeature(featureName, paramList)
+          case JobTag.RecJobFeatureType_Item => featList = featList :+ RecJobItemFeature(featureName, paramList, featureProcessList)
+          case JobTag.RecJobFeatureType_User => featList = featList :+ RecJobUserFeature(featureName, paramList, featureProcessList)
+          case JobTag.RecJobFeatureType_Fact => featList = featList :+ RecJobFactFeature(featureName, paramList, featureProcessList)
           case _ => Logger.warn("Feature type %s not found and discarded.".format(featureType))
         }
         
@@ -791,6 +660,37 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
       featList
     }
     
+    def populateFeatureProcesses(processNode:Node):Array[FeaturePostProcess] = {
+        var processList:Array[FeaturePostProcess] = Array()
+        
+        var nodeList = processNode \ JobTag.RecJobFeaturePostProcessUnit
+        
+        for (node <- nodeList){
+            val featureName = (node\JobTag.RecJobFeaturePostProcessName).text
+                            
+            val featureParam = node \ JobTag.RecJobFeaturePostProcessParam
+    
+	        var paramList:HashMap[String, String] = HashMap()
+	        
+	        for (featureParamNode <- featureParam){
+	          //in case multiple parameter fields exist. 
+	          
+	          // the #PCDATA is currently ignored. 
+	          val paraPairList = featureParamNode.child.map(feat => (feat.label, feat.text )).filter(_._1 != "#PCDATA")
+	          
+	          for (paraPair <- paraPairList){
+	            paramList += (paraPair._1 -> paraPair._2)
+	          }
+	        }
+            
+            val processUnit = FeaturePostProcess(featureName, paramList)
+            processUnit.foreach{unit =>
+                processList = processList :+ unit
+            }
+        }
+        
+        processList
+    }
     
     /**
      * Populates required evaluation metrics from XML

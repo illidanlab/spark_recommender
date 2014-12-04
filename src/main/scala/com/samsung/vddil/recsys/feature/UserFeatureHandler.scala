@@ -4,6 +4,7 @@ import com.samsung.vddil.recsys.feature.user._
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.utils.Logger
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 
 /*
  * This is the main entrance of the user feature processing.
@@ -19,7 +20,11 @@ object UserFeatureHandler extends FeatureHandler{
 	val UFBehaviorShowTime  = "showTime"
 	val UFBehaviorChannel   = "channel"
 	    
-	def processFeature(featureName:String, featureParams:HashMap[String, String], jobInfo:RecJob):Boolean={
+	def processFeature(
+	        featureName:String, 
+	        featureParams:HashMap[String, String], 
+	        postProcessing:List[FeaturePostProcess], 
+	        jobInfo:RecJob):Boolean={
 		Logger.info("Processing user feature [%s:%s]".format(featureName, featureParams))
 	
 		var resource:FeatureResource = FeatureResource.fail
@@ -40,7 +45,15 @@ object UserFeatureHandler extends FeatureHandler{
 	    if(resource.success){
 		   resource.resourceMap.get(FeatureResource.ResourceStr_UserFeature) match{
 		      case featureStruct:UserFeatureStruct => 
-		        jobInfo.jobStatus.resourceLocation_UserFeature(resource.resourceIden) = featureStruct
+		        //perform feature selection 
+		        var processedFeatureStruct = featureStruct
+		        postProcessing.foreach{processUnit=>
+		            processUnit.train(processedFeatureStruct).foreach{processor=>
+		            	processedFeatureStruct = processor.processStruct(processedFeatureStruct, jobInfo)
+		            }
+		        }   
+		        
+		        jobInfo.jobStatus.resourceLocation_UserFeature(processedFeatureStruct.resourceIden) = processedFeatureStruct
 		   }
 		}
 	    

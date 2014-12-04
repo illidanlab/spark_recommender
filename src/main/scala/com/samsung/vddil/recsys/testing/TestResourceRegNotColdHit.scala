@@ -73,18 +73,27 @@ object TestResourceRegNotColdHit{
     val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
     val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
     val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
+    val filterRatingDataFile    = testResourceDir + "/" + IdenPrefix + "/filterTestRatingData"
+    
     //get spark context
     val sc = jobInfo.sc
     
-    //get test data
-    val testData = jobInfo.jobStatus.testWatchTime.get
     val partitionNum = jobInfo.partitionNum_test
     
     //filter test data to remove new users/items
-    val filtTestData = filterTestRatingData(testData, trainCombData,
-                          sc).map(x => 
-                            (x.user, (x.item, x.rating))
-                          )
+    if(jobInfo.outputResource(filterRatingDataFile)){
+        // cache the filtered rating data
+        val filtTestData:RDD[(Int, (Int, Double))] = 
+            filterTestRatingData(
+                jobInfo.jobStatus.testWatchTime.get,  //get test data
+                jobInfo.jobStatus.resourceLocation_CombinedData_train.get,
+                sc).map(x => 
+                    (x.user, (x.item, x.rating))
+                )
+        filtTestData.saveAsObjectFile(filterRatingDataFile)
+    }
+    
+    val filtTestData:RDD[(Int, (Int, Double))] = sc.objectFile(filterRatingDataFile)
         
     //get test users
     val testUsers = filtTestData.map{ _._1.toInt}.distinct  
