@@ -324,7 +324,7 @@ class DenseVector(val data:BDV[Double]) extends Vector {
   
   def normalize():DenseVector = {
       val l2length = norm(this.data)
-      if (Math.abs(l2length) < zeroPrecision) {
+      if (Math.abs(l2length) > zeroPrecision) {
           new DenseVector(this.data / l2length)
       }else{
           this.copy()
@@ -393,7 +393,7 @@ class SparseVector(val data:BSV[Double]) extends Vector{
     
     def normalize():SparseVector = {
       val l2length = norm(this.data)
-      if (Math.abs(l2length) < zeroPrecision) {
+      if (Math.abs(l2length) > zeroPrecision) {
           new SparseVector(this.data / l2length)
       }else{
           this.copy()
