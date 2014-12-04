@@ -53,7 +53,7 @@ else
 fi
 
 ##start cluster
-cluster_result=$($emr_dir/elastic-mapreduce --create --name $cluster_name --ami-version 3.2.1 \
+cluster_result=$($emr_dir/elastic-mapreduce --create --name $cluster_name --ami-version 3.3.1 \
         --instance-group master --instance-count 1 --instance-type c3.4xlarge \
         --instance-group core --instance-count $cluster_node_num --instance-type c3.8xlarge \
 		--bootstrap-action s3://support.elasticmapreduce/bootstrap-actions/ami/3.2.1/CheckandFixMisconfiguredMounts.bash \

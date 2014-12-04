@@ -27,6 +27,11 @@
 				<param>
 					<lang>en</lang>
 				</param>
+				<!-- <processes>
+                    <process>
+                        <name>l2normalize</name>
+                    </process>
+                </processes> -->
 			</feature>
 			<feature>
 				<type>itemFeature</type>
@@ -34,6 +39,11 @@
 				<param>
 					<timeWindow>12</timeWindow>
 				</param>
+				<!-- <processes>
+                    <process>
+                        <name>l2normalize</name>
+                    </process>
+                </processes> -->
 			</feature>
 			<feature>
 				<type>itemFeature</type>
@@ -59,11 +69,14 @@
 		        <param>
 		            <N>100</N>
 		        </param>
-		        <processes>
+		        <!-- <processes>
+		            <process>
+                        <name>l2normalize</name>
+                    </process>
                     <process>
                         <name>dummy</name>
                     </process>
-                </processes>
+                </processes> -->
 		    </feature>
 			<feature>
 				<type>userFeature</type>

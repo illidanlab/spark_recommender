@@ -3,11 +3,10 @@ package com.samsung.vddil.recsys.linalg
 
 import java.lang.{Iterable => JavaIterable, Integer => JavaInteger, Double => JavaDouble}
 import java.util.Arrays
-
-
 import breeze.linalg.{Vector => BV, DenseVector => BDV, SparseVector => BSV}
 import org.apache.spark.mllib.linalg.{Vector => SV, DenseVector => SDV, SparseVector => SSV}
 import org.apache.spark.mllib.linalg.{Vectors => MLLibVectors}
+import breeze.linalg.norm
 
 /**
  * A numeric vector, whose index type is Int and value type is Double 
@@ -94,6 +93,9 @@ trait Vector extends Serializable {
     * Constructs another array with a specified list of indices. 
     */
    def slice(indexArrange: List[Int]): Vector
+   
+   /** normalization such that the vector has unit l2 length */
+   def normalize():Vector
 }
 
 
@@ -319,6 +321,15 @@ class DenseVector(val data:BDV[Double]) extends Vector {
   def slice(indexArrange: List[Int]): DenseVector = {
        new DenseVector(data(indexArrange).toDenseVector)
   }
+  
+  def normalize():DenseVector = {
+      val l2length = norm(this.data)
+      if (Math.abs(l2length) < zeroPrecision) {
+          new DenseVector(this.data / l2length)
+      }else{
+          this.copy()
+      }
+  }
 }
 
 /**
@@ -378,5 +389,14 @@ class SparseVector(val data:BSV[Double]) extends Vector{
        //Here we have a hack to re-use the toDenseVector in the Vector. Actually it is not
        // as efficient as implementing a native sparse slicing method.
        new SparseVector(Vectors.breezeDenseToSparse(data(indexArrange).toDenseVector))
+    }
+    
+    def normalize():SparseVector = {
+      val l2length = norm(this.data)
+      if (Math.abs(l2length) < zeroPrecision) {
+          new SparseVector(this.data / l2length)
+      }else{
+          this.copy()
+      }
     }
 }
