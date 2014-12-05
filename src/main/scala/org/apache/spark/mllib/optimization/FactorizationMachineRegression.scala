@@ -106,14 +106,21 @@ object FactorizationMachineRegressionModel {
     }
     
     /**
-     * Creates an empty model vector (all zero), serves as the default staring point. 
+     * Creates a unit model vector, serves as the default staring point.
+     * 
+     *  V cannot be zero.  
      */
-    def initZeroModel(featureDim:Int, latentDim:Int):Vector = {
+    def initUnitModel(featureDim:Int, latentDim:Int):Vector = {
         val modelSize = featureDim * (latentDim + 1) + 1
         
         //Vectors.dense(Array.fill[Double](modelSize)(rnd.nextGaussian()))
         
-        Vectors.dense(new Array[Double](modelSize))
+        val fillValue:Double = 1.0/modelSize
+        val t = new Array[Double](modelSize)
+        (1 to t.length).foreach{idx =>
+            t(idx - 1) = fillValue
+        }
+        Vectors.dense(t)
     }
     
     /**
@@ -294,7 +301,7 @@ object FactorizationMachineRegressionL2WithSGD{
             miniBatchFraction: Double): FactorizationMachineRegressionModel = {
         
         val featureDim:Int = input.first.features.size
-        val initialWeights: Vector = FactorizationMachineRegressionModel.initZeroModel(featureDim, latentDim)
+        val initialWeights: Vector = FactorizationMachineRegressionModel.initUnitModel(featureDim, latentDim)
         
         FactorizationMachineRegressionL2WithSGD.train(
                 input, latentDim, numIterations, stepSize, regParam, miniBatchFraction, initialWeights)
