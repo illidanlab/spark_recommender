@@ -27,7 +27,7 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
     val rankStr    = "10"  // rank of the rating matrix
     val lambdaStr  = "0.1" // regularization parameter
     val numIterStr = "10"  // number of iteration to run the matrix factorization algorithm
-    
+    val debugMode = true
         
 	def processFeature(
 	        featureParams:HashMap[String, String],
@@ -35,8 +35,7 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 		Logger.error("%s has not been implmented.".format(getClass.getName()))
 		
 		// load training data
-		val trainRatingData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getDataRDD()
-		//val trainItem2IntMap = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getItemMap()
+		val trainRatingData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getDataRDD()	
 	    val itemMapLoc = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.itemMapLoc
 		val listTrainDates = jobInfo.trainDates.toList
 	    val trainSource = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
@@ -77,6 +76,7 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 		// get item features from the matrix factorization result
 		val itemFeatures = model.productFeatures
 		
+		
 		if(jobInfo.outputResource(userFeatureFileName)){
 		    userFeatures.map{
 		        x => 
@@ -84,6 +84,16 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 		        val feature:Vector = Vectors.dense(x._2)
 		        (userIDInt,feature)
 		    }.saveAsObjectFile(userFeatureFileName)
+		    
+		    if (debugMode) {
+			    userFeatures.map{
+			        x => 
+			        val userIDInt = x._1
+			        val feature:Vector = Vectors.dense(x._2)
+			        (userIDInt,feature)
+			    }.saveAsTextFile(userFeatureFileName + "text")		 
+		    }
+		    
 		    Logger.info("Saved latent user features")
 		}
 		
@@ -94,6 +104,16 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 		        val feature:Vector = Vectors.dense(x._2)
 		        (itemIDInt,feature)
 		    }.saveAsObjectFile(itemFeatureFileName)
+		    
+		    if (debugMode) {	
+			    itemFeatures.map{
+			        x => 
+			        val itemIDInt = x._1
+			        val feature:Vector = Vectors.dense(x._2)
+			        (itemIDInt,feature)
+			    }.saveAsTextFile(itemFeatureFileName + "text")		
+		    }
+		    
 		    Logger.info("Saved latent item features")
 		}
 		
@@ -117,7 +137,7 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 		            IdenPrefix, resourceIden, itemFeatureFileName, 
 		            featureMapFileName, featureParams, itemFeatureSize, 
 		            itemFeatureSize, featurePostProcessor, 
-		            new FactFeatureNMFExtractor(itemFeatureFileName,itemMapLoc), 
+		            new FactFeatureNMFExtractor(itemFeatureFileName, itemMapLoc, debugMode), 
 		            None)
 		  
 	    val userFeatureStruct:UserFeatureStruct = 
@@ -142,7 +162,7 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 
 
 class FactFeatureNMFExtractor(
-        val itemFeatureFileName:String, itemMapLoc:String) 
+        val itemFeatureFileName:String, itemMapLoc:String, debugMode:Boolean) 
         extends ItemFeatureExtractor{
     
     
@@ -162,7 +182,6 @@ class FactFeatureNMFExtractor(
         						   .collect
         						   .toMap
        val bTrainItemID2Features = sc.broadcast(trainItemID2Features)
-       
         
         // get test items
         val path2TrainData = itemFeatureFileName
@@ -177,7 +196,10 @@ class FactFeatureNMFExtractor(
         var avgTrainData = sumTrainData._1.toArray
         if (sumTrainData._2 > 0) {
             var i = 0
-            while (i < avgTrainData.size) {avgTrainData(i) = avgTrainData(i) / sumTrainData._2}
+            while (i < avgTrainData.size) {
+                	avgTrainData(i) = avgTrainData(i) / sumTrainData._2
+                	i = i + 1
+                }
         }
 		val centroid:Vector = Vectors.dense(avgTrainData)
 		val bCentroid = sc.broadcast(centroid)
@@ -194,12 +216,16 @@ class FactFeatureNMFExtractor(
 		        (item,bCentroid.value) // cold item
 		    }
 		}		
+		if (debugMode) {
+			itemFeatureRDD.saveAsTextFile(itemFeatureFileName + "testitemtext")
+		}
+		
 		itemFeatureRDD
     }
     
     def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
     	dates.map{date =>
-      		jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + date
+      		jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + date + "/*"
     	}.toList
     }
        

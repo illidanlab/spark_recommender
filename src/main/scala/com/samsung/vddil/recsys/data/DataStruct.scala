@@ -65,18 +65,18 @@ class CombinedDataSet(
         if (minPartitionNum.isDefined)
             Pipeline.instance.get.sc.textFile(resourceLoc, minPartitionNum.get).map{line => 
             	val splits = line.split(",")
-            	val userId = line(0).toInt
-            	val itemId = line(1).toInt
-            	val rating    = line(2).toDouble
+            	val userId = splits(0).toInt
+            	val itemId = splits(1).toInt
+            	val rating    = splits(2).toDouble
             	(userId, itemId, rating)
         	}
         	
         else
             Pipeline.instance.get.sc.textFile(resourceLoc).map{line =>
             	val splits = line.split(",")
-            	val userId = line(0).toInt
-            	val itemId = line(1).toInt
-            	val rating    = line(2).toDouble
+            	val userId = splits(0).toInt
+            	val itemId = splits(1).toInt
+            	val rating    = splits(2).toDouble
             	(userId, itemId, rating)
         	}
     }
