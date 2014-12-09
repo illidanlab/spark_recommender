@@ -48,7 +48,7 @@
 			<feature>
 				<type>itemFeature</type>
 				<name>channel</name>
-				<processes>
+				<!-- <processes>
 					<process>
 						<name>randomSelection</name>
 						<param>
@@ -61,7 +61,7 @@
 					<process>
 						<name>dummy</name>
 					</process>
-				</processes>
+				</processes> -->
 			</feature>
 			<feature>
 		        <type>itemFeature</type>
