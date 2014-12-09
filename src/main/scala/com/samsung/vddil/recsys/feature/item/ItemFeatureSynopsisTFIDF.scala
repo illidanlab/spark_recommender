@@ -239,7 +239,7 @@ ItemFeatureExtractor {
     
     //get top term counts or itemFeatures
     val itemFeatures:RDD[(String, Vector)] = getTermCounts(itemTerms, topTermsWithId, sc)
-
+    val TEMP = itemFeatures.collect
     itemFeatures
   }
 
