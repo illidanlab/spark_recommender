@@ -261,7 +261,7 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 		            IdenPrefix, resourceIden, featureFileName, 
 		            featureMapFileName, featureParams, featureSize, 
 		            featureSize, featurePostProcessor, 
-		            ItemFeatureGenre, None)
+		            ItemFeatureChannel, None)
 		  
         val resourceMap:HashMap[String, Any] = new HashMap()
         resourceMap(FeatureResource.ResourceStr_ItemFeature) = featureStruct
