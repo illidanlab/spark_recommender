@@ -34,6 +34,7 @@ object FeaturePostProcess{
         name match {
             case "randomSelection"=>Some(FeatureSelection(name, params))
             case "l2normalize"    =>Some(FeatureNormalization(name, params))
+            case "maxnormalize"   =>Some(FeatureNormalization(name, params))
             case "dummy"          =>Some(FeatureSelection(name, params))
             case _ =>None
         }
@@ -47,7 +48,8 @@ case class FeatureNormalization(
     
     def train[T](input: FeatureStruct):Option[FeaturePostProcessor] = {
         name match {
-	        case "l2normalize" => l2NormalizationProcessor.train(input, params)
+	        case "l2normalize"  => l2NormalizationProcessor.train(input, params)
+	        case "maxnormalize" => MaxNormalizationProcessor.train(input, params)
 	        case _ => None
 	    }
     }

@@ -7,6 +7,7 @@ import breeze.linalg.{Vector => BV, DenseVector => BDV, SparseVector => BSV}
 import org.apache.spark.mllib.linalg.{Vector => SV, DenseVector => SDV, SparseVector => SSV}
 import org.apache.spark.mllib.linalg.{Vectors => MLLibVectors}
 import breeze.linalg.norm
+import breeze.linalg.max
 
 /**
  * A numeric vector, whose index type is Int and value type is Double 
@@ -94,8 +95,24 @@ trait Vector extends Serializable {
     */
    def slice(indexArrange: List[Int]): Vector
    
+   def normalize(normal_str:String = Vectors.Normal_Type_Max): Vector = {
+       val type_str = normal_str.trim.toLowerCase() 
+       
+       if (type_str.compareToIgnoreCase(Vectors.Normal_Type_Max) == 0){
+           this.normalize_max
+       }else if(type_str.compareToIgnoreCase(Vectors.Normal_Type_L2) == 0){
+           this.normalize_l2
+       }else{
+           this.copy
+       }
+   }
+   
+   
    /** normalization such that the vector has unit l2 length */
-   def normalize():Vector
+   def normalize_l2():Vector
+   
+   /** */
+   def normalize_max():Vector
 }
 
 
@@ -104,6 +121,10 @@ trait Vector extends Serializable {
  * many fundamental operations.
  */
 object Vectors{
+    
+   def Normal_Type_Max:String = "max"
+   def Normal_Type_L2 :String  = "l2"
+    
    /**
     * Creates a vector from Breeze data structure
     */
@@ -322,14 +343,23 @@ class DenseVector(val data:BDV[Double]) extends Vector {
        new DenseVector(data(indexArrange).toDenseVector)
   }
   
-  def normalize():DenseVector = {
+  def normalize_l2():DenseVector = {
       val l2length = norm(this.data)
-      if (Math.abs(l2length) < zeroPrecision) {
+      if (Math.abs(l2length) > zeroPrecision) {
           new DenseVector(this.data / l2length)
       }else{
           this.copy()
       }
   }
+  
+  def normalize_max():DenseVector = {
+      val maxVal = max(this.data)
+      if (Math.abs(maxVal) > zeroPrecision) {
+          new DenseVector(this.data / maxVal)
+      }else{
+          this.copy()
+      }   
+    }
 }
 
 /**
@@ -391,12 +421,21 @@ class SparseVector(val data:BSV[Double]) extends Vector{
        new SparseVector(Vectors.breezeDenseToSparse(data(indexArrange).toDenseVector))
     }
     
-    def normalize():SparseVector = {
+    def normalize_l2():SparseVector = {
       val l2length = norm(this.data)
-      if (Math.abs(l2length) < zeroPrecision) {
+      if (Math.abs(l2length) > zeroPrecision) {
           new SparseVector(this.data / l2length)
       }else{
           this.copy()
-      }
+      } 
+    }
+    
+    def normalize_max():SparseVector = {
+      val maxVal = max(this.data)
+      if (Math.abs(maxVal) > zeroPrecision) {
+          new SparseVector(this.data / maxVal)
+      }else{
+          this.copy()
+      }   
     }
 }
