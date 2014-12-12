@@ -15,11 +15,12 @@ import com.samsung.vddil.recsys.utils.Logger
  * Define a set of job types 
  */
 object JobType extends Enumeration {
-     	type JobType = Value
-     	val Recommendation = Value(JobTag.JobType_Recommendation) 
-     	val HelloWorld = Value(JobTag.JobType_HelloWorld)
-     	val TemporalAgg = Value(JobTag.JobType_TemporalAgg)
-      val Unknown = Value
+    type JobType        = Value
+    val Recommendation  = Value(JobTag.JobType_Recommendation) 
+    val HelloWorld      = Value(JobTag.JobType_HelloWorld)
+    val TemporalAgg     = Value(JobTag.JobType_TemporalAgg)
+    val RecMatrixFact   = Value(JobTag.JobType_RecMatrixFact)
+    val Unknown         = Value
 }
 import JobType._
 

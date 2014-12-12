@@ -12,6 +12,7 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.storage.StorageLevel
+import com.samsung.vddil.recsys.job.RecMatrixFactJob
 
 /**
  * Provides functions to aggregate data. The main functions are [[DataProcess.prepareTrain]] 
@@ -180,6 +181,41 @@ object DataProcess {
 	        Logger.error("Failed to combine training data!")
 	    }
 	}
+	
+	
+	/**
+     * Generates user-item matrix, user list, and item list. 
+     * 
+     * This method generates ( UserID, ItemID, feedback ) tuples from ACR watch time data
+     * and stores the tuples, list of UserID, list of ItemID into the system. 
+     * 
+     *  @param jobInfo the job information
+     *   
+     */
+	def prepareTrain(jobInfo:RecMatrixFactJob) {
+    	val dataDates = jobInfo.trainDates
+	    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
+	    val sc = jobInfo.sc
+	    val outputResource = (x:String) => jobInfo.outputResource(x)
+	    val outputDataResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData)
+	    val partitionNum = jobInfo.partitionNum_train 
+	        
+	    val combData:Option[CombinedDataSet] = combineWatchTimeData(
+	        dataDates:Array[String], 
+	        watchTimeResLoc:String, 
+	        sc:SparkContext, 
+	        partitionNum:Int,
+	        outputResource: String=>Boolean,
+	        outputDataResLoc: String ) 
+	        
+	    if (combData.isDefined){
+	        val comDataStruct = combData.get 
+		    jobInfo.jobStatus.resourceLocation_CombinedData_train = combData
+	    }else{
+	        Logger.error("Failed to combine training data!")
+	    }
+	}
+	
 	
 	/**
 	 * Generates combined watch time data set. 

@@ -20,6 +20,14 @@ import java.text.SimpleDateFormat
 import java.util.GregorianCalendar
 import java.util.Calendar
 import com.samsung.vddil.recsys.model.SerializableModel
+import scala.xml.Node
+import com.samsung.vddil.recsys.evaluation.RecJobMetric
+import com.samsung.vddil.recsys.utils.Logger
+import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.evaluation.RecJobMetricMSE
+import com.samsung.vddil.recsys.evaluation.RecJobMetricRMSE
+import com.samsung.vddil.recsys.evaluation.RecJobMetricHR
+import com.samsung.vddil.recsys.evaluation.RecJobMetricColdRecall
 package object job{
     
     /**
@@ -257,4 +265,6 @@ package object job{
         writeline("===RecJob Summary END===")
 
     }    
+    
+
 }
