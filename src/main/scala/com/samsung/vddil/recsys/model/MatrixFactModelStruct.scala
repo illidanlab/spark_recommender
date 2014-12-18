@@ -13,25 +13,23 @@ class MatrixFactModel(
 		val resourceStr:String,
 		private val userProfile:RDD[(String, Vector)],
 		private val itemProfile:RDD[(String, Vector)],
-		var coldStartItemProfiler:ColdStartProfileGenerator,
-		var coldStartUserProfiler:ColdStartProfileGenerator
+		var coldStartUserProfiler:ColdStartProfileGenerator,
+		var coldStartItemProfiler:ColdStartProfileGenerator
         ) extends ResourceStruct {
 	
-     //TODO: overload for default.
-//    def this(
-//    	modelName:String,
-//		resourceStr:String,
-//		userProfile:RDD[(String, Vector)],
-//		itemProfile:RDD[(String, Vector)],
-//    ) {
-//        this(modelName:String,
-//        	resourceStr:String,
-//        	userProfile:RDD[(String, Vector)],
-//        	itemProfile:RDD[(String, Vector)],
-//        	coldStartItemProfiler:ColdStartProfileGenerator,
-//        	coldStartUserProfiler:ColdStartProfileGenerator
-//        )
-//    }
+
+    def this(
+    	modelName:String,
+		resourceStr:String,
+		userProfile:RDD[(String, Vector)],
+		itemProfile:RDD[(String, Vector)]) = 
+		    this(modelName:String,
+        	resourceStr:String,
+        	userProfile:RDD[(String, Vector)],
+        	itemProfile:RDD[(String, Vector)],
+        	AverageProfileGenerator (userProfile.map{_._2}), //coldStartItemProfiler
+        	AverageProfileGenerator (itemProfile.map{_._2}) //coldStartUserProfiler
+        )
     
     /** the name of the model, typically used as the identity prefix */
 	def resourcePrefix = modelName
@@ -82,13 +80,34 @@ trait ColdStartProfileGenerator {
     def getProfile(feature:Any):Vector
 }
 
-case class AverageProfileGenerator (profileRDD: RDD[Vector]) {
+/** This is the average profile generator, which simply provides the 
+ *  average in the training data. This is used as the default cold-start 
+ *  profile generator. 
+ *  */
+case class AverageProfileGenerator (profileRDD: RDD[Vector]) 
+	extends ColdStartProfileGenerator{
     //compute average profile 
-    var averageVector: Option[Vector] = null 
+    var averageVector: Option[Vector] = None 
     
     def getProfile(feature:Any = None):Vector = {
         if(!averageVector.isDefined){
+            //accumulation. 
+            val avgPair:(Vector, Int) = profileRDD.map{
+                x=>(x, 1)
+            }.reduce{ (a, b)=>
+                (a._1 + b._1, a._2 + b._2)
+            }
+            val sumVal:Int    = avgPair._2
             
+            //averaging
+            val avgVector:Vector = if (sumVal > 0){
+                avgPair._1 / sumVal.toDouble
+            }else{
+                avgPair._1
+            }
+            
+            //set average variable. 
+            averageVector = Some(avgVector)
         }
         averageVector.get
     }
