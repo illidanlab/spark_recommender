@@ -336,4 +336,10 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     	
     	metricList
     }
+    
+    def generateXML(): Option[scala.xml.Elem] = None
+    
+    def getStatus(): com.samsung.vddil.recsys.job.JobStatus = {
+        this.jobStatus
+    }
 }
