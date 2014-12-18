@@ -71,6 +71,11 @@ trait Vector extends Serializable {
    def +(that: Vector):Vector
    
    /**
+    * Divide values. 
+    */
+   def /(that: Double): Vector
+   
+   /**
     * A copy of current vector into sparse form 
     */
    def toSparse():SparseVector
@@ -323,6 +328,11 @@ class DenseVector(val data:BDV[Double]) extends Vector {
      Vectors.fromBreeze(this.data + that.data)
   }
   
+  def /(that: Double):Vector = {
+      require(Math.abs(that) > zeroPrecision)
+      Vectors.fromBreeze(this.data/that)
+  }
+  
   def toSparse():SparseVector = {
      new SparseVector(Vectors.breezeDenseToSparse(this.data))
   }
@@ -397,6 +407,11 @@ class SparseVector(val data:BSV[Double]) extends Vector{
     def +(that: Vector):Vector = {
        require(this.size == that.size)
        Vectors.fromBreeze(this.data + that.data)
+    }
+    
+    def /(that: Double):Vector = {
+        require(Math.abs(that) > zeroPrecision)
+        Vectors.fromBreeze(this.data / that)
     }
     
     def toSparse(): SparseVector = {
