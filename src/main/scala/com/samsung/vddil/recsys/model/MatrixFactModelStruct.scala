@@ -72,7 +72,7 @@ class MatrixFactModel(
 	        this.coldStartItemProfiler.getProfile(itemFeature)
 	    }
 	        
-	    //inner product
+	    //generate prediction
 	    userProfile.dot(itemProfile)
 	}
 	
@@ -82,7 +82,7 @@ class MatrixFactModel(
 	 * The method is slow when there are a set of users. 
 	 */
 	def predict(userId:String, itemIdList:RDD[String], 
-	        userFeature:Vector, ItemFeatureList:RDD[(String, Vector)]): 
+	        userFeature:Vector, itemFeatureList:RDD[(String, Vector)]): 
 	        	RDD[(String, Double)] = {
 	    //find or generate user profile 
 	    val targetUserProfile = this.getUserProfile().filter{x => 
@@ -97,7 +97,7 @@ class MatrixFactModel(
 	    
 	    //get full (item, feature) pair. 
 	    val fullItemFeature = itemIdList.map{x => (x, 1)}.
-	    	leftOuterJoin(ItemFeatureList).map{x =>
+	    	leftOuterJoin(itemFeatureList).map{x =>
 	            val itemId                      = x._1
 	            val itemFeature: Option[Vector] = x._2._2
 	            (itemId, itemFeature)
@@ -116,7 +116,7 @@ class MatrixFactModel(
 	        	(itemId, itemProfile)
 	    	}
 	    
-	    // generate prediction. 
+	    // generate predictions. 
 	    itemProfiles.map{x => 
 	        val itemId:String      = x._1
 	        val itemProfile:Vector = x._2
@@ -124,8 +124,60 @@ class MatrixFactModel(
 	    }
 	}
 	
-	def predict(UserIdList:List[String], ItemIdList:List[String]): List[Double] = {
-	    throw new NotImplementedError()
+	def predict(userIdList:RDD[String], itemIdList:RDD[String], 
+	        userFeatureList:RDD[(String, Vector)], itemFeatureList:RDD[(String, Vector)]): 
+	        RDD[(String, String, Double)] = {
+	    
+	    //get full (user, feature) pair
+	    val fullUserFeature = userIdList.map{x => (x, 1)}.
+	        leftOuterJoin(userFeatureList).map{x=>
+	            val userId                      = x._1
+	            val userFeature: Option[Vector] = x._2._2
+	            (userId, userFeature)
+	        }
+	    
+	    //from full(user, feature) pair, generate full (user, profile)
+	    val userProfiles = fullUserFeature.leftOuterJoin(getUserProfile()).map{x=>
+	        val userId = x._1
+	        val userFeatureOption = x._2._1
+	        val userProfileOption = x._2._2
+	        val userProfile:Vector = if(userProfileOption.isDefined){
+	            userProfileOption.get
+	        }else{
+	            this.coldStartUserProfiler.getProfile(userFeatureOption)
+	        }
+	        (userId, userProfile)
+	    }
+	    
+	    //get full (item, feature) pair. 
+	    val fullItemFeature = itemIdList.map{x => (x, 1)}.
+	    	leftOuterJoin(itemFeatureList).map{x =>
+	            val itemId                      = x._1
+	            val itemFeature: Option[Vector] = x._2._2
+	            (itemId, itemFeature)
+	        }
+	    
+	    //from full (item, feature) pair, generate full (item, profile)
+	    val itemProfiles = fullItemFeature.leftOuterJoin(getItemProfile()).map{x=>
+        	val itemId = x._1
+        	val itemFeatureOption = x._2._1
+        	val itemProfileOption = x._2._2
+        	val itemProfile:Vector = if(itemProfileOption.isDefined) {
+        	    	itemProfileOption.get
+        		}else{
+        		    this.coldStartItemProfiler.getProfile(itemFeatureOption)
+        		}
+        	(itemId, itemProfile)
+	    }
+	    
+	    //generate predictions
+	    userProfiles.cartesian(itemProfiles).map{x=>
+	        val userId:String      = x._1._1
+	        val userProfile:Vector = x._1._2
+	        val itemId:String      = x._2._1
+	        val itemProfile:Vector = x._2._2
+	        (userId, itemId, userProfile.dot(itemProfile))
+	    }
 	}
 	
 		
