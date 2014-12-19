@@ -2,6 +2,7 @@ package com.samsung.vddil.recsys.model
 
 import com.samsung.vddil.recsys.ResourceStruct
 import org.apache.spark.rdd.RDD
+import org.apache.spark.SparkContext._
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.hadoop.fs.Path
@@ -42,12 +43,85 @@ class MatrixFactModel(
         	Pipeline.instance.get.fs.exists(new Path(itemProfileRDDFile)) 
     }
 	
-	def predict(UserId:String, ItemId:String): Double = {
-	    throw new NotImplementedError()
+    /**
+     * Predicts the score of an item for one single user. This method 
+     * is very slow for a batch of predictions. Use other overload methods
+     * instead for batch predictions. 
+     */
+	def predict(userId:String, itemId:String, 
+	        userFeature:Option[Vector], itemFeature:Option[Vector]): Double = {
+	    //find or generate user profile
+	    val targetUserProfile = this.getUserProfile().filter{x => 
+	        x._1.compareToIgnoreCase(userId) == 0
+	    }
+	    
+	    val userProfile:Vector = if(targetUserProfile.count > 0){
+	        targetUserProfile.first._2
+	    }else{
+	        this.coldStartUserProfiler.getProfile(userFeature)
+	    }
+	    
+	    //find or generate item profile
+	    val targetItemProfile = this.getItemProfile().filter{x =>
+	        x._1.compareToIgnoreCase(itemId) == 0
+	    }
+	    
+	    val itemProfile:Vector = if(targetItemProfile.count > 0) {
+	        targetItemProfile.first._2
+	    }else{
+	        this.coldStartItemProfiler.getProfile(itemFeature)
+	    }
+	        
+	    //inner product
+	    userProfile.dot(itemProfile)
 	}
 	
-	def predict(UserId:String, ItemIdList:List[String]): List[Double] = {
-	    throw new NotImplementedError()
+	/**
+	 * Predicts the score of a set of items for a single user. This method 
+	 * is intended to be used when performing batch predictions for a single user. 
+	 * The method is slow when there are a set of users. 
+	 */
+	def predict(userId:String, itemIdList:RDD[String], 
+	        userFeature:Vector, ItemFeatureList:RDD[(String, Vector)]): 
+	        	RDD[(String, Double)] = {
+	    //find or generate user profile 
+	    val targetUserProfile = this.getUserProfile().filter{x => 
+	        x._1.compareToIgnoreCase(userId) == 0
+	    }
+	    
+	    val userProfile:Vector = if(targetUserProfile.count > 0){
+	        targetUserProfile.first._2
+	    }else{
+	        this.coldStartUserProfiler.getProfile(Some(userFeature))
+	    }
+	    
+	    //get full (item, feature) pair. 
+	    val fullItemFeature = itemIdList.map{x => (x, 1)}.
+	    	leftOuterJoin(ItemFeatureList).map{x =>
+	            val itemId                      = x._1
+	            val itemFeature: Option[Vector] = x._2._2
+	            (itemId, itemFeature)
+	        }
+	    
+	    //from full (item, feature) pair, generate full (item, profile)
+	    val itemProfiles = fullItemFeature.leftOuterJoin(getItemProfile()).map{x=>
+	        	val itemId = x._1
+	        	val itemFeatureOption = x._2._1
+	        	val itemProfileOption = x._2._2
+	        	val itemProfile:Vector = if(itemProfileOption.isDefined) {
+	        	    	itemProfileOption.get
+	        		}else{
+	        		    this.coldStartItemProfiler.getProfile(itemFeatureOption)
+	        		}
+	        	(itemId, itemProfile)
+	    	}
+	    
+	    // generate prediction. 
+	    itemProfiles.map{x => 
+	        val itemId:String      = x._1
+	        val itemProfile:Vector = x._2
+	        (itemId, userProfile.dot(itemProfile))
+	    }
 	}
 	
 	def predict(UserIdList:List[String], ItemIdList:List[String]): List[Double] = {
@@ -77,7 +151,7 @@ class MatrixFactModel(
 
 /** used to generate cold start item or  */
 trait ColdStartProfileGenerator {
-    def getProfile(feature:Any):Vector
+    def getProfile(feature:Option[Vector] = None):Vector
 }
 
 /** This is the average profile generator, which simply provides the 
@@ -89,7 +163,7 @@ case class AverageProfileGenerator (profileRDD: RDD[Vector])
     //compute average profile 
     var averageVector: Option[Vector] = None 
     
-    def getProfile(feature:Any = None):Vector = {
+    def getProfile(feature:Option[Vector] = None):Vector = {
         if(!averageVector.isDefined){
             //accumulation. 
             val avgPair:(Vector, Int) = profileRDD.map{
