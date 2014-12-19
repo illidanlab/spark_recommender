@@ -8,7 +8,19 @@ import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.hadoop.fs.Path
 
 
-
+/**
+ * The matrix factorization model. The model requires two RDDs of user and item profiles. 
+ * It also requires to specify cold start profile generators for both user and item.   
+ * 
+ * TODO: add the support of user bias and item bias. 
+ * 
+ * @param modelName
+ * @param resourceStr
+ * @param userProfile an RDD of (user ID string, user profile)
+ * @param itemProfile an RDD of (item ID string, item profile) 
+ * @param coldStartUserProfiler an implementation of ColdStartProfileGenerator for user profile 
+ * @param coldStartItemProfiler an implementation of ColdStartProfileGenerator for item profile 
+ */
 class MatrixFactModel(
 		val modelName:String,
 		val resourceStr:String,
@@ -18,7 +30,10 @@ class MatrixFactModel(
 		var coldStartItemProfiler:ColdStartProfileGenerator
         ) extends ResourceStruct {
 	
-
+	/**
+	 * Constructs a matrix factorization model using average profile generators
+	 * for both user profile and item profile. 
+	 */
     def this(
     	modelName:String,
 		resourceStr:String,
@@ -34,10 +49,14 @@ class MatrixFactModel(
     
     /** the name of the model, typically used as the identity prefix */
 	def resourcePrefix = modelName
+	/** the resourceLoc is not used, and user/itemProfileRDDFile are used instead. */
 	def resourceLoc = "" //here resource loc should be empty
+	/** stores user profile RDD[(String, Vector)]*/
 	def userProfileRDDFile:String = resourceStr + "_userProfile"
+	/** stores item profile RDD[(String, Vector)]*/
 	def itemProfileRDDFile:String = resourceStr + "_itemProfile"
 	
+	/** if resource exists. */
 	override def resourceExist():Boolean = {
         Pipeline.instance.get.fs.exists(new Path(userProfileRDDFile)) &&
         	Pipeline.instance.get.fs.exists(new Path(itemProfileRDDFile)) 
