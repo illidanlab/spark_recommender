@@ -1,4 +1,4 @@
-package com.samsung.vddil.recsys.model
+package com.samsung.vddil.recsys.mfmodel
 
 import com.samsung.vddil.recsys.ResourceStruct
 import org.apache.spark.rdd.RDD

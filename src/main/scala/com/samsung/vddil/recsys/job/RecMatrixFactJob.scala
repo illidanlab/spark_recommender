@@ -17,6 +17,9 @@ import com.samsung.vddil.recsys.evaluation.RecJobMetricRMSE
 import com.samsung.vddil.recsys.evaluation.RecJobMetricHR
 import com.samsung.vddil.recsys.evaluation.RecJobMetricColdRecall
 import com.samsung.vddil.recsys.data.DataProcess
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
+import com.samsung.vddil.recsys.data.CombinedDataSet
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModelHandler
 
 
 object RecMatrixFactJob{
@@ -113,6 +116,7 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     	
     	//Prepare features in case some matrix factorization algorithms may use for cold start. 
     	//TODO: implement when necessary 
+    	
     	
     	//learning models
     	//TODO: factorization prediction model.
@@ -341,5 +345,17 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     
     def getStatus(): com.samsung.vddil.recsys.job.JobStatus = {
         this.jobStatus
+    }
+}
+
+
+case class RecMatrixFactJobModel(
+        val modelName:String, 
+        val modelParams: HashMap[String, String]){
+    def run(jobInfo:RecMatrixFactJob): Option[MatrixFactModel] = {
+        
+        val ratingData:CombinedDataSet 
+        	= jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+        MatrixFactModelHandler.buildModel(modelName, modelParams, ratingData, jobInfo)
     }
 }
