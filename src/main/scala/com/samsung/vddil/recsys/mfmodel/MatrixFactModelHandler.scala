@@ -5,8 +5,8 @@ import com.samsung.vddil.recsys.job.RecMatrixFactJob
 import scala.collection.mutable.HashMap
 
 object MatrixFactModelHandler {
-	val MatrixFactModelNMF:String = "nmf_model"
-	val MatrixFactModelPMF:String = "pmf_model"
+	val MatrixFactModelTypeNMF:String = "nmf_model"
+	val MatrixFactModelTypePMF:String = "pmf_model"
 	    
 	def buildModel(
 		modelName:String,
@@ -15,8 +15,13 @@ object MatrixFactModelHandler {
 		jobInfo:RecMatrixFactJob
 	): Option[MatrixFactModel] = {
 	    
+	    if(modelName.compareTo(MatrixFactModelTypeNMF) == 0){
+	        val modelGenerator = MatrixFactModelPMF(modelParams)
+	        modelGenerator.train(ratingData)
+	    }else{
+	    	None
+	    }
 	    
 	    
-	    None
 	}
 }

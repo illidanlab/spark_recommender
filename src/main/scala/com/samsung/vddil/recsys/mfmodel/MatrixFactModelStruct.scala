@@ -30,6 +30,10 @@ class MatrixFactModel(
 		var coldStartItemProfiler:ColdStartProfileGenerator
         ) extends ResourceStruct {
 	
+    //constructing process
+    saveUserProfile(userProfile)
+    saveItemProfile(itemProfile)
+    
 	/**
 	 * Constructs a matrix factorization model using average profile generators
 	 * for both user profile and item profile. 
@@ -218,6 +222,13 @@ class MatrixFactModel(
                     itemProfileRDDFile)
 	}
 	
+	private def saveUserProfile(userProfileRDD: RDD[(String, Vector)]) = {
+	    userProfileRDD.saveAsObjectFile(userProfileRDDFile)
+	}
+	
+	private def saveItemProfile(itemProfileRDD: RDD[(String, Vector)]) = {
+	    itemProfileRDD.saveAsObjectFile(itemProfileRDDFile)
+	}
 }
 
 /** used to generate cold start item or  */

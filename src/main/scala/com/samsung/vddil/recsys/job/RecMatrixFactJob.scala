@@ -73,6 +73,7 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
      */
     val resourceLoc:HashMap[String, String] = populateResourceLoc() 
     
+    
     val dateParser = new SimpleDateFormat("yyyyMMdd") // a parser/formatter for date. 
     
     /** a list of dates used to generate training data/features */
@@ -80,6 +81,9 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     
     /** a list of dates used to generate testing data/features  */
     val testDates:Array[String] = populateTestDates()
+    
+    /** a list of models */
+    val modelList:Array[RecMatrixFactJobModel] = populateMethods()
     
     /** a list of test procedures to be performed for each model */
     val testList:Array[RecJobTest] = populateTests()
@@ -119,7 +123,16 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     	
     	
     	//learning models
-    	//TODO: factorization prediction model.
+    	if (this.modelList.length > 0){
+    		  
+    		Logger.info("**learning models")
+	    	this.modelList.foreach{
+	    	     modelUnit => {
+	    	         Logger.info("*buildling model" + modelUnit.toString())
+	    	         modelUnit.run(this)
+	    	     }
+	    	}
+    	}
     	
     	//test recommendation performance on testing dates.
     	//TODO: try to reuse (generalize when necessary) existing code.  
@@ -345,6 +358,52 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     
     def getStatus(): com.samsung.vddil.recsys.job.JobStatus = {
         this.jobStatus
+    }
+    
+        /**
+     * Populates learning methods from XML.
+     * 
+     *  @return a set of models to be learned
+     */
+    def populateMethods():Array[RecMatrixFactJobModel] = {
+      var modelList:Array[RecMatrixFactJobModel] = Array ()
+      
+      var nodeList = jobNode \ JobTag.RecJobModelList
+      if (nodeList.size == 0){
+        Logger.warn("No models found!")
+        return modelList
+      }
+      
+      nodeList = nodeList(0) \ JobTag.RecJobModelUnit
+      
+      //populate each model. 
+      for (node <- nodeList){
+         //val modelType = (node \ JobTag.RecJobModelUnitType).text
+         
+         val modelName = (node \ JobTag.RecJobModelUnitName).text
+         
+         val modelParam = node \ JobTag.RecJobModelUnitParam
+         
+         var paramList:HashMap[String, String] = HashMap()
+         
+         //populate model parameters
+         for (featureParamNode <- modelParam){
+           
+           val paraPairList = featureParamNode.child.map(line => (line.label, line.text)).filter(_._1 != "#PCDATA")
+           
+           for (paraPair <- paraPairList){
+             paramList += (paraPair._1 -> paraPair._2)
+           }
+         }
+         
+         //create model structures by type. 
+         modelList = modelList :+ RecMatrixFactJobModel(modelName, paramList)
+         
+      }
+      
+      //TODO: if there are multiple models, then we need to also specify an ensemble type. 
+      
+      modelList
     }
 }
 
