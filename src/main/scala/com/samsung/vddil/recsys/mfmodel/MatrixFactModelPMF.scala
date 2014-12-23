@@ -8,6 +8,9 @@ import org.apache.spark.mllib.recommendation.ALS
 import com.samsung.vddil.recsys.linalg.Vector
 import com.samsung.vddil.recsys.linalg.Vectors
 import org.apache.spark.rdd.RDD
+import com.samsung.vddil.recsys.utils.HashString
+import com.samsung.vddil.recsys.job.RecMatrixFactJob
+import com.samsung.vddil.recsys.job.RecJob
 
 object MatrixFactModelPMF{
     val Param_UserProfileReg = "userProfileReg"
@@ -37,12 +40,22 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
     val paramNumberItem =
         modelParams.getOrElseUpdate(MatrixFactModelPMF.Param_NumberItem, 
                 				MatrixFactModelPMF.defaultNumberItem).toInt
-            					
-    def train(ratingData:CombinedDataSet):Option[MatrixFactModel] = {
+    
+    val featureParamIden = HashString.generateHash(modelParams.toString)
+    
+    private def resourceIdentity(dataIdentifier:String):String = {
+        MatrixFactModelPMF.modelName + "_" + featureParamIden + "_" + dataIdentifier
+    }
+    
+    def train(ratingData:CombinedDataSet, jobInfo:RecMatrixFactJob):Option[MatrixFactModel] = {
         
     	// 1 Prepare Input
         
-        val resourceStr = ""
+        val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
+        val resourceIden   = resourceIdentity(dataHashingStr)
+        
+        val resourceStr = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
+        							"/" + resourceIden
         
         // construct Rating data structure. 
         val trainRatingDataAgg = ratingData.getDataRDD().map{
@@ -69,7 +82,7 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
 		    (itemIDInt, itemProfile)
 		}
 		
-		// 2 Prepare profile DUID/PID.
+		// 2 Obtain RDD[(DUID String, UserProfile Vector)]
 		val userMapping:RDD[(Int, String)] = ratingData.getUserMap().map{x=>
 		    val userIDInt = x._2
 		    val userID    = x._1
@@ -82,7 +95,7 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
 		    (userID, userProfile)
 		}
 		
-		
+		// 3 Obtain RDD[(PID String, ItemProfile Vector)]
 		val itemMapping:RDD[(Int, String)] = ratingData.getItemMap().map{x=>
 		    val itemIDInt = x._2
 		    val itemID    = x._1
@@ -95,7 +108,7 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
 		    (itemID, itemProfile)
 		}
 		
-		// 3 Save an return model. 
+		// 4 Save an return model. 
 		Some(new MatrixFactModel(
 		    MatrixFactModelPMF.modelName,
 			resourceStr:String,

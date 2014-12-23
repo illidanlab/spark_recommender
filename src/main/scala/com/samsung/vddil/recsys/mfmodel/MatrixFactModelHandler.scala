@@ -15,9 +15,9 @@ object MatrixFactModelHandler {
 		jobInfo:RecMatrixFactJob
 	): Option[MatrixFactModel] = {
 	    
-	    if(modelName.compareTo(MatrixFactModelTypeNMF) == 0){
+	    if(modelName.compareTo(MatrixFactModelTypePMF) == 0){
 	        val modelGenerator = MatrixFactModelPMF(modelParams)
-	        modelGenerator.train(ratingData)
+	        modelGenerator.train(ratingData, jobInfo)
 	    }else{
 	    	None
 	    }
