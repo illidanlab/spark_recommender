@@ -34,6 +34,9 @@ class MatrixFactModel(
     saveUserProfile(userProfile)
     saveItemProfile(itemProfile)
     
+    //saveUserProfilePlain(userProfile)
+    //saveItemProfilePlain(itemProfile)
+    
 	/**
 	 * Constructs a matrix factorization model using average profile generators
 	 * for both user profile and item profile. 
@@ -223,11 +226,31 @@ class MatrixFactModel(
 	}
 	
 	private def saveUserProfile(userProfileRDD: RDD[(String, Vector)]) = {
-	    userProfileRDD.saveAsObjectFile(userProfileRDDFile)
+	    if(! Pipeline.instance.get.fs.exists(new Path(userProfileRDDFile)))
+	    	userProfileRDD.saveAsObjectFile(userProfileRDDFile)
 	}
 	
 	private def saveItemProfile(itemProfileRDD: RDD[(String, Vector)]) = {
-	    itemProfileRDD.saveAsObjectFile(itemProfileRDDFile)
+	    if(! Pipeline.instance.get.fs.exists(new Path(itemProfileRDDFile)))
+	    	itemProfileRDD.saveAsObjectFile(itemProfileRDDFile)
+	}
+	
+	private def saveUserProfilePlain(userProfileRDD: RDD[(String, Vector)]) = {
+	    val userProfileRDDPlainFile = userProfileRDDFile + ".plain"
+	    
+	    if(! Pipeline.instance.get.fs.exists(new Path(userProfileRDDPlainFile)))
+	    	userProfileRDD.map{x=>
+	        	x._1 + "\t" + x._2
+	    	}.saveAsTextFile(userProfileRDDPlainFile)
+	}
+	
+	private def saveItemProfilePlain(itemProfileRDD: RDD[(String, Vector)]) = {
+	    val itemProfileRDDPlainFile = itemProfileRDDFile + ".plain"
+	    
+	    if(! Pipeline.instance.get.fs.exists(new Path(itemProfileRDDPlainFile)))
+	    	itemProfileRDD.map{x=>
+	        	x._1 + "\t" + x._2
+	    	}.saveAsTextFile(itemProfileRDDPlainFile)
 	}
 }
 

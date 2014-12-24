@@ -23,7 +23,7 @@ object MatrixFactModelPMF{
     val defaultRank           = "5"
     val defaultNumberItem     = "100"
     
-    val modelName = "MatrixFactModelPMF"
+    val modelName = "MatFactPMF"
 }
 
 case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
@@ -54,7 +54,7 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
         val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
         val resourceIden   = resourceIdentity(dataHashingStr)
         
-        val resourceStr = jobInfo.resourceLoc(RecJob.ResourceLoc_JobFeature) + 
+        val resourceStr = jobInfo.resourceLoc(RecJob.ResourceLoc_JobModel) + 
         							"/" + resourceIden
         
         // construct Rating data structure. 

@@ -20,6 +20,7 @@ import com.samsung.vddil.recsys.data.DataProcess
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 import com.samsung.vddil.recsys.data.CombinedDataSet
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModelHandler
+import com.samsung.vddil.recsys.feature.RecJobFeature
 
 
 object RecMatrixFactJob{
@@ -81,6 +82,9 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     
     /** a list of dates used to generate testing data/features  */
     val testDates:Array[String] = populateTestDates()
+    
+    /** a list of features */ //TODO: parse features. 
+    val featureList:Array[RecJobFeature] = new Array(1)//populateFeatures()
     
     /** a list of models */
     val modelList:Array[RecMatrixFactJobModel] = populateMethods()
@@ -405,6 +409,11 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
       
       modelList
     }
+    
+    override def toString():String = {
+       s"Job [MatrixFact Recommendation][${this.jobName}][${this.trainDates.length} dates][${this.featureList.length} features][${this.modelList.length} models]"
+    }
+    
 }
 
 
