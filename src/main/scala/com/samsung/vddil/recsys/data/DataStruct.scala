@@ -124,7 +124,7 @@ object CombinedDataSet{
         dataRDD.map{line =>
             line._1 + "," + line._2 + "," + line._3
         }.saveAsTextFile(resourceLoc)
-    }    
+    }
 }
 
 
@@ -288,3 +288,106 @@ case class DataSplit(
         validation:AssembledDataSet
      )
 
+     
+     
+/**
+ * A data structure for combined data sets. 
+ * 
+ * @param resourceStr the unique identity of the dataset 
+ *        resourcePrefix + data hash string
+ * @param resourceLoc the location the dataset is stored. 
+ * @param userList a list of users
+ * @param itemList a list of items 
+ * @param userMap mapping from user ID string to integer
+ * @param itemMap mapping from item ID string to integer
+ * @param dates the dates from which the combined dataset is generated. 
+ */
+class CombinedRawDataSet(
+        val resourceStr: String,
+        val resourceLoc: String,
+        //val userListLoc: String,
+        //val itemListLoc: String,
+        //val userNum: Int,
+        //val itemNum: Int,
+        val recordNum: Long,
+        val dates: Array[String]
+        ) extends DataStruct{
+    
+    val resourcePrefix = CombinedRawDataSet.resourcePrefix
+    
+    
+    def getDataRDD(minPartitionNum:Option[Int] = None): RDD[(Int, Int, Double)] = {
+        if (minPartitionNum.isDefined)
+            Pipeline.instance.get.sc.textFile(resourceLoc, minPartitionNum.get).map{line => 
+            	val splits = line.split(",")
+            	val userId = splits(0).toInt
+            	val itemId = splits(1).toInt
+            	val rating    = splits(2).toDouble
+            	(userId, itemId, rating)
+        	}
+        	
+        else
+            Pipeline.instance.get.sc.textFile(resourceLoc).map{line =>
+            	val splits = line.split(",")
+            	val userId = splits(0).toInt
+            	val itemId = splits(1).toInt
+            	val rating    = splits(2).toDouble
+            	(userId, itemId, rating)
+        	}
+    }
+    
+    /**
+     * Save an RDD to current resource location. 
+     */
+    def saveDataRDD(dataRDD: RDD[(Int, Int, Double)]): Unit = {
+        CombinedRawDataSet.saveDataRDD(dataRDD, resourceLoc)
+    }
+    
+//    def getUserList(minPartitionNum:Option[Int] = None): RDD[String] = {
+//        if (minPartitionNum.isDefined)
+//        	Pipeline.instance.get.sc.textFile(userListLoc, minPartitionNum.get)
+//        else
+//            Pipeline.instance.get.sc.textFile(userListLoc)
+//    }
+//    
+//    def getItemList(minPartitionNum:Option[Int] = None): RDD[String] = {
+//        if (minPartitionNum.isDefined)
+//        	Pipeline.instance.get.sc.textFile(itemListLoc, minPartitionNum.get)
+//        else
+//        	Pipeline.instance.get.sc.textFile(itemListLoc)
+//    }
+    
+}
+
+object CombinedRawDataSet{
+    val resourcePrefix = "CombinedRawData"
+        
+    def saveDataRDD(dataRDD: RDD[(Int, Int, Double)], resourceLoc:String): Unit = {
+        dataRDD.map{line =>
+            line._1 + "," + line._2 + "," + line._3
+        }.saveAsTextFile(resourceLoc)
+    }
+    
+    /**
+     * Creates an instance by providing the RDD. The process stores the RDD in the 
+     * location in the resource location. 
+     */
+    def createInstance(
+            resourceStr:String, 
+            resourceLoc:String, 
+            dataRDD: RDD[(Int, Int, Double)],
+            dates:Array[String]): CombinedRawDataSet = {
+        
+        val recordNum = dataRDD.count 
+        
+        //store. 
+        CombinedRawDataSet.saveDataRDD(dataRDD, resourceLoc)
+        
+        new CombinedRawDataSet(
+	        resourceStr: String,
+	        resourceLoc: String,
+	        recordNum: Long,
+	        dates: Array[String]
+        )
+    }
+}
