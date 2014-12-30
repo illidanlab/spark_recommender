@@ -351,5 +351,42 @@ object DataProcess {
     }
 
   }
+	
+    def prepareTest(jobInfo: RecMatrixFactJob) = {
+        val sc  = jobInfo.sc
+        val partitionNum = jobInfo.partitionNum_test
+        
+        val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
+        val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
+        
+        val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+        
+        //get userMap and itemMap
+        val userMap = trainCombData.getUserMap()
+        val itemMap = trainCombData.getItemMap()
+        
+        //broadcast item map
+        val bIMap = sc.broadcast(itemMap)
+
+	    //read all data mentioned in test dates l date
+	    //get RDD of data of each individua
+	    val testData = getDataFromDates(jobInfo.testDates, 
+	                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+	                    sc, partitionNum)
+	                    
+	    if(testData.isDefined){
+	        
+	        val data = substituteIntId(testData.get, userMap, itemMap, partitionNum)
+	        
+	        
+	        //if(jobInfo.outputResource(dataLocTest)){
+	        	
+	        //}
+	        
+	        val dataSet = CombinedRawDataSet.createInstance(dataHashingStr, dataLocTest, data, jobInfo.testDates)
+	        
+	        jobInfo.jobStatus.resourceLocation_CombinedData_test = Some(dataSet)
+	    }
+    }
 
 }

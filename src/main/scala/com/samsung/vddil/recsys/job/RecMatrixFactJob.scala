@@ -137,6 +137,8 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
 	    	     }
 	    	}
     	}
+        
+        DataProcess.prepareTest(this)
     	
     	//test recommendation performance on testing dates.
     	//TODO: try to reuse (generalize when necessary) existing code.  
