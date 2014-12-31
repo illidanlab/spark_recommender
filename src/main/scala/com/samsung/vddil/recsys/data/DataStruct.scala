@@ -125,6 +125,41 @@ object CombinedDataSet{
             line._1 + "," + line._2 + "," + line._3
         }.saveAsTextFile(resourceLoc)
     }
+    
+    /**
+     * Creates an instance by providing the RDD. The process stores the RDD in the 
+     * location in the resource location. 
+     */
+    def createInstance(
+            resourceStr:String, 
+            resourceLoc:String,
+            userListLoc: String,
+	        itemListLoc: String,
+	        userMapLoc: String,
+	        itemMapLoc: String,
+	        userNum: Int,
+	        itemNum: Int,
+	        dates:Array[String], 
+            dataRDD: RDD[(Int, Int, Double)]): CombinedDataSet = {
+        
+        val recordNum = dataRDD.count 
+        
+        //store. 
+        CombinedDataSet.saveDataRDD(dataRDD, resourceLoc)
+        
+        new CombinedDataSet(
+	        resourceStr: String,
+	        resourceLoc: String,
+	        userListLoc: String,
+	        itemListLoc: String,
+	        userMapLoc: String,
+	        itemMapLoc: String,
+	        userNum: Int,
+	        itemNum: Int,
+	        recordNum: Long,
+	        dates: Array[String]
+        )
+    }
 }
 
 

@@ -7,6 +7,8 @@ import com.samsung.vddil.recsys.model.GeneralizedLinearModelStruct
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.evaluation._
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
+import com.samsung.vddil.recsys.job.RecMatrixFactJob
 
 /** Defines the type of test. */
 sealed trait RecJobTest {
@@ -23,6 +25,30 @@ sealed trait RecJobTest {
      * Runs model on test data and stores results in jobStatus
      */
 	def run(jobInfo: RecJob, model:ModelStruct) = {
+        val (testUnit, testReuslts) =
+	        this match {
+	        	case RecJobTestNoCold(testName, testParams, metricList) => 
+	            	TestUnit.testNoCold(jobInfo, testParams, metricList, model)
+	        	case RecJobTestColdItem(testName, testParams, metricList) => 
+	        	    TestUnit.testColdItem(jobInfo, testParams, metricList, model)
+	        	case _ => 
+	        	    Logger.error("Test type not supported")
+	        	    (null, new TestUnit.TestResults())
+	        }
+        
+        if (!jobInfo.jobStatus.completedTests.isDefinedAt(model))
+            jobInfo.jobStatus.completedTests(model) = new HashMap()
+        val testMap = jobInfo.jobStatus.completedTests(model)
+        
+        if (testUnit != null){
+        	testMap(testUnit) = testReuslts
+        }
+    }
+    
+    /**
+     * Runs model on test data and stores results in jobStatus
+     */
+	def run(jobInfo: RecMatrixFactJob, model:MatrixFactModel) = {
         val (testUnit, testReuslts) =
 	        this match {
 	        	case RecJobTestNoCold(testName, testParams, metricList) => 

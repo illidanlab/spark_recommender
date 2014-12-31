@@ -133,13 +133,25 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
 	    	this.modelList.foreach{
 	    	     modelUnit => {
 	    	         Logger.info("*buildling model" + modelUnit.toString())
-	    	         modelUnit.run(this)
+	    	         val modelOption = modelUnit.run(this)
+	    	         if (modelOption.isDefined) {
+	    	             this.jobStatus.resourceLocation_models = 
+	    	                 this.jobStatus.resourceLocation_models + modelOption.get
+	    	         }
 	    	     }
 	    	}
     	}
         
+        //testing recommendation performance on testing dates.
+    	Logger.info("**preparing testing data")
         DataProcess.prepareTest(this)
     	
+        jobStatus.resourceLocation_models.map{
+    	    case(modelStr, model) => 
+    	        Logger.info("Evaluating model: "+ modelStr)
+    	        testList.map{_.run(this, model)}
+    	}
+        
     	//test recommendation performance on testing dates.
     	//TODO: try to reuse (generalize when necessary) existing code.  
     }
@@ -422,10 +434,21 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
 case class RecMatrixFactJobModel(
         val modelName:String, 
         val modelParams: HashMap[String, String]){
-    def run(jobInfo:RecMatrixFactJob): Option[MatrixFactModel] = {
+    def run(jobInfo:RecMatrixFactJob): Option[(String, MatrixFactModel)] = {
         
+        //obtain rating data
         val ratingData:CombinedDataSet 
         	= jobInfo.jobStatus.resourceLocation_CombinedData_train.get
-        MatrixFactModelHandler.buildModel(modelName, modelParams, ratingData, jobInfo)
+        
+        //build model and return.  
+        val modelOption = MatrixFactModelHandler.buildModel(modelName, modelParams, ratingData, jobInfo)
+        
+        //return results. 
+        if(modelOption.isDefined){
+            val model = modelOption.get
+            Some((model.resourceStr, model))
+        }else{
+            None
+        }
     }
 }

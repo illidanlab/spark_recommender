@@ -17,6 +17,8 @@ import org.apache.hadoop.fs.FileSystem
 import scala.io.Source
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
+import com.samsung.vddil.recsys.job.RecMatrixFactJob
 
 /**
  * The test unit, each test should implement this trait and create a factory method 
@@ -103,6 +105,20 @@ object TestUnit{
     }
     
     /**
+     * Perform test without cold start
+     */
+    def testNoCold(
+            jobInfo:RecMatrixFactJob, 
+            testParams:HashMap[String, String],  
+            metricList: Array[RecJobMetric], 
+            model:MatrixFactModel):(TestUnit, TestResults) = {
+        //val test = new TestUnitNoCold(testParams, metricList,jobInfo, model)
+        //(test, test.performTest())
+        //TODO: implement this!
+        throw new NotImplementedError()
+    }
+    
+    /**
      * Perform test on cold items
      */
     def testColdItem(
@@ -113,6 +129,21 @@ object TestUnit{
         val test = new TestUnitColdItem(testParams, metricList,jobInfo, model) 
         (test, test.performTest())
     }
+    
+    /**
+     * Perform test on cold items
+     */
+    def testColdItem(
+            jobInfo:RecMatrixFactJob, 
+            testParams:HashMap[String, String],  
+            metricList: Array[RecJobMetric], 
+            model:MatrixFactModel):(TestUnit, TestResults) = {
+        //val test = new TestUnitColdItem(testParams, metricList,jobInfo, model) 
+        //(test, test.performTest())
+        //TODO: implement this!
+        throw new NotImplementedError()
+    }
+    
     
     /**
      * Writes the plain text summary file to target file. 

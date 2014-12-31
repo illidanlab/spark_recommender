@@ -313,44 +313,43 @@ object DataProcess {
 	 * 
 	 * @param jobInfo the job information
 	 */
-	def prepareTest(jobInfo: RecJob)  = {
-    
-    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
-    val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
+	def prepareTest(jobInfo: RecJob)  = {    
+	    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
+	    val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
+		
+	    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+	    
+	    //get spark context
+		val sc  = jobInfo.sc
+		val partitionNum = jobInfo.partitionNum_test
 	
-    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
-    
-    //get spark context
-	val sc  = jobInfo.sc
-	val partitionNum = jobInfo.partitionNum_test
+	    //get userMap and itemMap
+	    val userMap = trainCombData.getUserMap()
+	    val itemMap = trainCombData.getItemMap()   
+	    
+	    //broadcast item map
+	    val bIMap = sc.broadcast(itemMap)
+	
+	    //read all data mentioned in test dates l date
+	    //get RDD of data of each individua
+	    val testData = getDataFromDates(jobInfo.testDates, 
+	                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+	                    sc, partitionNum)
+	
+	    if (testData.isDefined){
+	        val data = testData.get
+	        
+	        //include only users and items seen in training
+	        if (jobInfo.outputResource(dataLocTest)) {
+	        	substituteIntId(data, userMap, itemMap, partitionNum).
+	    	        	map(x => Rating(x._1, x._2, x._3)).
+	    	        	saveAsObjectFile(dataLocTest)
+	        }
+	        //TODO: change to CombinedDataSet instance for storage caching. 
+	        jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](dataLocTest).persist(StorageLevel.DISK_ONLY))
+	    }
 
-    //get userMap and itemMap
-    val userMap = trainCombData.getUserMap()
-    val itemMap = trainCombData.getItemMap()   
-    
-    //broadcast item map
-    val bIMap = sc.broadcast(itemMap)
-
-    //read all data mentioned in test dates l date
-    //get RDD of data of each individua
-    val testData = getDataFromDates(jobInfo.testDates, 
-                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
-                    sc, partitionNum)
-
-    if (testData.isDefined){
-        val data = testData.get
-        
-        //include only users and items seen in training
-        if (jobInfo.outputResource(dataLocTest)) {
-        	substituteIntId(data, userMap, itemMap, partitionNum).
-    	        	map(x => Rating(x._1, x._2, x._3)).
-    	        	saveAsObjectFile(dataLocTest)
-        }
-        
-        jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](dataLocTest).persist(StorageLevel.DISK_ONLY))
     }
-
-  }
 	
     def prepareTest(jobInfo: RecMatrixFactJob) = {
         val sc  = jobInfo.sc
@@ -376,15 +375,21 @@ object DataProcess {
 	                    
 	    if(testData.isDefined){
 	        
+	        //generate data RDD. 
 	        val data = substituteIntId(testData.get, userMap, itemMap, partitionNum)
 	        
+	        //create CombinedRawDataSet instance (to be used later). 
+	        val dataSet = //CombinedRawDataSet.createInstance(dataHashingStr, dataLocTest, data, jobInfo.testDates)
+	            CombinedDataSet.createInstance(dataHashingStr, dataLocTest, 
+	                    trainCombData.userListLoc, 
+	                    trainCombData.itemListLoc, 
+	                    trainCombData.userMapLoc, 
+	                    trainCombData.itemMapLoc, 
+	                    trainCombData.userNum, 
+	                    trainCombData.itemNum, 
+	                    trainCombData.dates, data)
 	        
-	        //if(jobInfo.outputResource(dataLocTest)){
-	        	
-	        //}
-	        
-	        val dataSet = CombinedRawDataSet.createInstance(dataHashingStr, dataLocTest, data, jobInfo.testDates)
-	        
+	        //set resource pointer.
 	        jobInfo.jobStatus.resourceLocation_CombinedData_test = Some(dataSet)
 	    }
     }
