@@ -61,7 +61,7 @@ package object testing {
 	 */
 	def filterTestRatingData(testData: RDD[Rating], trainCombData:CombinedDataSet,
 			                    sc:SparkContext): RDD[Rating] = {
-		var filtTestData:RDD[Rating] = testData  
+		//var filtTestData:RDD[Rating] = testData  
     
 	    //get userMap and itemMap
 	    val userIdMapRDD = trainCombData.getUserMap() 
@@ -85,7 +85,44 @@ package object testing {
 		    Rating(userIdInt, itemIdInt, rating)
 		}
 		
-  }
+    }
+	
+	/**
+	 * remove new users and items from test
+	 */
+	def filterTestRatingData(
+	        testCombData:CombinedDataSet,
+	        trainCombData:CombinedDataSet,
+			sc:SparkContext): RDD[Rating] = {
+    
+		val testData = testCombData.getDataRDD()  
+		
+	    //get userMap and itemMap
+	    val userIdMapRDD = trainCombData.getUserMap() 
+	    val itemIdMapRDD = trainCombData.getItemMap()
+	    
+	    testData.map{line =>
+	        val userIdInt:Int = line._1
+	        val itemIdInt:Int = line._2
+	        val rating:Double    = line._3
+		    (userIdInt, (itemIdInt, rating))
+		}.join(
+		    userIdMapRDD.map{line => (line._2, line._1)}
+	    ).map{line => //(userIdInt, ((itemIdInt, rating), userIdStr))
+	        val userIdInt:Int = line._1
+	        val itemIdInt:Int = line._2._1._1
+	        val rating:Double = line._2._1._2
+		    (itemIdInt, (userIdInt, rating))
+		}.join(
+			itemIdMapRDD.map{line => (line._2, line._1)}
+		).map{line => //(itemIdInt, ((userIdInt, rating), itemIdStr) )
+		    val userIdInt:Int = line._2._1._1
+		    val itemIdInt:Int = line._1
+		    val rating:Double = line._2._1._2
+		    Rating(userIdInt, itemIdInt, rating)
+		}
+		
+    }
     
   /**
    * get new items not seen during training from test
