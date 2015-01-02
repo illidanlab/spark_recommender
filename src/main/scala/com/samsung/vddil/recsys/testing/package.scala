@@ -309,4 +309,36 @@ package object testing {
         userItemFeatureWithRating	
     }
     
+    /**
+     * Translate a set of Integer id into String id. 
+     * 
+     * NOTE: the idMap should contain a superset
+     */
+    def translateIdInt2Str(idMap:RDD[(String, Int)], source:RDD[Int]):RDD[String] = {
+        idMap.map{x=>(x._2, x._1)}
+             .join(source.map{x=>(x, 1)})
+        	 .map{x=>x._2._1}
+    }
+    
+    /**
+     * Translate String ID to Integer. 
+     * 
+     * score:RDD[(userId:String, (itemId:String, Double))]
+     * 
+     */
+    def translateIdStr2Int(score:RDD[(String, (String, Double))], userIdMap:RDD[(String, Int)]
+    		,itemIdMap:RDD[(String, Int)]):RDD[(Int, (Int, Double))] = {
+        score.join(userIdMap).map{x=> //join with userIdMap to obtain integer userId
+            val userIdInt:Int    = x._2._2
+            val itemIdStr:String = x._2._1._1
+            val rating:Double    = x._2._1._2
+            (itemIdStr, (userIdInt, rating))
+        }.join(itemIdMap).map{x=>    //join with itemIdMap to obtain integer itemId
+            val itemIdInt:Int    = x._2._2
+            val userIdInt:Int    = x._2._1._1
+            val rating:Double    = x._2._1._2
+            (userIdInt, (itemIdInt, rating))
+        }
+    } 
+    
 }

@@ -161,6 +161,7 @@ object TestResourceRegNotColdHit{
 	        (userId, itemId)
 	    }
 	    
+	    //user-item pair in test user.  
 	    val sampledUserTrainItemsSet = trainUserItem.join(sampledTestUsers.map((_,1)))
                                                     .map{x =>
                                                       val user = x._1
@@ -171,18 +172,21 @@ object TestResourceRegNotColdHit{
                                                       (x._1, x._2.toSet)
                                                     }  
 	    
-	    ////STEP: compute prediction 
-	    val userStrIdList: RDD[String] = null
-	    val itemStrIdList: RDD[String] = null
-	    
+	    ////STEP: compute prediction            
+        val userIdMap = trainCombData.getUserMap() //translate testUsers
+        val itemIdMap = trainCombData.getItemMap() //translate trainItems
+        
+	    val userStrIdList: RDD[String] = translateIdInt2Str(userIdMap, testUsers)
+	    val itemStrIdList: RDD[String] = translateIdInt2Str(itemIdMap, trainItems)
 	    
 	    val userItemPredStr:RDD[(String, (String, Double))] 
 	    			= computePrediction(model, userStrIdList, itemStrIdList, userFeaturesRDD, userFeaturesRDD,
 	    			        (resLoc: String) => jobInfo.outputResource(resLoc), sc)
 	    
-	    //join back 			        
-	    val userItemPred:RDD[(Int, (Int, Double))] = null
-	    
+	    //join and translate back for evaluation. 
+        //translate Int to String back and forth may be not efficient, 
+	    //but it makes the model pure :-)
+	    val userItemPred:RDD[(Int, (Int, Double))] = translateIdStr2Int(userItemPredStr, userIdMap, itemIdMap)
 	    
 	    ////STEP: process results. 
 	    

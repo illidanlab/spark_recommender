@@ -93,8 +93,8 @@ object TestResourceLinearRegNotCold {
 	
 	    //get prediction on test data
 	    //convert to label points
-	    Logger.info("Converting to testlabel point")
-	    val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
+	    //Logger.info("Converting to testlabel point")
+	    //val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
 	    
 	    //NOTE: user-item pair in test can appear more than once
 	    Logger.info("Getting prediction on test label points")
