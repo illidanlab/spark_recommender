@@ -150,6 +150,11 @@ class MatrixFactModel(
 	    }
 	}
 	
+	/**
+	 * Predicts all (user, item) ratings, given the 
+	 * Cartesian product between a given user ID list 
+	 * and a given item ID list. 
+	 */
 	def predict(userIdList:RDD[String], itemIdList:RDD[String], 
 	        userFeatureList:RDD[(String, Vector)], itemFeatureList:RDD[(String, Vector)]): 
 	        RDD[(String, String, Double)] = {
@@ -203,6 +208,116 @@ class MatrixFactModel(
 	        val itemId:String      = x._2._1
 	        val itemProfile:Vector = x._2._2
 	        (userId, itemId, userProfile.dot(itemProfile))
+	    }
+	}
+	
+	/**
+	 * Predicts all (user, item) appeared in the 
+	 * predictData input. The operation is optimized 
+	 * against this use case, and is much faster than 
+	 * other methods provided above. 
+	 * 
+	 * @param predictData is 
+	 *        RDD[(UserID:String, ItemID:String, anyValue: MetaType)]
+	 * @param userFeatureList a list of user features (for those have user features)
+	 * @param itemFeatureList a list of item features (for those have item features)
+	 * @param userIdListOpt an option of user ID list 
+	 * @param itemIdListOpt an option of item ID list
+	 * 
+	 * Output is RDD[(userId:String, itemID:String, 
+	 *               prediction:Double, anyValue: MetaType)]
+	 */
+	def predict[MetaType](
+	        predictData:RDD[(String, String, MetaType)], 
+	        userFeatureList:RDD[(String, Vector)], 
+	        itemFeatureList:RDD[(String, Vector)],
+	        userIdListOpt:Option[RDD[String]] = None,
+	        itemIdListOpt:Option[RDD[String]] = None):
+	        RDD[(String, String, Double, MetaType)]= {
+	    
+	    //PART I. User Profile
+	    val userIdList:RDD[String] = if(userIdListOpt.isDefined){
+	        userIdListOpt.get
+	    }else{
+	        predictData.map{x=>(x._1, 1)}.
+	        			reduceByKey{(x1, x2)=>x1}.
+	        			map{x=>x._1}
+	    }
+	    
+	    //get full (user, feature) pair
+	    val fullUserFeature = userIdList.map{x => (x, 1)}.
+	        leftOuterJoin(userFeatureList).map{x=>
+	            val userId                      = x._1
+	            val userFeature: Option[Vector] = x._2._2
+	            (userId, userFeature)
+	        }
+	    
+	    //from full(user, feature) pair, generate full (user, profile)
+	    val userProfiles = fullUserFeature.leftOuterJoin(getUserProfile()).map{x=>
+	        val userId = x._1
+	        val userFeatureOption = x._2._1
+	        val userProfileOption = x._2._2
+	        val userProfile:Vector = if(userProfileOption.isDefined){
+	            userProfileOption.get
+	        }else{
+	            this.coldStartUserProfiler.getProfile(userFeatureOption)
+	        }
+	        (userId, userProfile)
+	    }
+	    
+	    
+	    //PART II. Item Profile
+	    val itemIdList:RDD[String] = if(itemIdListOpt.isDefined){
+	        itemIdListOpt.get
+	    }else{
+	        predictData.map{x=>(x._2, 1)}.
+	        			reduceByKey{(x1, x2)=>x1}.
+	        			map{x=>x._1}
+	    }
+	    
+	    //get full (item, feature) pair. 
+	    val fullItemFeature = itemIdList.map{x => (x, 1)}.
+	    	leftOuterJoin(itemFeatureList).map{x =>
+	            val itemId                      = x._1
+	            val itemFeature: Option[Vector] = x._2._2
+	            (itemId, itemFeature)
+	        }
+	    
+	    //from full (item, feature) pair, generate full (item, profile)
+	    val itemProfiles = fullItemFeature.leftOuterJoin(getItemProfile()).map{x=>
+        	val itemId = x._1
+        	val itemFeatureOption = x._2._1
+        	val itemProfileOption = x._2._2
+        	val itemProfile:Vector = if(itemProfileOption.isDefined) {
+        	    	itemProfileOption.get
+        		}else{
+        		    this.coldStartItemProfiler.getProfile(itemFeatureOption)
+        		}
+        	(itemId, itemProfile)
+	    }
+	    
+	    //join with User.Item profile
+	    predictData.map{x => 
+	        val userIdStr:String = x._1
+	        val itemIdStr:String = x._2
+	        val mData:MetaType  = x._3
+	        (userIdStr, (itemIdStr, mData))
+	    }.join(userProfile).map{ x=>
+	        val userIdStr:String   = x._1
+	        val userProfile:Vector = x._2._2
+	        val itemIdStr:String   = x._2._1._1
+	        val mData:MetaType     = x._2._1._2
+	        (itemIdStr, (userIdStr, userProfile, mData))
+	    }.join(itemProfile).map{ x=>
+	        val userIdStr:String   = x._2._1._1
+	        val userProfile:Vector = x._2._1._2
+	        val itemIdStr:String   = x._1
+	        val itemProfile:Vector = x._2._2
+	        val mData:MetaType     = x._2._1._3
+	        
+	        val predictScore:Double = userProfile.dot(itemProfile)
+	        
+	        (userIdStr, itemIdStr, predictScore, mData)
 	    }
 	}
 	
