@@ -59,7 +59,7 @@ cluster_result=$($emr_dir/elastic-mapreduce --create --name $cluster_name --ami-
 		--bootstrap-action s3://support.elasticmapreduce/bootstrap-actions/ami/3.2.1/CheckandFixMisconfiguredMounts.bash \
 		--bootstrap-action s3://elasticmapreduce/bootstrap-actions/configure-hadoop \
         	--args "-y,yarn.log-aggregation-enable=true,-y,yarn.log-aggregation.retain-seconds=-1,-y,yarn.log-aggregation.retain-check-interval-seconds=3000,-y,yarn.nodemanager.remote-app-log-dir=/tmp/logs" \
-        --bootstrap-action s3://support.elasticmapreduce/spark/install-spark --args "-g"\
+        --bootstrap-action s3://support.elasticmapreduce/spark/install-spark --args "-g,-v,1.1.1.e"\
 		--bootstrap-action s3://elasticmapreduce/bootstrap-actions/install-ganglia \
         --jar s3://elasticmapreduce/libs/script-runner/script-runner.jar \
             --args "s3://support.elasticmapreduce/spark/start-history-server" \
