@@ -21,6 +21,9 @@ import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 import com.samsung.vddil.recsys.data.CombinedDataSet
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModelHandler
 import com.samsung.vddil.recsys.feature.RecJobFeature
+import org.apache.hadoop.fs.Path
+import java.io.BufferedWriter
+import java.io.OutputStreamWriter
 
 
 object RecMatrixFactJob{
@@ -152,10 +155,28 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     	        testList.map{_.run(this, model)}
     	}
         
-    	//test recommendation performance on testing dates.
-    	//TODO: try to reuse (generalize when necessary) existing code.  
+    	
+    	
     }
+    /**
+     * Generates a summary file under the job workspace folder.  
+     */
+    def writeSummaryFile(){
+        val summaryFile = new Path(resourceLoc(RecJob.ResourceLoc_JobDir) + "/Summary.txt")
         
+        //always overwrite existing summary file. 
+        if (fs.exists(summaryFile)) fs.delete(summaryFile, true)
+        
+        val out = fs.create(summaryFile)
+        val writer = new BufferedWriter(new OutputStreamWriter(out))
+        
+        outputSummaryFile(this, writer)
+
+        //clean
+        writer.close()
+        out.close()
+    }
+    
     /**
      * Returns false if the resource is available in HDFS.
      * And therefore the Spark save MUST BE skipped. 

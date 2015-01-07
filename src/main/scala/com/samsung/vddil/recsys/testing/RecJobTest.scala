@@ -52,9 +52,9 @@ sealed trait RecJobTest {
         val (testUnit, testReuslts) =
 	        this match {
 	        	case RecJobTestNoCold(testName, testParams, metricList) => 
-	            	TestUnit.testNoCold(jobInfo, testParams, metricList, model)
+	            	TestUnitMatrixFact.testNoCold(jobInfo, testParams, metricList, model)
 	        	case RecJobTestColdItem(testName, testParams, metricList) => 
-	        	    TestUnit.testColdItem(jobInfo, testParams, metricList, model)
+	        	    TestUnitMatrixFact.testColdItem(jobInfo, testParams, metricList, model)
 	        	case _ => 
 	        	    Logger.error("Test type not supported")
 	        	    (null, new TestUnit.TestResults())

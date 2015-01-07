@@ -265,6 +265,140 @@ package object job{
         writeline("===RecJob Summary END===")
 
     }    
+ 
     
+    /**
+     * Formats the summary file and output using an existing BufferedWriter. 
+     */
+    def outputSummaryFile(job:RecMatrixFactJob, writer: java.io.BufferedWriter){
+        
+        var headnum_lv1 = 0
+        var headnum_lv2 = 0
+        
+        def writeline(str:String) = {
+        		writer.write(str); writer.newLine() }
+        def writehead(str:String, level:Int){
+            if(level == 1){
+                headnum_lv1 += 1
+                headnum_lv2 = 0
+                writer.write(headnum_lv1 + ". ");
+            	writer.write(str); writer.newLine()
+            	writer.write("======="); writer.newLine()
+            	writer.newLine()
+            }else if(level == 2){
+                headnum_lv2 += 1
+                writer.write(headnum_lv1 + "." + headnum_lv2 + ". ")
+            	writer.write(str); writer.newLine()
+            	writer.write("-------"); writer.newLine()
+            }else if(level ==3){
+                writer.write("###" + str); writer.newLine()
+            }
+        }
+        
+        // start writing files
+        writeline("===RecJob Summary START===")
+        writer.newLine()
+        
+        writehead("Job Properties", 1)
+        
+        writeline("Job name:"        + job.jobName)
+        writeline("Job description:" + job.jobDesc)
+        writeline("Train Dates: " + job.trainDates.mkString("[", ",", "]"))
+        //writeline("  User number: " + this.jobStatus.users.size)
+        //writeline("  Item number: " + this.jobStatus.items.size)
+        writeline("Test Dates: "  + job.testDates.mkString("[", ",", "]"))
+        writer.newLine()
+        
+        /// training watchtime data 
+        writehead("Combined Datasets", 1)
+        
+        writehead("Training watchtime data", 2)
+        if (job.jobStatus.resourceLocation_CombinedData_train.isDefined){
+            val trainCombData = job.jobStatus.resourceLocation_CombinedData_train.get
+            writeline(" Data Identity: " + trainCombData.resourceStr)
+            writeline(" Data File:     " + trainCombData.resourceLoc)
+            writeline(" Data Dates:    " + trainCombData.dates.mkString("[",", ","]"))
+            writeline("   User Number: " + trainCombData.userNum)
+            writeline("   Item Number: " + trainCombData.itemNum)
+        }
+        writer.newLine()
+        
+        /// features
+        writehead("Features", 1)
+        
+//        writehead("User Features", 2)
+//        for ((featureId, feature) <- job.jobStatus.resourceLocation_UserFeature){
+//            writeline("  Feature Identity:   " + feature.resourceStr + " (OID:" + System.identityHashCode(feature) + ")")
+//            writeline("  Feature Parameters: " + feature.featureParams.toString)
+//            writeline("  Feature File:       " + feature.featureFileName)
+//            writeline("     Feature Size:  " + feature.featureSize)
+//            feature.featurePostProcessor.foreach{processor =>
+//                writeline("     " + processor.toString)
+//            }
+//            writer.newLine()
+//        }
+//        writer.newLine()
+//        writehead("Item Features", 2)
+//        for ((featureId, feature) <- job.jobStatus.resourceLocation_ItemFeature){
+//            writeline("  Feature Identity:   " + feature.resourceStr + " (OID:" + System.identityHashCode(feature) + ")")
+//            writeline("  Feature Parameters: " + feature.featureParams.toString)
+//            writeline("  Feature File:       " + feature.featureFileName)
+//            writeline("     Feature Size:  " + feature.featureSize)
+//            feature.featurePostProcessor.foreach{processor =>
+//                writeline("     " + processor.toString)
+//            }
+//            writer.newLine()
+//        }
+//        writer.newLine()
+        
+        
+        /// models 
+        writehead("Models", 1)
+        
+        writehead("Regression Models", 2)
+        for ((modelId, model) <- job.jobStatus.resourceLocation_models){
+            writeline("  Model Name:     " + model.modelName)
+            //writeline("  Model Dim:      " + model.modelDimension)
+            writeline("  Model Identity: " + modelId)
+            writeline("  Model Param:    " + model.modelParams.toString)
+            //writeline("  Model DataRI:   " + model.learnDataResourceStr)
+            if (model.isInstanceOf[SerializableModel[_]])
+            	writeline("  Model Files:    " + model.asInstanceOf[SerializableModel[_]].modelFileName )
+            writer.newLine()
+        }
+        writer.newLine()
+        
+        /// tests
+        writehead("Tests", 1)
+        
+        for ((model, testList) <- job.jobStatus.completedTests){
+            writehead("Model: " + model.resourceStr, 2)
+            
+            writeline("  Model Name:     " + model.modelName)
+            writeline("  Model Param:    " + model.modelParams.toString)
+            writeline("  Model Test List: ")
+            
+            for ((testUnit, results) <- testList){
+                writeline("    Test Unit Class:      " + testUnit.getClass().getName())
+                writeline("    Test Unit Identity:   " + testUnit.resourceIdentity)
+                writeline("    Test Unit Parameters: " + testUnit.testParams.toString)
+                
+                writeline("    Test Metric List: ")
+                for((metric, metricResult )<- results){
+		            writer.write("      Metric Resource Identity: " + metric.resourceIdentity); writer.newLine()
+		            writer.write("      Metric Parameters:        " + metric.metricParams.toString); writer.newLine()
+		            for((resultStr, resultVal) <- metricResult) {
+		                writer.write("        [" + resultStr + "] " + resultVal.formatted("%.4g")); writer.newLine()
+		            }
+		        }
+            }
+            
+            writer.newLine()
+        }
+        writer.newLine()
+        
+        writeline("===RecJob Summary END===")
+
+    }        
 
 }
