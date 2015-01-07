@@ -321,24 +321,69 @@ package object testing {
     }
     
     /**
+     * Translate Integer ID to String
+     * 
+     * score:RDD[(userId:Int, itemId:Int, rating:Double)]
+     */
+    def translateIdInt2Str(
+            score:RDD[(Int, (Int, Double))], 
+            userIdMap:RDD[(String, Int)], 
+            itemIdMap:RDD[(String, Int)]): RDD[(String, String, Double)] = {
+        
+        score.join(userIdMap.map{x=>(x._2, x._1)}).map{x=>
+        	  	  val userIdStr:String = x._2._2
+        	  	  val itemIdInt:Int    = x._2._1._1
+        	  	  val rating:Double    = x._2._1._2
+        	  	  (itemIdInt, (userIdStr, rating))
+        	  }.join(itemIdMap.map{x=>(x._2, x._1)}).map{x=>
+        	      val itemIdStr:String = x._2._2
+        	      val userIdStr:String = x._2._1._1
+        	      val rating:Double    = x._2._1._2
+        	      (userIdStr, itemIdStr, rating)
+        	  }
+    }
+    
+//    /**
+//     * Translate String ID to Integer. 
+//     * 
+//     * score:RDD[(userId:String, (itemId:String, Double))]
+//     */
+//    def translateIdStr2Int(score:RDD[(String, (String, Double))], userIdMap:RDD[(String, Int)]
+//    		,itemIdMap:RDD[(String, Int)]):RDD[(Int, (Int, Double))] = {
+//        score.join(userIdMap).map{x=> //join with userIdMap to obtain integer userId
+//            val userIdInt:Int    = x._2._2
+//            val itemIdStr:String = x._2._1._1
+//            val rating:Double    = x._2._1._2
+//            (itemIdStr, (userIdInt, rating))
+//        }.join(itemIdMap).map{x=>    //join with itemIdMap to obtain integer itemId
+//            val itemIdInt:Int    = x._2._2
+//            val userIdInt:Int    = x._2._1._1
+//            val rating:Double    = x._2._1._2
+//            (userIdInt, (itemIdInt, rating))
+//        }
+//    }
+    
+    
+    /**
      * Translate String ID to Integer. 
      * 
      * score:RDD[(userId:String, (itemId:String, Double))]
-     * 
      */
-    def translateIdStr2Int(score:RDD[(String, (String, Double))], userIdMap:RDD[(String, Int)]
-    		,itemIdMap:RDD[(String, Int)]):RDD[(Int, (Int, Double))] = {
+    def translateIdStr2Int[MetaType](
+            score:RDD[(String, (String, MetaType))], 
+            userIdMap:RDD[(String, Int)],
+            itemIdMap:RDD[(String, Int)]):RDD[(Int, (Int, MetaType))] = {
+        
         score.join(userIdMap).map{x=> //join with userIdMap to obtain integer userId
             val userIdInt:Int    = x._2._2
             val itemIdStr:String = x._2._1._1
-            val rating:Double    = x._2._1._2
+            val rating:MetaType    = x._2._1._2
             (itemIdStr, (userIdInt, rating))
         }.join(itemIdMap).map{x=>    //join with itemIdMap to obtain integer itemId
             val itemIdInt:Int    = x._2._2
             val userIdInt:Int    = x._2._1._1
-            val rating:Double    = x._2._1._2
+            val rating:MetaType    = x._2._1._2
             (userIdInt, (itemIdInt, rating))
         }
-    } 
-    
+    }
 }

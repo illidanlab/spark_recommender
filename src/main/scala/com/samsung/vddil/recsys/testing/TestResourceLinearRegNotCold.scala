@@ -66,7 +66,7 @@ object TestResourceLinearRegNotCold {
 //	      iFRDD.saveAsObjectFile(itemFeatObjFile)
 //	    } 
 //	    val itemFeaturesRDD:RDD[(Int, Vector)] =  sc.objectFile[(Int, Vector)](itemFeatObjFile)                    
-	    val itemFeaturesRDD:RDD[(String, Vector)] = null;
+	    val itemFeaturesRDD:RDD[(String, Vector)] = sc.emptyRDD;
 	    
 //	    Logger.info("Preparing user features...")
 //	    if (jobInfo.outputResource(userFeatObjFile)) {
@@ -76,20 +76,36 @@ object TestResourceLinearRegNotCold {
 //	      uFRDD.saveAsObjectFile(userFeatObjFile)
 //	    }  
 //	    val userFeaturesRDD:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)           
-        val userFeaturesRDD:RDD[(String, Vector)] = null;
+        val userFeaturesRDD:RDD[(String, Vector)] = sc.emptyRDD;
         
         Logger.info("Concatenating user and item features in test")
         
-        val predictData:RDD[(String, String, Double)] = null
+        //construct from Integer ID to String ones.  
         
-        val pred = model.predict(predictData, userFeaturesRDD, itemFeaturesRDD)
+        val userIdMap = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getUserMap()
+        val itemIdMap = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getItemMap()
         
+        val predictData:RDD[(String, String, Double)] = translateIdInt2Str(filtTestData, userIdMap, itemIdMap)
         
+        val pred = model.
+        	predict(predictData, userFeaturesRDD, itemFeaturesRDD).
+        	map{x=>
+            	val userId:String     = x._1
+            	val itemId:String     = x._2
+            	val prediction:Double = x._3
+            	val truth:Double      = x._4
+            	(userId, (itemId, (prediction, truth)))
+        	}
         
-        //val  
-        val testLabelNPred: RDD[(Int, Int, Double, Double)] = null
-        
-        throw new NotImplementedError()
+        //from String ID to Integer ones.
+        val testLabelNPred: RDD[(Int, Int, Double, Double)] = 
+            translateIdStr2Int(pred, userIdMap, itemIdMap).map{x=>
+            val userId:Int        = x._1
+            val itemId:Int        = x._2._1
+            val prediction:Double = x._2._2._1
+            val truth:Double      = x._2._2._2
+            (userId, itemId, prediction, truth)
+        }
         
         testLabelNPred
     }
