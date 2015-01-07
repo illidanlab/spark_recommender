@@ -112,6 +112,7 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
 		Some(new MatrixFactModel(
 		    MatrixFactModelPMF.modelName,
 			resourceStr:String,
+			modelParams,
 			userProfile:RDD[(String, Vector)],
 			itemProfile:RDD[(String, Vector)]
         ))

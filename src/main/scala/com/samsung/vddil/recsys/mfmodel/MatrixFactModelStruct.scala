@@ -6,6 +6,7 @@ import org.apache.spark.SparkContext._
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.hadoop.fs.Path
+import scala.collection.mutable.HashMap
 
 
 /**
@@ -24,6 +25,7 @@ import org.apache.hadoop.fs.Path
 class MatrixFactModel(
 		val modelName:String,
 		val resourceStr:String,
+		var modelParams:HashMap[String, String],
 		private val userProfile:RDD[(String, Vector)],
 		private val itemProfile:RDD[(String, Vector)],
 		var coldStartUserProfiler:ColdStartProfileGenerator,
@@ -44,10 +46,12 @@ class MatrixFactModel(
     def this(
     	modelName:String,
 		resourceStr:String,
+		modelParams:HashMap[String, String],
 		userProfile:RDD[(String, Vector)],
 		itemProfile:RDD[(String, Vector)]) = 
 		    this(modelName:String,
         	resourceStr:String,
+        	modelParams:HashMap[String, String],
         	userProfile:RDD[(String, Vector)],
         	itemProfile:RDD[(String, Vector)],
         	AverageProfileGenerator (userProfile.map{_._2}), //coldStartItemProfiler
