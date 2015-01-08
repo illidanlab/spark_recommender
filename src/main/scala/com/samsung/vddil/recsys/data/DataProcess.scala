@@ -175,7 +175,6 @@ object DataProcess {
 	    if (combData.isDefined){
 	        val comDataStruct = combData.get 
 		    val jobStatus:RecJobStatus = jobInfo.jobStatus
-		    
 		    jobStatus.resourceLocation_CombinedData_train = combData
 	    }else{
 	        Logger.error("Failed to combine training data!")
