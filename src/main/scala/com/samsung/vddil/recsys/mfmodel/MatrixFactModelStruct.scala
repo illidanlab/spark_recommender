@@ -384,30 +384,35 @@ trait ColdStartProfileGenerator {
  *  */
 case class AverageProfileGenerator (profileRDD: RDD[Vector]) 
 	extends ColdStartProfileGenerator{
-    //compute average profile 
-    var averageVector: Option[Vector] = None 
+    //we compute the average by default. 
+    var averageVector: Option[Vector] = Some(computeAverage(profileRDD))
     
     def getProfile(feature:Option[Vector] = None):Vector = {
         if(!averageVector.isDefined){
-            //accumulation. 
-            val avgPair:(Vector, Int) = profileRDD.map{
-                x=>(x, 1)
-            }.reduce{ (a, b)=>
-                (a._1 + b._1, a._2 + b._2)
-            }
-            val sumVal:Int    = avgPair._2
-            
-            //averaging
-            val avgVector:Vector = if (sumVal > 0){
-                avgPair._1 / sumVal.toDouble
-            }else{
-                avgPair._1
-            }
-            
             //set average variable. 
-            averageVector = Some(avgVector)
+            averageVector = Some(computeAverage(profileRDD))
         }
         averageVector.get
+    }
+    
+    /**
+     * Compute the average of the profile vector. 
+     */
+    def computeAverage(profileRDD: RDD[Vector]): Vector= {
+        val avgPair:(Vector, Int) = profileRDD.map{
+            x=>(x, 1)
+        }.reduce{ (a, b)=>
+            (a._1 + b._1, a._2 + b._2)
+        }
+        val sumVal:Int    = avgPair._2
+        
+        //averaging
+        if (sumVal > 0){
+            avgPair._1 / sumVal.toDouble
+        }else{
+            avgPair._1
+        }
+        
     }
 }
 
