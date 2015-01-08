@@ -1,7 +1,7 @@
 <jobList xmlns:recsys="Samsung Recsys">
 	<jobEntry>
 		<jobType>recommendation</jobType>
-		<jobName>exp_test_20140522_20140525_fmr</jobName>
+		<jobName>exp_test_20140522_20140525_fmr_maxNorm</jobName>
 		<jobDesc>Test experiment from 20140522 to 20140525</jobDesc>
 		<sparkContext>
 			<master>local[4]</master>
@@ -9,7 +9,7 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
-      <workspace>/tmp/vddil/recsys-spark</workspace>
+            <workspace>/tmp/vddil/recsys-spark</workspace>
 		</resourceLocation>
 		<experimentalFeature>
 			<exportPlainTextData>false</exportPlainTextData>
@@ -27,11 +27,11 @@
 				<param>
 					<lang>en</lang>
 				</param>
-				<!-- <processes>
+				<processes>
                     <process>
-                        <name>l2normalize</name>
+                        <name>maxnormalize</name>
                     </process>
-                </processes> -->
+                </processes>
 			</feature>
 			<feature>
 				<type>itemFeature</type>
@@ -39,16 +39,16 @@
 				<param>
 					<timeWindow>12</timeWindow>
 				</param>
-				<!-- <processes>
+				<processes>
                     <process>
-                        <name>l2normalize</name>
+                        <name>maxnormalize</name>
                     </process>
-                </processes> -->
+                </processes>
 			</feature>
 			<feature>
 				<type>itemFeature</type>
 				<name>channel</name>
-				<!-- <processes>
+				<processes>
 					<process>
 						<name>randomSelection</name>
 						<param>
@@ -56,12 +56,12 @@
 						</param>
 					</process>
 					<process>
-						<name>l2normalize</name>
+						<name>maxnormalize</name>
 					</process>
 					<process>
 						<name>dummy</name>
 					</process>
-				</processes> -->
+				</processes>
 			</feature>
 			<feature>
 		        <type>itemFeature</type>
@@ -69,14 +69,14 @@
 		        <param>
 		            <N>100</N>
 		        </param>
-		        <!-- <processes>
+		        <processes>
 		            <process>
-                        <name>l2normalize</name>
+                        <name>maxnormalize</name>
                     </process>
                     <process>
                         <name>dummy</name>
                     </process>
-                </processes> -->
+                </processes>
 		    </feature>
 			<feature>
 				<type>userFeature</type>
