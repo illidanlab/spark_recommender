@@ -65,8 +65,6 @@ cluster_result=$($emr_dir/elastic-mapreduce --create --name $cluster_name --ami-
 cluster_id=$(echo $cluster_result | cut -d" " -f4)
 echo "Cluster ID: $cluster_id"
 
-exit
-
 $emr_dir/elastic-mapreduce -j $cluster_id --region us-east-1 \
 	--jar s3://us-east-1.elasticmapreduce/libs/script-runner/script-runner.jar \
 	--args "s3://vddil.recsys/testScript/aws_run_job.sh,$running_job_file,$memory_driver,$memory_exeutor,$num_cores,$num_executors"
