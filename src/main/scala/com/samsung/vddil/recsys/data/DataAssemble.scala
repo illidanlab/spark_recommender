@@ -238,12 +238,14 @@ object DataAssemble {
           //5. perform a filtering on ( UserID, ItemID, rating) using <intersectUF> and <intersectIF>, 
           //   and generate <intersectTuple>
           //filtering such that we have only user-item pairs such that for both features have been found
-          val allData = sc.textFile(combData.resourceLoc)
-                        .map{lines => 
-                            val fields = lines.split(',')
-                            //user, item, watchtime
-                            (fields(0).toInt, (fields(1).toInt, fields(2).toDouble))
-                        }//contains both user and item in set
+//          val allData = sc.textFile(combData.resourceLoc)
+//                        .map{lines => 
+//                            val fields = lines.split(',')
+//                            //user, item, watchtime
+//                            (fields(0).toInt, (fields(1).toInt, fields(2).toDouble))
+//                        }//contains both user and item in set
+          
+          val allData = combData.getDataRDD().map{x=>(x._1, (x._2, x._3))}
           
           val filterByUser = allData.join(userIntersectIds.map(x=>(x,1))
                   ).map {x => //(user, ((item, watchtime),1))

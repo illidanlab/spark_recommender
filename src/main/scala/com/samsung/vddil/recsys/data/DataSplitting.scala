@@ -183,6 +183,9 @@ object DataSplitting {
 	    	teDataStruct.size = testData.count
 	    	vaDataStruct.size = valData.count
 	    	
+	        Logger.info("All data" + allData.size + " TR:" + trainData.count + " TE:" + testData.count + " VAL:" + valData.count)
+	    	
+	        Logger.info("DEBUG")
 	    	//unpersist the persisted data to free up memory associated
 	    	randData.unpersist(false)
     	}
