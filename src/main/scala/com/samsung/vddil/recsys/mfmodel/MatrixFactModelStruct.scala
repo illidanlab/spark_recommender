@@ -24,7 +24,8 @@ import scala.collection.mutable.HashMap
  */
 class MatrixFactModel(
 		val modelName:String,
-		val resourceStr:String,
+		val resourceStr:String, //an identity string
+		val resourceLoc:String, //the physical location (prefix) .
 		var modelParams:HashMap[String, String],
 		private val userProfile:RDD[(String, Vector)],
 		private val itemProfile:RDD[(String, Vector)],
@@ -46,11 +47,13 @@ class MatrixFactModel(
     def this(
     	modelName:String,
 		resourceStr:String,
+		resourceLoc:String,
 		modelParams:HashMap[String, String],
 		userProfile:RDD[(String, Vector)],
 		itemProfile:RDD[(String, Vector)]) = 
 		    this(modelName:String,
         	resourceStr:String,
+        	resourceLoc:String,
         	modelParams:HashMap[String, String],
         	userProfile:RDD[(String, Vector)],
         	itemProfile:RDD[(String, Vector)],
@@ -60,8 +63,6 @@ class MatrixFactModel(
     
     /** the name of the model, typically used as the identity prefix */
 	def resourcePrefix = modelName
-	/** the resourceLoc is not used, and user/itemProfileRDDFile are used instead. */
-	def resourceLoc = "" //here resource loc should be empty
 	/** stores user profile RDD[(String, Vector)]*/
 	def userProfileRDDFile:String = resourceStr + "_userProfile"
 	/** stores item profile RDD[(String, Vector)]*/

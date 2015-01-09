@@ -54,7 +54,7 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
         val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)
         val resourceIden   = resourceIdentity(dataHashingStr)
         
-        val resourceStr = jobInfo.resourceLoc(RecJob.ResourceLoc_JobModel) + 
+        val resourceLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_JobModel) + 
         							"/" + resourceIden
         
         // construct Rating data structure. 
@@ -111,7 +111,8 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
 		// 4 Save an return model. 
 		Some(new MatrixFactModel(
 		    MatrixFactModelPMF.modelName,
-			resourceStr:String,
+		    resourceIden: String,
+			resourceLoc:String,
 			modelParams,
 			userProfile:RDD[(String, Vector)],
 			itemProfile:RDD[(String, Vector)]
