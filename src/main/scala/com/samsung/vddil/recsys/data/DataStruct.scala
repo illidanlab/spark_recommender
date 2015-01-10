@@ -140,12 +140,15 @@ object CombinedDataSet{
 	        userNum: Int,
 	        itemNum: Int,
 	        dates:Array[String], 
-            dataRDD: RDD[(Int, Int, Double)]): CombinedDataSet = {
+            dataRDD: RDD[(Int, Int, Double)],
+            outputResource: String => Boolean = (str:String) => true): CombinedDataSet = {
         
         val recordNum = dataRDD.count 
         
-        //store. 
-        CombinedDataSet.saveDataRDD(dataRDD, resourceLoc)
+        //store.
+        if (outputResource(resourceLoc)){
+        	CombinedDataSet.saveDataRDD(dataRDD, resourceLoc)
+        }
         
         new CombinedDataSet(
 	        resourceStr: String,

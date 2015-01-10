@@ -387,7 +387,8 @@ object DataProcess {
 	                    trainCombData.itemMapLoc, 
 	                    trainCombData.userNum, 
 	                    trainCombData.itemNum, 
-	                    trainCombData.dates, data)
+	                    trainCombData.dates, data, 
+	                    jobInfo.outputResource)
 	        
 	        //set resource pointer.
 	        jobInfo.jobStatus.resourceLocation_CombinedData_test = Some(dataSet)
