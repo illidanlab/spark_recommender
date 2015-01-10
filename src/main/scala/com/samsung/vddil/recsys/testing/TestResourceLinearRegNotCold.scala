@@ -7,11 +7,109 @@ import com.samsung.vddil.recsys.utils.HashString
 import org.apache.spark.rdd.RDD
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.model.ModelStruct
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
+import com.samsung.vddil.recsys.job.RecMatrixFactJob
 
 object TestResourceLinearRegNotCold {
   
     val IdenPrefix = "LinearRegNotCold"
 	
+        
+    def generateResource(jobInfo:RecMatrixFactJob, 
+			            testParams: HashMap[String, String],
+			            model: MatrixFactModel,
+			            testResourceDir:String
+			             ): RDD[(Int, Int, Double, Double)] = {
+    	//hash string to cache intermediate files, helpful in case of crash    
+        val itemFeatObjFile      = testResourceDir + "/" + IdenPrefix + "/itemFeat"
+	    val userFeatObjFile      = testResourceDir + "/" + IdenPrefix + "/userFeat"
+	    val userItemFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/userItemFeat" 
+	    val filterRatingDataFile = testResourceDir + "/" + IdenPrefix + "/filterTestRatingData"
+	    
+	    
+		//get spark context
+		val sc = jobInfo.sc
+		
+		//process test data
+		if (jobInfo.outputResource(filterRatingDataFile)){
+		    // cache the filtered rating data
+		    // 
+			val testData = filterTestRatingData(
+			        jobInfo.jobStatus.resourceLocation_CombinedData_test.get, 
+			        jobInfo.jobStatus.resourceLocation_CombinedData_train.get, 
+			        sc).map(x => 
+	                    (x.user, (x.item, x.rating))
+	                )
+			testData.saveAsObjectFile(filterRatingDataFile)
+		}
+        val filtTestData:RDD[(Int, (Int, Double))] = sc.objectFile(filterRatingDataFile)
+        
+        val testData = filtTestData
+        
+        val testItems = testData.map{ _._2._1}.distinct
+
+        val testUsers = testData.map{ _._1}.distinct
+        
+		//get feature orderings
+//        val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
+//                                        .userFeatureOrder
+//    
+//        val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
+//                                        .itemFeatureOrder
+    
+	    //get required item n user features 
+//	    Logger.info("Preparing item features...")
+//	    if (jobInfo.outputResource(itemFeatObjFile)) {
+//	      //item features file don't exist
+//	      //generate and save
+//	      val iFRDD = getOrderedFeatures(testItems, itemFeatureOrder, sc)
+//	      iFRDD.saveAsObjectFile(itemFeatObjFile)
+//	    } 
+//	    val itemFeaturesRDD:RDD[(Int, Vector)] =  sc.objectFile[(Int, Vector)](itemFeatObjFile)                    
+	    val itemFeaturesRDD:RDD[(String, Vector)] = sc.emptyRDD;
+	    
+//	    Logger.info("Preparing user features...")
+//	    if (jobInfo.outputResource(userFeatObjFile)) {
+//	      //item features file don't exist
+//	      //generate and save
+//	      val uFRDD = getOrderedFeatures(testUsers, userFeatureOrder, sc)
+//	      uFRDD.saveAsObjectFile(userFeatObjFile)
+//	    }  
+//	    val userFeaturesRDD:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)           
+        val userFeaturesRDD:RDD[(String, Vector)] = sc.emptyRDD;
+        
+        Logger.info("Concatenating user and item features in test")
+        
+        //construct from Integer ID to String ones.  
+        
+        val userIdMap = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getUserMap()
+        val itemIdMap = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getItemMap()
+        
+        val predictData:RDD[(String, String, Double)] = translateIdInt2Str(filtTestData, userIdMap, itemIdMap)
+        
+        val pred = model.
+        	predict(predictData, userFeaturesRDD, itemFeaturesRDD).
+        	map{x=>
+            	val userId:String     = x._1
+            	val itemId:String     = x._2
+            	val prediction:Double = x._3
+            	val truth:Double      = x._4
+            	(userId, (itemId, (prediction, truth)))
+        	}
+        
+        //from String ID to Integer ones.
+        val testLabelNPred: RDD[(Int, Int, Double, Double)] = 
+            translateIdStr2Int(pred, userIdMap, itemIdMap).map{x=>
+            val userId:Int        = x._1
+            val itemId:Int        = x._2._1
+            val prediction:Double = x._2._2._1
+            val truth:Double      = x._2._2._2
+            (userId, itemId, prediction, truth)
+        }
+        
+        testLabelNPred
+    }
+        
 	/**
 	 * perform predictions on test data and return result as
 	 * (user, item, actual rating, predicted rating)
@@ -93,8 +191,8 @@ object TestResourceLinearRegNotCold {
 	
 	    //get prediction on test data
 	    //convert to label points
-	    Logger.info("Converting to testlabel point")
-	    val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
+	    //Logger.info("Converting to testlabel point")
+	    //val testLabelPoints = convToLabeledPoint(userItemFeatWRating)
 	    
 	    //NOTE: user-item pair in test can appear more than once
 	    Logger.info("Getting prediction on test label points")

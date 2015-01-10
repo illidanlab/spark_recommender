@@ -10,6 +10,7 @@ import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.model.PartializableModel
 import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.SparkContext
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 
 package object prediction {
     
@@ -67,6 +68,41 @@ package object prediction {
 
     }
     
+	/**
+	 * Computes the prediction given features and matrix factorization models. 
+	 */
+	def computePrediction(
+            	model:MatrixFactModel,
+            	userIdList:RDD[String],
+            	itemIdList:RDD[String],
+            	userFeaturesRDDOption: Option[RDD[(String, Vector)]],
+            	itemFeaturesRDDOption: Option[RDD[(String, Vector)]],
+            	outputResource: String => Boolean,
+            	sc: SparkContext
+    		):RDD[(String, (String, Double))] = {
+	    
+	    
+	    val userFeatureRDD = if(userFeaturesRDDOption.isDefined){
+	        userFeaturesRDDOption.get
+	    }else{
+	        sc.parallelize(List[(String, Vector)]())
+	    }
+	    
+	    val itemFeatureRDD = if(itemFeaturesRDDOption.isDefined) {
+	        itemFeaturesRDDOption.get
+	    }else{
+	        sc.parallelize(List[(String, Vector)]())
+	    }
+	    
+	    model.predict(
+	            userIdList, itemIdList, 
+	            userFeatureRDD, itemFeatureRDD).map{ x=> 
+	        (x._1, (x._2, x._3))
+	    }
+	}
+	
+	
+	
 	/**
 	 * Computes prediction using a partial model
 	 */

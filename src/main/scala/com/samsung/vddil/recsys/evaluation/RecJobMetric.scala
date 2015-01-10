@@ -84,10 +84,20 @@ case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, Stri
       val combHR = hitSets.map {hitSet =>
             val allHRInters = (hitSet.topNPredAllItem.toSet & 
                                    hitSet.topNTestAllItems.toSet).size.toDouble
-            (allHRInters/hitSet.N, 1)
-      }.reduce((a,b) => (a._1+b._1, a._2+b._2))
-      val numUsers = combHR._2
-      val avgCombHR = combHR._1/numUsers
+            //Debug info.                        
+            //val size_pred = hitSet.topNPredAllItem.toSet.size
+            //val size_all  = hitSet.topNTestAllItems.toSet.size
+            //val size_inter = (hitSet.topNPredAllItem.toSet & 
+            //                       hitSet.topNTestAllItems.toSet).size
+            (1, 
+             allHRInters/hitSet.topNTestAllItems.length, 
+             allHRInters,  
+             allHRInters/hitSet.N)
+      }.reduce((a,b) => (a._1+b._1, a._2+b._2, a._3+b._3, a._4+b._4))
+      val numUsers  = combHR._1
+      val recall    = combHR._2/numUsers // recall=> avg(#userHit/#userTotalHit)
+      val hitRate   = combHR._3/numUsers // #hit/#user.
+      val precision = combHR._4/numUsers // precision => avg(#userHit/N)
   
       //get hit-rate on test items if there was new items in
       //test, also while calculating recall divide by no. of new items in test
@@ -105,7 +115,10 @@ case class RecJobMetricHR(metricName: String, metricParams: HashMap[String, Stri
       val numTestUsers = testHR._2
       val avgTestHR = testHR._1/numTestUsers
       
-      Map("AvgCombHitRate" -> avgCombHR,  "AvgTestHitRate" -> avgTestHR)
+      Map("Precision"-> precision, 
+          "Recall"-> recall, 
+          "AvgCombHitRate" -> hitRate,  
+          "AvgTestHitRate" -> avgTestHR)
     }
 }
 

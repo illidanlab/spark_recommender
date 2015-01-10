@@ -12,6 +12,7 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.storage.StorageLevel
+import com.samsung.vddil.recsys.job.RecMatrixFactJob
 
 /**
  * Provides functions to aggregate data. The main functions are [[DataProcess.prepareTrain]] 
@@ -181,6 +182,41 @@ object DataProcess {
 	    }
 	}
 	
+	
+	/**
+     * Generates user-item matrix, user list, and item list. 
+     * 
+     * This method generates ( UserID, ItemID, feedback ) tuples from ACR watch time data
+     * and stores the tuples, list of UserID, list of ItemID into the system. 
+     * 
+     *  @param jobInfo the job information
+     *   
+     */
+	def prepareTrain(jobInfo:RecMatrixFactJob) {
+    	val dataDates = jobInfo.trainDates
+	    val watchTimeResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime)
+	    val sc = jobInfo.sc
+	    val outputResource = (x:String) => jobInfo.outputResource(x)
+	    val outputDataResLoc = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData)
+	    val partitionNum = jobInfo.partitionNum_train 
+	        
+	    val combData:Option[CombinedDataSet] = combineWatchTimeData(
+	        dataDates:Array[String], 
+	        watchTimeResLoc:String, 
+	        sc:SparkContext, 
+	        partitionNum:Int,
+	        outputResource: String=>Boolean,
+	        outputDataResLoc: String ) 
+	        
+	    if (combData.isDefined){
+	        val comDataStruct = combData.get 
+		    jobInfo.jobStatus.resourceLocation_CombinedData_train = combData
+	    }else{
+	        Logger.error("Failed to combine training data!")
+	    }
+	}
+	
+	
 	/**
 	 * Generates combined watch time data set. 
 	 * 
@@ -277,43 +313,86 @@ object DataProcess {
 	 * 
 	 * @param jobInfo the job information
 	 */
-	def prepareTest(jobInfo: RecJob)  = {
-    
-    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
-    val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
+	def prepareTest(jobInfo: RecJob)  = {    
+	    val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
+	    val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
+		
+	    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+	    
+	    //get spark context
+		val sc  = jobInfo.sc
+		val partitionNum = jobInfo.partitionNum_test
 	
-    val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
-    
-    //get spark context
-	val sc  = jobInfo.sc
-	val partitionNum = jobInfo.partitionNum_test
+	    //get userMap and itemMap
+	    val userMap = trainCombData.getUserMap()
+	    val itemMap = trainCombData.getItemMap()   
+	    
+	    //broadcast item map
+	    val bIMap = sc.broadcast(itemMap)
+	
+	    //read all data mentioned in test dates l date
+	    //get RDD of data of each individua
+	    val testData = getDataFromDates(jobInfo.testDates, 
+	                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+	                    sc, partitionNum)
+	
+	    if (testData.isDefined){
+	        val data = testData.get
+	        
+	        //include only users and items seen in training
+	        if (jobInfo.outputResource(dataLocTest)) {
+	        	substituteIntId(data, userMap, itemMap, partitionNum).
+	    	        	map(x => Rating(x._1, x._2, x._3)).
+	    	        	saveAsObjectFile(dataLocTest)
+	        }
+	        //TODO: change to CombinedDataSet instance for storage caching. 
+	        jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](dataLocTest).persist(StorageLevel.DISK_ONLY))
+	    }
 
-    //get userMap and itemMap
-    val userMap = trainCombData.getUserMap()
-    val itemMap = trainCombData.getItemMap()   
-    
-    //broadcast item map
-    val bIMap = sc.broadcast(itemMap)
-
-    //read all data mentioned in test dates l date
-    //get RDD of data of each individua
-    val testData = getDataFromDates(jobInfo.testDates, 
-                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
-                    sc, partitionNum)
-
-    if (testData.isDefined){
-        val data = testData.get
-        
-        //include only users and items seen in training
-        if (jobInfo.outputResource(dataLocTest)) {
-        	substituteIntId(data, userMap, itemMap, partitionNum).
-    	        	map(x => Rating(x._1, x._2, x._3)).
-    	        	saveAsObjectFile(dataLocTest)
-        }
-        
-        jobInfo.jobStatus.testWatchTime = Some(sc.objectFile[Rating](dataLocTest).persist(StorageLevel.DISK_ONLY))
     }
+	
+    def prepareTest(jobInfo: RecMatrixFactJob) = {
+        val sc  = jobInfo.sc
+        val partitionNum = jobInfo.partitionNum_test
+        
+        val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.testDates)  
+        val dataLocTest = jobInfo.resourceLoc(RecJob.ResourceLoc_JobData) + "/testData_" + dataHashingStr
+        
+        val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
+        
+        //get userMap and itemMap
+        val userMap = trainCombData.getUserMap()
+        val itemMap = trainCombData.getItemMap()
+        
+        //broadcast item map
+        val bIMap = sc.broadcast(itemMap)
 
-  }
+	    //read all data mentioned in test dates l date
+	    //get RDD of data of each individua
+	    val testData = getDataFromDates(jobInfo.testDates, 
+	                    jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime), 
+	                    sc, partitionNum)
+	                    
+	    if(testData.isDefined){
+	        
+	        //generate data RDD. 
+	        val data = substituteIntId(testData.get, userMap, itemMap, partitionNum)
+	        
+	        //create CombinedRawDataSet instance (to be used later). 
+	        val dataSet = //CombinedRawDataSet.createInstance(dataHashingStr, dataLocTest, data, jobInfo.testDates)
+	            CombinedDataSet.createInstance(dataHashingStr, dataLocTest, 
+	                    trainCombData.userListLoc, 
+	                    trainCombData.itemListLoc, 
+	                    trainCombData.userMapLoc, 
+	                    trainCombData.itemMapLoc, 
+	                    trainCombData.userNum, 
+	                    trainCombData.itemNum, 
+	                    trainCombData.dates, data, 
+	                    jobInfo.outputResource)
+	        
+	        //set resource pointer.
+	        jobInfo.jobStatus.resourceLocation_CombinedData_test = Some(dataSet)
+	    }
+    }
 
 }

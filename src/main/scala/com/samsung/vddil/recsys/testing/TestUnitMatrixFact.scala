@@ -6,8 +6,6 @@ import org.apache.hadoop.fs.Path
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.evaluation.RecJobMetric
-import com.samsung.vddil.recsys.job.RecJob
-import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.evaluation.RecJobMetricSE
 import com.samsung.vddil.recsys.evaluation.RecJobMetricHR
@@ -19,20 +17,21 @@ import java.io.BufferedWriter
 import java.io.OutputStreamWriter
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 import com.samsung.vddil.recsys.job.RecMatrixFactJob
+import com.samsung.vddil.recsys.job.RecJob
 
 /**
  * The test unit, each test should implement this trait and create a factory method 
  * in the TestUnit companion object. 
  */
-trait TestUnit {
+trait TestUnitMatrixFact {
     
     def testParams: HashMap[String, String]
     
     def metricList: Array[RecJobMetric]
     
-    def model:ModelStruct
+    def model:MatrixFactModel
     
-    def jobInfo:RecJob
+    def jobInfo:RecMatrixFactJob
     
     /** A prefix string */
     def IdenPrefix:String
@@ -76,14 +75,14 @@ trait TestUnit {
         val fs = Pipeline.instance.get.fs
         if (fs.exists(summaryFile)) fs.delete(summaryFile, true)
         
-        TestUnit.writeSummaryFile(fs, summaryFile, results, this)
+        TestUnitMatrixFact.writeSummaryFile(fs, summaryFile, results, this)
     }
 }
 
 /**
  * Factory methods for performing tests. 
  */
-object TestUnit{
+object TestUnitMatrixFact{
     /**
      * Each test contains a set of metrics, and each metric can give 
      * a set of numbers. 
@@ -96,37 +95,11 @@ object TestUnit{
      * Perform test without cold start
      */
     def testNoCold(
-            jobInfo:RecJob, 
-            testParams:HashMap[String, String],  
-            metricList: Array[RecJobMetric], 
-            model:ModelStruct):(TestUnit, TestResults) = {
-        val test = new TestUnitNoCold(testParams, metricList,jobInfo, model)
-        (test, test.performTest())
-    }
-    
-    /**
-     * Perform test without cold start
-     */
-    def testNoCold(
             jobInfo:RecMatrixFactJob, 
             testParams:HashMap[String, String],  
             metricList: Array[RecJobMetric], 
-            model:MatrixFactModel):(TestUnit, TestResults) = {
-        //val test = new TestUnitNoCold(testParams, metricList,jobInfo, model)
-        //(test, test.performTest())
-        //TODO: implement this!
-        throw new NotImplementedError()
-    }
-    
-    /**
-     * Perform test on cold items
-     */
-    def testColdItem(
-            jobInfo:RecJob, 
-            testParams:HashMap[String, String],  
-            metricList: Array[RecJobMetric], 
-            model:ModelStruct):(TestUnit, TestResults) = {
-        val test = new TestUnitColdItem(testParams, metricList,jobInfo, model) 
+            model:MatrixFactModel):(TestUnitMatrixFact, TestResults) = {
+        val test = new TestUnitNoColdMatrixFact(testParams, metricList,jobInfo, model)
         (test, test.performTest())
     }
     
@@ -137,13 +110,10 @@ object TestUnit{
             jobInfo:RecMatrixFactJob, 
             testParams:HashMap[String, String],  
             metricList: Array[RecJobMetric], 
-            model:MatrixFactModel):(TestUnit, TestResults) = {
-        //val test = new TestUnitColdItem(testParams, metricList,jobInfo, model) 
-        //(test, test.performTest())
-        //TODO: implement this!
-        throw new NotImplementedError()
+            model:MatrixFactModel):(TestUnitMatrixFact, TestResults) = {
+        val test = new TestUnitColdItemMatrixFact(testParams, metricList,jobInfo, model) 
+        (test, test.performTest())
     }
-    
     
     /**
      * Writes the plain text summary file to target file. 
@@ -154,7 +124,7 @@ object TestUnit{
             fs:FileSystem, 
             summaryFile:Path, 
             results:TestResults, 
-            testUnit:TestUnit){
+            testUnit:TestUnitMatrixFact){
         
         val out = fs.create(summaryFile);
         val writer = new BufferedWriter(new OutputStreamWriter(out))
@@ -184,12 +154,12 @@ object TestUnit{
 }
 
 
-case class TestUnitNoCold private[testing] (
+case class TestUnitNoColdMatrixFact private[testing] (
         	testParams:HashMap[String, String],  
         	metricList: Array[RecJobMetric],
-        	jobInfo: RecJob,
-        	model:ModelStruct
-        ) extends TestUnit{
+        	jobInfo: RecMatrixFactJob,
+        	model:MatrixFactModel
+        ) extends TestUnitMatrixFact{
      
     val IdenPrefix = "Test_NoColdStart"
         
@@ -236,13 +206,16 @@ case class TestUnitNoCold private[testing] (
 		    		
 		    		case metricHR:RecJobMetricHR => {
 		    			//1 Generate necessary resources.
-		    			if (!hitTestHandlerRes.isDefined){
-		    			    hitTestHandlerRes = Some(TestResourceRegNotColdHit.generateResource(jobInfo, 
-				                     		  testParams, model, testResourceDir))
-		    			}
+//		    			if (!hitTestHandlerRes.isDefined){
+//		    			    hitTestHandlerRes = Some(TestResourceRegNotColdHit.generateResource(jobInfo, 
+//				                     		  testParams, model, testResourceDir))
+//		    			}
 		    			
+		    		    val testResource = TestResourceRegNotColdHit.generateResource(jobInfo, 
+				                     		  testParams, model, testResourceDir)
+		    		    
 		    			//2. Compute metric scores. 
-		    			val metricResult = metricHR.run(hitTestHandlerRes.get)
+		    			val metricResult = metricHR.run(testResource)
 		    			Logger.info(s"Evaluated $model Not Coldstart  $metric = $metricResult")
 		    			
 		    			//3. Save 
@@ -267,12 +240,12 @@ case class TestUnitNoCold private[testing] (
     }
 }
 
-case class TestUnitColdItem private[testing](
+case class TestUnitColdItemMatrixFact private[testing](
         	testParams:HashMap[String, String],  
         	metricList: Array[RecJobMetric],
-        	jobInfo: RecJob,
-        	model:ModelStruct
-        ) extends TestUnit{
+        	jobInfo: RecMatrixFactJob,
+        	model:MatrixFactModel
+        ) extends TestUnitMatrixFact{
     
     val IdenPrefix = "Test_ColdItem"
     
@@ -327,6 +300,5 @@ case class TestUnitColdItem private[testing](
         result
     }
 }
-
 
 

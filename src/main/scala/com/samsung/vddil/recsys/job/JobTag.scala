@@ -17,7 +17,8 @@ object JobTag {
   
 	val JobType_Recommendation = "recommendation"
 	val JobType_HelloWorld     = "helloworld"
-  val JobType_TemporalAgg    = "temporalagg"
+    val JobType_TemporalAgg    = "temporalagg"
+    val JobType_RecMatrixFact  = "rec_matrixfactorize" 
 	  
 	val RecJobSparkContext = "sparkContext"
     val RecJobSparkContextMaster = "master"

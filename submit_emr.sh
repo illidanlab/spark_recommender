@@ -21,6 +21,9 @@ memory_exeutor="20G"
 num_cores="6"
 num_executors=$3
 
+version_ami="3.3.1"
+version_spark="1.1.1.e"
+
 spark_default_parallelism=1600
 #running_job_file="running_job.xml"
 running_job_file=$USER"_"$(basename $job_file)
@@ -53,13 +56,13 @@ else
 fi
 
 ##start cluster
-cluster_result=$($emr_dir/elastic-mapreduce --create --name $cluster_name --ami-version 3.3.1 \
+cluster_result=$($emr_dir/elastic-mapreduce --create --name $cluster_name --ami-version $version_ami \
         --instance-group master --instance-count 1 --instance-type c3.4xlarge \
         --instance-group core --instance-count $cluster_node_num --instance-type c3.8xlarge \
 		--bootstrap-action s3://support.elasticmapreduce/bootstrap-actions/ami/3.2.1/CheckandFixMisconfiguredMounts.bash \
 		--bootstrap-action s3://elasticmapreduce/bootstrap-actions/configure-hadoop \
         	--args "-y,yarn.log-aggregation-enable=true,-y,yarn.log-aggregation.retain-seconds=-1,-y,yarn.log-aggregation.retain-check-interval-seconds=3000,-y,yarn.nodemanager.remote-app-log-dir=/tmp/logs" \
-        --bootstrap-action s3://support.elasticmapreduce/spark/install-spark --args "-g,-v,1.1.1.e"\
+        --bootstrap-action s3://support.elasticmapreduce/spark/install-spark --args "-g,-v,$version_spark"\
 		--bootstrap-action s3://elasticmapreduce/bootstrap-actions/install-ganglia \
         --jar s3://elasticmapreduce/libs/script-runner/script-runner.jar \
             --args "s3://support.elasticmapreduce/spark/start-history-server" \

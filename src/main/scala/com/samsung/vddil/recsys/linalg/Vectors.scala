@@ -70,6 +70,19 @@ trait Vector extends Serializable {
     */
    def +(that: Vector):Vector
    
+   /** 
+    * Divides a scalar. 
+    */
+   def /(that: Double): Vector
+   
+   /**
+    * Performs inner product.
+    */
+   def dot(that:Vector): Double = {
+       require(this.size == that.size)
+       this.data.dot(that.data)
+   }
+   
    /**
     * A copy of current vector into sparse form 
     */
@@ -319,8 +332,13 @@ class DenseVector(val data:BDV[Double]) extends Vector {
   
   
   def +(that: Vector):Vector = {
-     require(this.size == that.size)
-     Vectors.fromBreeze(this.data + that.data)
+      require(this.size == that.size)
+      Vectors.fromBreeze(this.data + that.data)
+  }
+  
+  def /(that: Double):Vector = {
+      require(Math.abs(that) > zeroPrecision)
+      Vectors.fromBreeze(this.data/that)
   }
   
   def toSparse():SparseVector = {
@@ -397,6 +415,11 @@ class SparseVector(val data:BSV[Double]) extends Vector{
     def +(that: Vector):Vector = {
        require(this.size == that.size)
        Vectors.fromBreeze(this.data + that.data)
+    }
+    
+    def /(that: Double):Vector = {
+        require(Math.abs(that) > zeroPrecision)
+        Vectors.fromBreeze(this.data / that)
     }
     
     def toSparse(): SparseVector = {
