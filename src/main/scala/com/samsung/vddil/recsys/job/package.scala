@@ -323,6 +323,17 @@ package object job{
         }
         writer.newLine()
         
+        writehead("Testing watchtime data (only used in MSE/RMSE)", 2)
+        if (job.jobStatus.resourceLocation_CombinedData_test.isDefined){
+            val testCombData = job.jobStatus.resourceLocation_CombinedData_test.get
+            writeline(" Data Identity: " + testCombData.resourceStr)
+            writeline(" Data File:     " + testCombData.resourceLoc)
+            writeline(" Data Dates:    " + testCombData.dates.mkString("[",", ","]"))
+            writeline("   User Number: " + testCombData.userNum)
+            writeline("   Item Number: " + testCombData.itemNum)
+        }
+        writer.newLine()
+        
         /// features
         writehead("Features", 1)
         

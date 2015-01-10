@@ -155,7 +155,7 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     	        testList.map{_.run(this, model)}
     	}
         
-    	
+    	writeSummaryFile()
     	
     }
     /**
