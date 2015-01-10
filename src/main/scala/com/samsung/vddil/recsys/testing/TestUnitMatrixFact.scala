@@ -206,13 +206,16 @@ case class TestUnitNoColdMatrixFact private[testing] (
 		    		
 		    		case metricHR:RecJobMetricHR => {
 		    			//1 Generate necessary resources.
-		    			if (!hitTestHandlerRes.isDefined){
-		    			    hitTestHandlerRes = Some(TestResourceRegNotColdHit.generateResource(jobInfo, 
-				                     		  testParams, model, testResourceDir))
-		    			}
+//		    			if (!hitTestHandlerRes.isDefined){
+//		    			    hitTestHandlerRes = Some(TestResourceRegNotColdHit.generateResource(jobInfo, 
+//				                     		  testParams, model, testResourceDir))
+//		    			}
 		    			
+		    		    val testResource = TestResourceRegNotColdHit.generateResource(jobInfo, 
+				                     		  testParams, model, testResourceDir)
+		    		    
 		    			//2. Compute metric scores. 
-		    			val metricResult = metricHR.run(hitTestHandlerRes.get)
+		    			val metricResult = metricHR.run(testResource)
 		    			Logger.info(s"Evaluated $model Not Coldstart  $metric = $metricResult")
 		    			
 		    			//3. Save 

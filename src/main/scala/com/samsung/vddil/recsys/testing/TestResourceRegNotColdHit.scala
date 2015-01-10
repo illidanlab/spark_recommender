@@ -68,13 +68,16 @@ object TestResourceRegNotColdHit{
        //seed parameter needed for sampling test users
        val seed = testParams.getOrElseUpdate("seed", "3").toInt
       
+       val testParamStr = HashString.generateHash(testParams.toString)
+       
        //cache intermediate files, helpful in case of crash  
-   	    val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/itemFeat"   
-		val userFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/userFeat" 
-		val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
-		val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
-		val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
-		val filterRatingDataFile    = testResourceDir + "/" + IdenPrefix + "/filterTestRatingData"
+   	   val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/itemFeat"   
+	   val userFeatObjFile         = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/userFeat" 
+	   val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/sampledUserFeat" 
+	   val debugFile               = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/debug" 
+	   val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/sampledUserItemFeat"
+	   val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/sampledPred/BlockFiles"
+	   val filterRatingDataFile    = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/filterTestRatingData"
 		
 		//get spark context
 		val sc = jobInfo.sc
@@ -187,6 +190,9 @@ object TestResourceRegNotColdHit{
         //translate Int to String back and forth may be not efficient, 
 	    //but it makes the model pure :-)
 	    val userItemPred:RDD[(Int, (Int, Double))] = translateIdStr2Int(userItemPredStr, userIdMap, itemIdMap)
+	    
+	    ////debug use. 
+	    userItemPred.map{x => (x._1, List(x._2))}.reduceByKey{(x1, x2)=> x1++x2}.saveAsTextFile(debugFile)
 	    
 	    ////STEP: process results. 
 	    

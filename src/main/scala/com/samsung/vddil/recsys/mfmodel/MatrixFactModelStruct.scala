@@ -64,9 +64,9 @@ class MatrixFactModel(
     /** the name of the model, typically used as the identity prefix */
 	def resourcePrefix = modelName
 	/** stores user profile RDD[(String, Vector)]*/
-	def userProfileRDDFile:String = resourceStr + "_userProfile"
+	def userProfileRDDFile:String = resourceLoc + "_userProfile"
 	/** stores item profile RDD[(String, Vector)]*/
-	def itemProfileRDDFile:String = resourceStr + "_itemProfile"
+	def itemProfileRDDFile:String = resourceLoc + "_itemProfile"
 	
 	/** if resource exists. */
 	override def resourceExist():Boolean = {
