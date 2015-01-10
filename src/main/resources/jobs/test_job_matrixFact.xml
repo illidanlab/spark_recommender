@@ -24,11 +24,6 @@
 				<param>
 					<lang>en</lang>
 				</param>
-				<!-- <processes>
-                    <process>
-                        <name>l2normalize</name>
-                    </process>
-                </processes> -->
 			</feature>
 			<feature>
 				<type>itemFeature</type>
@@ -36,29 +31,10 @@
 				<param>
 					<timeWindow>12</timeWindow>
 				</param>
-				<!-- <processes>
-                    <process>
-                        <name>l2normalize</name>
-                    </process>
-                </processes> -->
 			</feature>
 			<feature>
 				<type>itemFeature</type>
 				<name>channel</name>
-				<!-- <processes>
-					<process>
-						<name>randomSelection</name>
-						<param>
-							<size>100</size>
-						</param>
-					</process>
-					<process>
-						<name>l2normalize</name>
-					</process>
-					<process>
-						<name>dummy</name>
-					</process>
-				</processes> -->
 			</feature>
 			<feature>
 		        <type>itemFeature</type>
@@ -66,14 +42,6 @@
 		        <param>
 		            <N>100</N>
 		        </param>
-		        <!-- <processes>
-		            <process>
-                        <name>l2normalize</name>
-                    </process>
-                    <process>
-                        <name>dummy</name>
-                    </process>
-                </processes> -->
 		    </feature>
 			<feature>
 				<type>userFeature</type>
@@ -110,11 +78,12 @@
 			</model>
 		</models>
 		<tests>
-		  <test>
+		<!--<test>
 		      <type>futureNotColdstart</type>
 		      <name>NonColdstart</name>
 		      <param>
 		          <UserSampleSize>3</UserSampleSize>
+		          <N>10</N>
 		      </param>
 		      <metrics>
 				  <metric>
@@ -132,14 +101,45 @@
 		              </param>
 		          </metric>
 		          <metric>
-		              <type>hr</type>
-		              <name>HitRate</name>
-		              <param>
-		                  <key>val</key>
-		              </param>
-		          </metric>
+                      <type>hr</type>
+                      <name>HitRate</name>
+                      <param>
+                          <key>val</key>
+                      </param>
+                  </metric>
 			  </metrics>
-		  </test>
+		  </test> -->
+		  <test>
+              <type>futureNotColdstart</type>
+              <name>NonColdstart</name>
+              <param>
+                  <UserSampleSize>5</UserSampleSize>
+                  <N>100</N>
+              </param>
+              <metrics>
+                  <metric>
+                      <type>mse</type>
+                      <name>MeanSquareError</name>
+                      <param>
+                          <key>val</key>
+                      </param>
+                  </metric>
+                  <metric>
+                      <type>rmse</type>
+                      <name>RootMeanSquareError</name>
+                      <param>
+                          <key>val</key>
+                      </param>
+                  </metric>
+                  <metric>
+                      <type>hr</type>
+                      <name>HitRate</name>
+                      <param>
+                          <key>val</key>
+                      </param>
+                  </metric>
+              </metrics>
+          </test>
 		  <test>
              <type>futureColdItems</type>
 	         <name>ColdStartItems</name>
