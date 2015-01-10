@@ -32,7 +32,6 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 	def processFeature(
 	        featureParams:HashMap[String, String],
 	        jobInfo:RecJob):FeatureResource = {
-		Logger.error("%s has not been implmented.".format(getClass.getName()))
 		
 		// load training data
 		val trainRatingData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getDataRDD()	
@@ -165,6 +164,8 @@ class FactFeatureNMFExtractor(
         val itemFeatureFileName:String, itemMapLoc:String, debugMode:Boolean) 
         extends ItemFeatureExtractor{
     
+    // initialize the mean vector to be an Option class
+    var centroid:Option[Vector] = None
     
     protected def extractFeature(
           items:Set[String], featureSources:List[String],
@@ -183,26 +184,29 @@ class FactFeatureNMFExtractor(
         						   .toMap
        val bTrainItemID2Features = sc.broadcast(trainItemID2Features)
         
-        // get test items
-        val path2TrainData = itemFeatureFileName
-        val trainData = sc.objectFile[(Int,Vector)](path2TrainData)
-        val sumTrainData = trainData.map{
-            x =>
-            (x._2,1)  
-        }.reduce{
-            (a,b) =>
-            (a._1 + b._1,a._2 + b._2)    
+       if (!centroid.isDefined) {
+	        // get test items
+	        val path2TrainData = itemFeatureFileName
+	        val trainData = sc.objectFile[(Int,Vector)](path2TrainData)
+	        val sumTrainData = trainData.map{
+	            x =>
+	            (x._2,1)  
+	        }.reduce{
+	            (a,b) =>
+	            (a._1 + b._1,a._2 + b._2)    
+	        }
+	        var avgTrainData = sumTrainData._1.toArray
+	        if (sumTrainData._2 > 0) {
+	            var i = 0
+	            while (i < avgTrainData.size) {
+	                	avgTrainData(i) = avgTrainData(i) / sumTrainData._2
+	                	i = i + 1
+	                }
+	        }
+			centroid = Some(Vectors.dense(avgTrainData))
         }
-        var avgTrainData = sumTrainData._1.toArray
-        if (sumTrainData._2 > 0) {
-            var i = 0
-            while (i < avgTrainData.size) {
-                	avgTrainData(i) = avgTrainData(i) / sumTrainData._2
-                	i = i + 1
-                }
-        }
-		val centroid:Vector = Vectors.dense(avgTrainData)
-		val bCentroid = sc.broadcast(centroid)
+        
+		val bCentroid = sc.broadcast(centroid.get)
 		
 		// distribute test items
 		val itemListRDD = sc.parallelize(items.toList)
@@ -215,10 +219,17 @@ class FactFeatureNMFExtractor(
 		    else {
 		        (item,bCentroid.value) // cold item
 		    }
-		}		
-		if (debugMode) {
-			itemFeatureRDD.saveAsTextFile(itemFeatureFileName + "testitemtext")
+		}	
+		
+		var counter = 0
+		if (debugMode && counter == 0) {
+			itemFeatureRDD.saveAsTextFile(itemFeatureFileName + "testitemtext" + counter)
+			counter = counter + 1
 		}
+		
+		if (debugMode && centroid.isDefined && counter == 1) {
+			itemFeatureRDD.saveAsTextFile(itemFeatureFileName + "testitemtext_cdefined" + counter)
+		}		
 		
 		itemFeatureRDD
     }

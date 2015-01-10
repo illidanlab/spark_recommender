@@ -121,6 +121,22 @@
            </metric>
          </metrics>
       </test>      
+      <test>
+         <type>futureColdItems</type>
+         <name>ColdStartItems</name>
+         <param>
+             <UserSampleSize>15000</UserSampleSize>
+         </param>
+         <metrics>
+           <metric>
+               <type>cold_recall</type>
+               <name>Cold_Item_Recall</name>
+               <param>
+                   <key>val</key>
+               </param>
+           </metric>
+         </metrics>
+      </test>            
     </tests>
     <ensembles>
       <ensemble>
