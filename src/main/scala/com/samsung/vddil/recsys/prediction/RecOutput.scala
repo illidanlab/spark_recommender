@@ -43,7 +43,7 @@ object RecOutput {
     val date = "20140804"
     val roviPath = s"s3://vddil.data.standard/apps/vddil/rovi_hq/${date}/schedule.txt.gz"
     val currentHour = "201408040100"
-    val inputPath = "hdfs:///input_list.txt"
+    val inputPath = "s3://vddil.recsys.east/block_list.txt"
     //val outputPath = "s3://vddil.recsys.east/output/"
     val currentTime = System.currentTimeMillis()
     val outputPath = s"hdfs:///output-${currentTime}/"
@@ -84,6 +84,9 @@ object RecOutput {
   def doRecommendation(paraSc: SparkContext, date: String, roviPath: String, 
                        programScorePaths: List[String], outputPath: String, K: Int) {
     //sc = paraSc
+    val programScorePathRdd = paraSc.parallelize(programScorePaths)
+    programScorePathRdd.saveAsTextFile("hdfs:///program-score-list")
+    
     val programScores = loadProgramScores(paraSc, programScorePaths)
     val startHourString = date + "0000"
     val startHour = timestampToUTCUnixTime(startHourString)
