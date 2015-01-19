@@ -71,7 +71,7 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
 	        //creates a closure of training function 
 	        val trainMeth = (input:RDD[LabeledPoint], numIterations:Int, stepSize:Double, regParam:Double) => 
 	        					FactorizationMachineRegressionL2WithSGD.train(
-	        					        	input, latentDim, numIterations, stepSize, regParam, 1.0)
+	        					        	input, latentDim, numIterations, stepSize, regParam, 0.01)
 	        					
 	        //build model for each parameter combination
 	        val bestModel = getBestModelByValidation(
