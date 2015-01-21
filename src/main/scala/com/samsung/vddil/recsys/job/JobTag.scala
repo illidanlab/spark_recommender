@@ -27,6 +27,11 @@ object JobTag {
     val RecJobTrainDateList = "trainDates"
 	val RecJobTrainDateUnit = "date"
 	  
+	val RecJobDataProcessMethodList = "transformations"
+	val RecJobDataProcessMethodUnit = "transformation"
+	val RecJobDataProcessMethodName = "name"
+    val RecJobDataProcessMethodParam = "param"
+	    
 	val RecJobTestDateList = "testDates"
 	val RecJobTestDateUnit = "date"
 	val RecJobTestList = "tests"

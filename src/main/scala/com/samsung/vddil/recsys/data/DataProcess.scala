@@ -13,6 +13,7 @@ import com.samsung.vddil.recsys.job.Rating
 import com.samsung.vddil.recsys.utils.Logger
 import org.apache.spark.storage.StorageLevel
 import com.samsung.vddil.recsys.job.RecMatrixFactJob
+import scala.collection.mutable.HashMap
 
 /**
  * Provides functions to aggregate data. The main functions are [[DataProcess.prepareTrain]] 
@@ -171,8 +172,9 @@ object DataProcess {
 	        sc:SparkContext, 
 	        partitionNum:Int,
 	        outputResource: String=>Boolean,
-	        outputDataResLoc: String ) 
-	        
+	        outputDataResLoc: String,
+	        jobInfo.dataProcessParam) 
+	     
 	    if (combData.isDefined){
 	        val comDataStruct = combData.get 
 		    val jobStatus:RecJobStatus = jobInfo.jobStatus
@@ -206,7 +208,9 @@ object DataProcess {
 	        sc:SparkContext, 
 	        partitionNum:Int,
 	        outputResource: String=>Boolean,
-	        outputDataResLoc: String ) 
+	        outputDataResLoc: String, 
+	        new HashMap[String, String])
+	        //TODO: extract data normalization. 
 	        
 	    if (combData.isDefined){
 	        val comDataStruct = combData.get 
@@ -232,7 +236,8 @@ object DataProcess {
 	        sc:SparkContext, 
 	        partitionNum:Int,
 	        outputResource: String=>Boolean,
-	        outputDataResLoc: String ): Option[CombinedDataSet] = {
+	        outputDataResLoc: String,
+	        param:HashMap[String, String]): Option[CombinedDataSet] = {
 	  
         val resourceStr = CombinedDataSet.resourcePrefix + HashString.generateOrderedArrayHash(dataDates) 
         
@@ -247,7 +252,26 @@ object DataProcess {
 	    val trainData = getDataFromDates(dataDates, watchTimeResLoc, sc, partitionNum)
 	    
     	if(trainData.isDefined){ 
-    	    val data = trainData.get.persist(StorageLevel.DISK_ONLY)
+    	    var data = trainData.get.persist(StorageLevel.DISK_ONLY)
+    	    		
+    	    //add transformation.
+    	    val paramList = param.toList
+    	    if (paramList.isEmpty) {
+    	        data = DataTransformation.transformation_None(data)
+    	    }
+    	    else {
+    	        for (tmp <- paramList) {
+    	            tmp._1 match{
+    	                case DataTransformation.dataTransformation_Max => 
+    	                     data = DataTransformation.transformation_Max(data,sc)
+    	                case DataTransformation.dataTransformation_totalWatchTime => 
+    	                     data = DataTransformation.transformation_Total(data, sc)    
+    	                case _ => data = DataTransformation.transformation_None(data)
+    	            }
+    	        }
+    	    }
+    	        	    
+    	    
     	    
             //2. generate and maintain user list in JobStatus
     	    if (outputResource(dataLocUserList)){
