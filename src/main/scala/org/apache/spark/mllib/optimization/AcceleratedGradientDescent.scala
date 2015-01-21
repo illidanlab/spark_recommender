@@ -12,6 +12,12 @@ import org.apache.spark.mllib.rdd.RDDFunctions._
 
 /**
  * Class used to solve an optimization problem using Accelerated Gradient Descent.
+ * The implementation is followed by:
+ *   Yves et. al., On stochastic proximal gradient algorithms. 
+ *   http://arxiv.org/abs/1402.2365
+ * 
+ * NOTE: the AGD seems to be even slower than GD when for factorization machine. 
+ * 
  * @param gradient Gradient function to be used.
  * @param updater Updater to be used to update weights after every iteration.
  */
