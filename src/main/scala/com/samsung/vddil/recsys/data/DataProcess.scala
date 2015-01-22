@@ -209,8 +209,8 @@ object DataProcess {
 	        partitionNum:Int,
 	        outputResource: String=>Boolean,
 	        outputDataResLoc: String, 
-	        new HashMap[String, String])
-	        //TODO: extract data normalization. 
+	        jobInfo.dataProcessParam)
+	        //DONE: extract data normalization. Same as for RecJob 
 	        
 	    if (combData.isDefined){
 	        val comDataStruct = combData.get 
