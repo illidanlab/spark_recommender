@@ -22,12 +22,12 @@ import com.samsung.vddil.recsys.data.CombinedDataSet
  * 
  * @param jobInfo the recommendation job associated with this status. 
  */
-case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
+case class RecJobStatus(jobInfo:RecJob) 
+	extends JobStatusWithFeature with JobStatusWithCombinedData{
     
 	/*
 	 * Data processing resources   
 	 */ 
-    var resourceLocation_CombinedData_train: Option[CombinedDataSet] = None
 	var testWatchTime:Option[RDD[Rating]] = None
     
 	/*
@@ -35,12 +35,6 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	 */ 
 	val resourceLocation_AggregateData_Continuous:HashMap[String, AssembledDataSet]  = new HashMap() 
 	val resourceLocation_AggregateData_Binary:    HashMap[String, AssembledDataSet]  = new HashMap() 
-  
-	/* 
-	 * Feature extraction resources
-	 */
-	val resourceLocation_UserFeature:HashMap[String, FeatureStruct] = new HashMap() 
-	val resourceLocation_ItemFeature:HashMap[String, FeatureStruct] = new HashMap()
 	
 	/*
 	 * Model resources 
@@ -51,9 +45,6 @@ case class RecJobStatus(jobInfo:RecJob) extends JobStatus{
 	/*
 	 * Completed components. 
 	 */
-	val completedItemFeatures:HashSet[RecJobItemFeature] = new HashSet()
-	val completedUserFeatures:HashSet[RecJobUserFeature] = new HashSet()
-	val completedFactFeatures:HashSet[RecJobFactFeature] = new HashSet()
 	val completedRegressModels:HashSet[RecJobModel] = new HashSet()
 	val completedClassifyModels:HashSet[RecJobModel] = new HashSet()
 	val completedTests:HashMap[ModelStruct, HashMap[TestUnit, TestUnit.TestResults]] = new HashMap()

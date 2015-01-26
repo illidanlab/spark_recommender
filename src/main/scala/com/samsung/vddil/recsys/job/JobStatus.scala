@@ -1,5 +1,16 @@
 package com.samsung.vddil.recsys.job
 
+
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
+import com.samsung.vddil.recsys.feature.UserFeatureStruct
+import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.feature.FeatureStruct
+import com.samsung.vddil.recsys.feature.RecJobItemFeature
+import com.samsung.vddil.recsys.feature.RecJobUserFeature
+import com.samsung.vddil.recsys.feature.RecJobFactFeature
+import com.samsung.vddil.recsys.data.CombinedDataSet
+
 /**
  * This is the job status. The job status records if the steps are completed, and 
  * for completed steps, if they are successful or failed. The job status also notifies 
@@ -20,3 +31,36 @@ trait JobStatus {
 	 */
 	def showStatus():Unit
 }
+
+/**
+ * JobStatus that includes CombinedData for training and testing. 
+ */
+trait JobStatusWithCombinedData extends JobStatus{
+    /*
+	 * Data processing resources   
+	 */ 
+    var resourceLocation_CombinedData_train: Option[CombinedDataSet] = None
+    var resourceLocation_CombinedData_test:  Option[CombinedDataSet] = None
+} 
+
+/**
+ * This supports features extraction and extracted features.
+ */
+trait JobStatusWithFeature extends JobStatus{
+
+    /* 
+	 * Feature extraction resources
+	 */
+	val resourceLocation_UserFeature:HashMap[String, FeatureStruct] = new HashMap() 
+	val resourceLocation_ItemFeature:HashMap[String, FeatureStruct] = new HashMap()
+	
+	/*
+	 * Completed components. 
+	 */
+	val completedItemFeatures:HashSet[RecJobItemFeature] = new HashSet()
+	val completedUserFeatures:HashSet[RecJobUserFeature] = new HashSet()
+	val completedFactFeatures:HashSet[RecJobFactFeature] = new HashSet()
+	
+	
+}
+
