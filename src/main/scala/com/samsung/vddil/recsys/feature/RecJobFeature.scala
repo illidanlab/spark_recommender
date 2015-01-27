@@ -3,6 +3,7 @@ package com.samsung.vddil.recsys.feature
 import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /**
  * The recommendation job feature data structure.  
@@ -23,7 +24,7 @@ sealed trait RecJobFeature{
     def postProcessing:List[FeaturePostProcess]
     
     /** Extracts features and store (extracted) feature information in jobStatus */
-	def run(jobInfo: RecJob):Unit
+	def run(jobInfo: JobWithFeature):Unit
 }
 
 /** Item feature (program feature) e.g., genre  */
@@ -31,7 +32,7 @@ case class RecJobItemFeature(
         featureName:String, 
         featureParams:HashMap[String, String],
         postProcessing:List[FeaturePostProcess]) extends RecJobFeature{
-	def run(jobInfo: RecJob) = {
+	def run(jobInfo: JobWithFeature) = {
 	   jobInfo.jobStatus.completedItemFeatures(this) 
 	   	  = ItemFeatureHandler.processFeature(featureName, featureParams, postProcessing, jobInfo)
 	}
@@ -42,7 +43,7 @@ case class RecJobUserFeature(
         featureName:String, 
         featureParams:HashMap[String, String],
         postProcessing:List[FeaturePostProcess]) extends RecJobFeature{
-	def run(jobInfo: RecJob) = {
+	def run(jobInfo: JobWithFeature) = {
 	   jobInfo.jobStatus.completedUserFeatures(this) 
 	   	  = UserFeatureHandler.processFeature(featureName, featureParams, postProcessing, jobInfo)
 	}
@@ -53,7 +54,7 @@ case class RecJobFactFeature(
         featureName:String, 
         featureParams:HashMap[String, String],
         postProcessing:List[FeaturePostProcess]) extends RecJobFeature{
-	def run(jobInfo: RecJob) = {
+	def run(jobInfo: JobWithFeature) = {
 	    jobInfo.jobStatus.completedFactFeatures(this) 
 	       = FactFeatureHandler.processFeature(featureName, featureParams, postProcessing, jobInfo)
 	}

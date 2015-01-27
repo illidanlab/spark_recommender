@@ -16,6 +16,7 @@ import scala.collection.Map
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor {
 
@@ -30,7 +31,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
     val Param_GenreLang = "lang" 
 
   
-  def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
+  def getFeatureSources(dates:List[String], jobInfo:JobWithFeature):List[String] = {
     dates.map{date =>
       jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_genre*"
     }.toList
@@ -130,7 +131,7 @@ object ItemFeatureGenre  extends FeatureProcessingUnit with ItemFeatureExtractor
 
     def processFeature(
             featureParams:HashMap[String, String], 
-            jobInfo:RecJob):FeatureResource = {
+            jobInfo:JobWithFeature):FeatureResource = {
     		
     	val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
        
