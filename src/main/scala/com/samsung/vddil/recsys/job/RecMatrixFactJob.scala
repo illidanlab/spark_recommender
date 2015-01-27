@@ -77,9 +77,16 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     	Logger.info("**preparing training data")
     	DataProcess.prepareTrain(this)
     	
-    	//Prepare features in case some matrix factorization algorithms may use for cold start. 
-    	//TODO: implement when necessary 
-    	
+    	//Prepare features in case some matrix factorization algorithms may use for cold start.
+    	Logger.info("**preparing features")
+    	//   for each feature, we generate the resource  
+    	this.featureList.foreach{
+    		featureUnit =>{
+    		    Logger.info("*preparing features" + featureUnit.toString())
+    		    featureUnit.run(this)
+    		    //status: update Job status
+    		}
+    	} 
     	
     	//learning models
     	if (this.modelList.length > 0){
