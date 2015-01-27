@@ -115,7 +115,7 @@
 					<regParam>1.5</regParam>
 					<minUFCoverage>0.1</minUFCoverage>
 					<minIFCoverage>0.1</minIFCoverage>
-					<numIterations>1</numIterations>
+					<numIterations>5</numIterations>
 					<stepSize>0.0001</stepSize>
 					<latentFactor>10</latentFactor>
 				</param>
@@ -127,7 +127,7 @@
 					<regParam>1.5</regParam>
 					<minUFCoverage>0.1</minUFCoverage>
 					<minIFCoverage>0.1</minIFCoverage>
-					<numIterations>1</numIterations>
+					<numIterations>10</numIterations>
 					<stepSize>0.0001</stepSize>
 					<latentFactor>5</latentFactor>
 				</param>

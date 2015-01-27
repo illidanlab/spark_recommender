@@ -6,6 +6,7 @@ import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.model.regression.RegressionModelRidge
 import com.samsung.vddil.recsys.model.regression.RegressionModelFactorizationMachine
 import com.samsung.vddil.recsys.data.AssembledDataSet
+import com.samsung.vddil.recsys.model.regression.RegressionModelFactorizationMachineSparse
 
 /**
  * The model handler implementations are used to process a specified type of model.  
@@ -32,6 +33,7 @@ object RegressionModelHandler extends ModelHandler {
 	val RegModelRidge:String = "ridge_reg"
 	val RegModelLasso:String = "lasso_reg"
 	val RegModelFML2:String  = "fm_l2_reg"
+	val RegModelFML21:String  = "fm_l21_reg"
 	
 	def buildModel(
 	        modelName:String, 
@@ -48,6 +50,7 @@ object RegressionModelHandler extends ModelHandler {
 		  case RegModelRidge => resource = RegressionModelRidge.learnModel(modelParams, allData, splitName, jobInfo)
 		  //case RegModelLasso => resource = ModelResource.fail
 		  case RegModelFML2  => resource = RegressionModelFactorizationMachine.learnModel(modelParams, allData, splitName, jobInfo)
+		  case RegModelFML21 => resource = RegressionModelFactorizationMachineSparse.learnModel(modelParams, allData, splitName, jobInfo)
 		  case _ => Logger.warn("Unknown regression model name [%s]".format(modelName))
 		}
 	  

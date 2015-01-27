@@ -19,10 +19,13 @@ import org.apache.spark.mllib.optimization.FactorizationMachineRegressionModel
 import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.data.AssembledDataSet
 import com.samsung.vddil.recsys.data.AssembledOnlineDataSet
+import org.apache.spark.mllib.optimization.FactorizationMachineRegressionSparseWithSGD
 
-object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegCustomizedModel[FactorizationMachineRegressionModel] {
+object RegressionModelFactorizationMachineSparse 
+	extends ModelProcessingUnit with RegCustomizedModel[FactorizationMachineRegressionModel] {
 	
     def ParamLatentFactor = "latentFactor"
+    def ParamL21Norm = "l21Param"
     
 	//models...
 	def learnModel(modelParams:HashMap[String, String], allData:AssembledDataSet, splitName:String, jobInfo:RecJob):ModelResource = {
@@ -32,6 +35,7 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
         // 1. Complete default parameters 
         val (numIterations, stepSizes, regParams) = getParameters(modelParams)
         val latentDim = Integer.valueOf(modelParams.getOrElseUpdate(ParamLatentFactor, "5"))
+        val l21Param  = modelParams.getOrElseUpdate(ParamL21Norm, "0.01").toDouble
         
         // 2. Generate resource identity using resouceIdentity()
         val resourceIden = resourceIdentity(modelParams, dataResourceStr, splitName)
@@ -70,8 +74,8 @@ object RegressionModelFactorizationMachine extends ModelProcessingUnit with RegC
 	        
 	        //creates a closure of training function 
 	        val trainMeth = (input:RDD[LabeledPoint], numIterations:Int, stepSize:Double, regParam:Double) => 
-	        					FactorizationMachineRegressionL2WithSGD.train(
-	        					        	input, latentDim, numIterations, stepSize, regParam, 0.01)
+	        					FactorizationMachineRegressionSparseWithSGD.train(
+	        					        	input, latentDim, numIterations, stepSize, regParam, l21Param,  0.01)
 	        					
 	        //build model for each parameter combination
 	        val bestModel = getBestModelByValidation(

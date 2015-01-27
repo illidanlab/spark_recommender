@@ -17,3 +17,5 @@ C:/logs/notify-subscription.log
 *.sublime-workspace
 
 recsys-spark.sublime-workspace
+
+.DS_Store
