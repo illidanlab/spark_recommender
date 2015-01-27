@@ -22,15 +22,9 @@ object TemporalAggJob {
 }
 
 case class TemporalAggJob (jobName:String, 
-                            jobDesc:String, jobNode:Node) extends Job {
+                            jobDesc:String, jobNode:Node) extends JobWithResource {
   val jobType = JobType.TemporalAgg
   val jobStatus:TemporalAggJobStatus = new TemporalAggJobStatus(this)
-  
-  /** an instance of SparkContext created according to user specification */
-  val sc:SparkContext = Pipeline.instance.get.sc
-  
-  //populate resources
-  val resourceLoc:HashMap[String, String] = populateResourceLoc() 
   
   val dateParser = new SimpleDateFormat("yyyyMMdd") // a parser/formatter for date. 
   
@@ -50,57 +44,6 @@ case class TemporalAggJob (jobName:String,
   def generateXML():Option[Elem] = {
     None
   }
-
-
-  /**
-   * Populates special resource locations.
-   * 
-   * @return a map whose keys are given by 
-   *    [[TemporalAggJob.ResourceLoc_RoviHQ]],
-   *    [[TemporalAggJob.ResourceLoc_WatchTime]],
-   *    [[TemporalAggJob.ResourceLoc_Workspace]],
-   *    [[TemporalAggJob.ResourceLoc_JobData]],
-   *    [[TemporalAggJob.ResourceLoc_JobFeature]],
-   *    [[TemporalAggJob.ResourceLoc_JobModel]],
-   *    and values are double.  
-   */
-  def populateResourceLoc():HashMap[String, String] = {
-     var resourceLoc:HashMap[String, String] = new HashMap()
-     
-     var nodeList = jobNode \ JobTag.RecJobResourceLocation
-     if (nodeList.size == 0){
-        Logger.error("Resource locations are not given. ")
-        return resourceLoc
-     }
-     
-     
-     if ((nodeList(0) \ JobTag.RecJobResourceLocationRoviHQ).size > 0) 
-       resourceLoc(TemporalAggJob.ResourceLoc_RoviHQ)     = (nodeList(0) \ JobTag.RecJobResourceLocationRoviHQ).text
-     
-     if ((nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).size > 0) 
-       resourceLoc(TemporalAggJob.ResourceLoc_WatchTime)  = (nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).text
-     
-     if ((nodeList(0) \ JobTag.RecJobResourceSchedLocation).size > 0) 
-       resourceLoc(TemporalAggJob.ResourceLoc_SchedWTime)  = (nodeList(0) \ JobTag.RecJobResourceSchedLocation).text
-     
-     if ((nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).size > 0) { 
-       resourceLoc(TemporalAggJob.ResourceLoc_Workspace)  = (nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).text
-       //derivative
-       resourceLoc(TemporalAggJob.ResourceLoc_JobDir)     = resourceLoc(TemporalAggJob.ResourceLoc_Workspace) + "/"  + jobName
-       resourceLoc(TemporalAggJob.ResourceLoc_JobData)    = resourceLoc(TemporalAggJob.ResourceLoc_JobDir) + "/data"
-       resourceLoc(TemporalAggJob.ResourceLoc_JobFeature) = resourceLoc(TemporalAggJob.ResourceLoc_JobDir) + "/feature"
-       resourceLoc(TemporalAggJob.ResourceLoc_JobModel)   = resourceLoc(TemporalAggJob.ResourceLoc_JobDir) + "/model"
-       resourceLoc(TemporalAggJob.ResourceLoc_JobTest)    = resourceLoc(TemporalAggJob.ResourceLoc_JobDir) + "/test"
-     }
-     
-     Logger.info("Resource WATCHTIME:   " + resourceLoc(TemporalAggJob.ResourceLoc_WatchTime))
-     Logger.info("Resource ROVI:        " + resourceLoc(TemporalAggJob.ResourceLoc_RoviHQ))
-     Logger.info("Resource Job Data:    " + resourceLoc(TemporalAggJob.ResourceLoc_JobData))
-     Logger.info("Resource Job Feature: " + resourceLoc(TemporalAggJob.ResourceLoc_JobFeature))
-     Logger.info("Resource Job Model:   " + resourceLoc(TemporalAggJob.ResourceLoc_JobModel))
-     resourceLoc
-  } 
-  
     
   /**
    * Populates training dates.

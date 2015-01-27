@@ -46,7 +46,7 @@ trait JobStatusWithCombinedData extends JobStatus{
 /**
  * This supports features extraction and extracted features.
  */
-trait JobStatusWithFeature extends JobStatus{
+trait JobStatusWithFeature extends JobStatusWithCombinedData{
 
     /* 
 	 * Feature extraction resources
