@@ -15,6 +15,7 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 trait UserFeatureItemWtAgg extends Serializable {
  
@@ -85,7 +86,7 @@ trait UserFeatureItemWtAgg extends Serializable {
 
   def generateFeature(
           featureParams:HashMap[String, String], 
-          jobInfo:RecJob, 
+          jobInfo:JobWithFeature, 
           checkIdentity: (String) => Boolean, featureFilePath:String,
           idenPrefix:String, 
           resourceIden:String

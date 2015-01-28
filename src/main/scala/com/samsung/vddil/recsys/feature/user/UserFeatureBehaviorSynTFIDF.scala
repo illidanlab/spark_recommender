@@ -13,6 +13,7 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 
 object UserFeatureBehaviorSynTFIDF extends FeatureProcessingUnit 
@@ -20,7 +21,7 @@ object UserFeatureBehaviorSynTFIDF extends FeatureProcessingUnit
 	
   def processFeature(
           featureParams:HashMap[String, String], 
-          jobInfo:RecJob):FeatureResource = {
+          jobInfo:JobWithFeature):FeatureResource = {
 		
     //Generate resource identity using resouceIdentity()
 		val dataHashingStr = HashString.generateOrderedArrayHash(jobInfo.trainDates)

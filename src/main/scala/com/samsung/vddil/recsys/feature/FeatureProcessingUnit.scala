@@ -1,9 +1,9 @@
 package com.samsung.vddil.recsys.feature
 
 import scala.collection.mutable.HashMap
-import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /**
  * This is a trait for feature processing unit. 
@@ -28,7 +28,7 @@ trait FeatureProcessingUnit {
 	 */
 	def processFeature(
 	        featureParams:HashMap[String, String],
-	        jobInfo:RecJob):FeatureResource
+	        jobInfo:JobWithFeature):FeatureResource
 	
 	/*
 	 * Given a feature parameter map, this method provides a string that uniquely determines this feature.

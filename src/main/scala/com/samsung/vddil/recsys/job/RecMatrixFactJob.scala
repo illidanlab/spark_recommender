@@ -40,54 +40,13 @@ object RecMatrixFactJob{
 }
 
 
-case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extends Job {
+case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extends JobWithFeature {
 	//initialization 
     val jobType = JobType.RecMatrixFact
     
     Logger.info("Parsing job ["+ jobName + "]")
     Logger.info("        job desc:"+ jobDesc)
-    
-    /** an instance of SparkContext created according to user specification */
-    val sc:SparkContext = Pipeline.instance.get.sc
-    
-    /** the file system associated with sc, which can be used to operate HDFS/local FS */
-    val fs:FileSystem   = Pipeline.instance.get.fs
-    
-    /** 
-     *  If true then the pipeline overwrites existing resources, else skip. 
-     *  The flag is wrapped in [[RecJob.outputResource]] 
-     */
-    val overwriteResource = false //TODO: parse overwrite from job file.
-    
-    /**
-     *  Store resource location for input/output. The input/output can be either in HDFS 
-     *  or in local file system. 
-     *  
-	 * 	* INPUT RESOURCE
-	 *     1. ROVI data folder = resourceLoc(RecJob.ResourceLoc_RoviHQ):String     
-	 *     
-	 *     2. ACR data folder  = resourceLoc(RecJob.ResourceLoc_WatchTime):String
-	 *       
-	 *  * OUTPUT RESOURCE
-	 *     1. location storing features for this job    = resourceLoc(RecJob.ResourceLoc_JobFeature):String  
-	 *     
-	 *     2. location storing store data for this job  = resourceLoc(RecJob.ResourceLoc_JobData):String    
-	 *     
-	 *     3. location storing store model for this job = resourceLoc(RecJob.ResourceLoc_JobModel):String   
-     */
-    val resourceLoc:HashMap[String, String] = populateResourceLoc() 
-    
-    
-    val dateParser = new SimpleDateFormat("yyyyMMdd") // a parser/formatter for date. 
-    
-    /** a list of dates used to generate training data/features */
-    val trainDates:Array[String] = populateTrainDates()
-    
-    /** a list of dates used to generate testing data/features  */
-    val testDates:Array[String] = populateTestDates()
-    
-    /** a list of features */ //TODO: parse features. 
-    val featureList:Array[RecJobFeature] = new Array(1)//populateFeatures()
+   
     
     /** a list of models */
     val modelList:Array[RecMatrixFactJobModel] = populateMethods()
@@ -98,13 +57,6 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     /** A data structure maintaining resources for intermediate results. */
     val jobStatus:RecMatrixFactStatus = new RecMatrixFactStatus(this)
     
-    
-    val partitionNum_unit:Int  = Pipeline.getPartitionNum(1)
-    Logger.info("Parition Number|Unit  => " + partitionNum_unit)
-    val partitionNum_train:Int = Pipeline.getPartitionNum(trainDates.length)
-    Logger.info("Parition Number|Train => " + partitionNum_train)
-    val partitionNum_test:Int  = Pipeline.getPartitionNum(testDates.length)
-    Logger.info("Parition Number|Test  => " + partitionNum_test)
     
     Logger.info("Job Parse done => " + this.toString)
     
@@ -125,9 +77,16 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     	Logger.info("**preparing training data")
     	DataProcess.prepareTrain(this)
     	
-    	//Prepare features in case some matrix factorization algorithms may use for cold start. 
-    	//TODO: implement when necessary 
-    	
+    	//Prepare features in case some matrix factorization algorithms may use for cold start.
+    	Logger.info("**preparing features")
+    	//   for each feature, we generate the resource  
+    	this.featureList.foreach{
+    		featureUnit =>{
+    		    Logger.info("*preparing features" + featureUnit.toString())
+    		    featureUnit.run(this)
+    		    //status: update Job status
+    		}
+    	} 
     	
     	//learning models
     	if (this.modelList.length > 0){
@@ -175,122 +134,6 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
         //clean
         writer.close()
         out.close()
-    }
-    
-    /**
-     * Returns false if the resource is available in HDFS.
-     * And therefore the Spark save MUST BE skipped. 
-     * 
-     * If overwriteResource is on, then this function will remove the file 
-     * from HDFS, and it is thus safe to use Spark to save files. 
-     * 
-     * @param resourceLoc the location of the resource, e.g., 
-     * 		 a HDFS file `hdfs:\\path\to\yourfile` or a local n
-     *       file `\path\to\yourfile`
-     */
-    def outputResource(resourceLoc:String) = 
-        Pipeline.outputResource(resourceLoc, overwriteResource)
-    
-    /**
-     * Populates special resource locations.
-     * 
-     * @return a map whose keys are given by 
-     *    [[RecJob.ResourceLoc_RoviHQ]],
-     *    [[RecJob.ResourceLoc_WatchTime]],
-     *    [[RecJob.ResourceLoc_Workspace]],
-     *    [[RecJob.ResourceLoc_JobData]],
-     *    [[RecJob.ResourceLoc_JobFeature]],
-     *    [[RecJob.ResourceLoc_JobModel]],
-     *    and values are double.  
-     */
-    def populateResourceLoc():HashMap[String, String] = {
-       var resourceLoc:HashMap[String, String] = new HashMap()
-       
-       var nodeList = jobNode \ JobTag.RecJobResourceLocation
-       if (nodeList.size == 0){
-          Logger.error("Resource locations are not given. ")
-          return resourceLoc
-       }
-       
-       
-       if ((nodeList(0) \ JobTag.RecJobResourceLocationRoviHQ).size > 0) 
-    	   resourceLoc(RecJob.ResourceLoc_RoviHQ)     = (nodeList(0) \ JobTag.RecJobResourceLocationRoviHQ).text
-       
-       if ((nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).size > 0) 
-    	   resourceLoc(RecJob.ResourceLoc_WatchTime)  = (nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).text
-       
-       if ((nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).size > 0){ 
-	       resourceLoc(RecJob.ResourceLoc_Workspace)  = (nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).text
-	       //derivative
-	       resourceLoc(RecJob.ResourceLoc_JobDir)     = resourceLoc(RecJob.ResourceLoc_Workspace) + "/"  + jobName
-	       resourceLoc(RecJob.ResourceLoc_JobData)    = resourceLoc(RecJob.ResourceLoc_JobDir) + "/data"
-	       resourceLoc(RecJob.ResourceLoc_JobFeature) = resourceLoc(RecJob.ResourceLoc_JobDir) + "/feature"
-	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_JobDir) + "/model"
-	       resourceLoc(RecJob.ResourceLoc_JobTest)    = resourceLoc(RecJob.ResourceLoc_JobDir) + "/test"
-	       
-       }
-       
-       Logger.info("Resource WATCHTIME:   " + resourceLoc(RecJob.ResourceLoc_WatchTime))
-       Logger.info("Resource ROVI:        " + resourceLoc(RecJob.ResourceLoc_RoviHQ))
-       Logger.info("Resource Job Data:    " + resourceLoc(RecJob.ResourceLoc_JobData))
-       Logger.info("Resource Job Feature: " + resourceLoc(RecJob.ResourceLoc_JobFeature))
-       Logger.info("Resource Job Model:   " + resourceLoc(RecJob.ResourceLoc_JobModel))
-       resourceLoc
-    }
-    
-    /**
-     * Populates training dates.
-     * 
-     * The dates are used to construct resource locations. The dates will be unique and sorted.
-     * 
-     * @return a list of date strings  
-     */
-    def populateTrainDates():Array[String] = {
-      
-      var dateList:Array[String] = Array[String]()
-      
-      //the element by element. 
-      var nodeList = jobNode \ JobTag.RecJobTrainDateList
-      if (nodeList.size == 0){
-        Logger.warn("No training dates given!")
-        return dateList.toArray
-      }
-      
-      dateList = (nodeList(0) \ JobTag.RecJobTrainDateUnit).map(_.text).
-      			flatMap(expandDateList(_, dateParser)).  //expand the lists
-      			toSet.toArray.sorted                     //remove duplication and sort.
-      			
-      Logger.info("Training dates: " + dateList.toArray.deep.toString 
-          + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
-          
-      return dateList
-    }
-    
-    /**
-     * Populates testing/evaluation dates.
-     * 
-     * The dates are used to construct resource locations. The dates will be unique and sorted.
-     * 
-     * @return a list of date strings  
-     */
-    def populateTestDates():Array[String] = {
-      
-      var dateList:Array[String] = Array[String]()
-     
-      var nodeList = jobNode \ JobTag.RecJobTestDateList
-      if (nodeList.size == 0){
-        Logger.warn("No training dates given!")
-        return dateList.toArray
-      }
-      
-      dateList = (nodeList(0) \ JobTag.RecJobTestDateUnit).map(_.text).
-      			flatMap(expandDateList(_, dateParser)).  //expand the lists
-      			toSet.toArray.sorted                     //remove duplication and sort.
-      
-      Logger.info("Testing dates: " + dateList.toArray.deep.toString 
-          + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
-          
-      return dateList
     }
     
     /**

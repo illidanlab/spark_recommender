@@ -17,6 +17,7 @@ import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 import com.samsung.vddil.recsys.linalg.{Vector,Vectors}
 import com.samsung.vddil.recsys.feature.process.{FeaturePostProcess, FeaturePostProcessor}
 import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 
 /*
@@ -31,7 +32,7 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
         
 	def processFeature(
 	        featureParams:HashMap[String, String],
-	        jobInfo:RecJob):FeatureResource = {
+	        jobInfo:JobWithFeature):FeatureResource = {
 		
 		// load training data
 		val trainRatingData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get.getDataRDD()	
@@ -234,7 +235,7 @@ class FactFeatureNMFExtractor(
 		itemFeatureRDD
     }
     
-    def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
+    def getFeatureSources(dates:List[String], jobInfo:JobWithFeature):List[String] = {
     	dates.map{date =>
       		jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + date + "/*"
     	}.toList

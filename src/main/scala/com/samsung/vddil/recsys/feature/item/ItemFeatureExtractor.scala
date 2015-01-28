@@ -9,6 +9,7 @@ import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 
 trait ItemFeatureExtractor {
@@ -92,7 +93,7 @@ trait ItemFeatureExtractor {
    * @param jobInfo contains location of data
    * @return list of file paths of feature sources
    */
-  def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String]
+  def getFeatureSources(dates:List[String], jobInfo:JobWithFeature):List[String]
 
   //feature parameters in train 
   //var trFeatureParams:HashMap[String, String]

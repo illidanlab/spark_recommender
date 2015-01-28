@@ -15,12 +15,13 @@ import scala.collection.mutable.HashMap
 import scala.util.control.Breaks._
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 
 object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtractor {
     val IdenPrefix:String = "ItemFeatureChannel"
 	
-	def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
+	def getFeatureSources(dates:List[String], jobInfo:JobWithFeature):List[String] = {
     	dates.map{date =>
       		jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/schedule*"
     	}.toList
@@ -145,7 +146,7 @@ object ItemFeatureChannel extends FeatureProcessingUnit with ItemFeatureExtracto
 	
 	def processFeature(
 	        featureParams:HashMap[String, String], 
-	        jobInfo:RecJob):FeatureResource = {
+	        jobInfo:JobWithFeature):FeatureResource = {
 		val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
 		
 		val sc = jobInfo.sc
