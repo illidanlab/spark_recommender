@@ -38,7 +38,7 @@
                         <name>l2normalize</name>
                     </process>
                 </processes> -->
-			</feature>
+			</feature> 
 			<feature>
 				<type>itemFeature</type>
 				<name>showTime</name>

@@ -260,15 +260,25 @@ object DataProcess {
     	        data = DataTransformation.transformation_None(data)
     	    }
     	    else {
+    	        /**
     	        for (tmp <- paramList) {
     	            tmp._1 match{
     	                case DataTransformation.dataTransformation_Max => 
-    	                     data = DataTransformation.transformation_Max(data,sc)
+    	                     data = DataTransformation.transformation_Max(data, sc)
     	                case DataTransformation.dataTransformation_totalWatchTime => 
     	                     data = DataTransformation.transformation_Total(data, sc)    
     	                case _ => data = DataTransformation.transformation_None(data)
     	            }
     	        }
+    	        */
+    	    	val tmp = paramList(0)
+	            tmp._1 match{
+	                case DataTransformation.dataTransformation_totalWatchTime => 
+	                     data = DataTransformation.transformation_Total(data, sc)    
+	                case DataTransformation.dataTransformation_Max => 
+	                     data = DataTransformation.transformation_Max(data, sc)     
+	                case _ => data = DataTransformation.transformation_None(data)
+	            }
     	    }
     	        	    
     	    

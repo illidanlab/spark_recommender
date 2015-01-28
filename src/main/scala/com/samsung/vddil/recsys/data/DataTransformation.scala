@@ -21,21 +21,21 @@ object DataTransformation {
 	}
     
     def transformation_Max(input:RDD[(String, String, Double)], sc:SparkContext):RDD[(String, String,Double)] = {
-	    val maxWatchTimeProgramMap = input.map{
+	    println("max normalization!")
+        val maxWatchTimeProgramMap = input.map{
 	        x => 
-        	(x._2,x._3)
-	    }.reduceByKey{
-	        (a,b) => max(a,b)
-	    }.map{
+        	(x._2,x._3) // progID, watchTime
+	    }.reduceByKey((a,b) => max(a,b))
+	     .map{
 	        x => 
-	        (x._1,("",x._2))
+	        (x._1,("",x._2)) //progID, "", watchTime
 	    }
 	    
-	    val normalizedData = input.map(x => (x._1, (x._2,x._3)))
+	    val normalizedData = input.map(x => (x._2, (x._1,x._3)))
 	    						  .join(maxWatchTimeProgramMap)
 	    						  .map{
 	        						 x => 
-	        						 (x._1,x._2._1._1,x._2._1._2/x._2._2._2)
+	        						 (x._2._1._1,x._1,x._2._1._2/x._2._2._2)
 	    }
         
         normalizedData
