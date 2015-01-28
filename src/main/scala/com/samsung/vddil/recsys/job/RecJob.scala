@@ -83,6 +83,8 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends JobWith
     
     /** a list of models */
     val modelList:Array[RecJobModel] = populateMethods()
+        
+    val dataProcessParam:HashMap[String, String] = populateDataProcessParams()
     
     /** a list of test procedures to be performed for each model */
     val testList:Array[RecJobTest] = populateTests()
@@ -202,6 +204,40 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends JobWith
     	}else{
             Logger.info("Prediction module not found.")
         }
+    }
+    
+    /**
+     * populate data preprocessing tranformation methods and parameters
+     * 
+     * The keys are directly from the XML tags. For example in the job XML we have 
+     * <transformations>
+     * 		<transformation>
+     *   		<name>tfidf</name>
+     *     		<param>none<param>
+     *       </transformation>
+     * <transformations>
+     * 
+     * Gives HashMap("tfidf"->"none")
+     */
+    def populateDataProcessParams():HashMap[String, String] = {
+        var dataProcessParams = HashMap[String, String]()
+	    var nodeList = jobNode \ JobTag.RecJobDataProcessMethodList
+	    
+	    if (nodeList.size == 0){
+	        Logger.warn("No preprocessing transformation found!")
+	        return dataProcessParams
+	    } 
+        	      
+        nodeList = nodeList(0) \ JobTag.RecJobDataProcessMethodUnit       
+        
+        for (node <- nodeList){
+        	// extract transformation method name and parameter
+        	val methodName = (node \ JobTag.RecJobDataProcessMethodName).text     
+        	val methodParams = (node \ JobTag.RecJobDataProcessMethodParam).text 
+        	dataProcessParams += (methodName -> methodParams)
+        }
+        
+        dataProcessParams
     }
     
     

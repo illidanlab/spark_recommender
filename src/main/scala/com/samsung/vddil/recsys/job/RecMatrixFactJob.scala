@@ -17,6 +17,7 @@ import com.samsung.vddil.recsys.evaluation.RecJobMetricRMSE
 import com.samsung.vddil.recsys.evaluation.RecJobMetricHR
 import com.samsung.vddil.recsys.evaluation.RecJobMetricColdRecall
 import com.samsung.vddil.recsys.data.DataProcess
+import com.samsung.vddil.recsys.job._
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 import com.samsung.vddil.recsys.data.CombinedDataSet
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModelHandler
@@ -48,6 +49,8 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     Logger.info("        job desc:"+ jobDesc)
    
     
+    val dataProcessParam:HashMap[String, String] = populateDataProcessParams()
+
     /** a list of models */
     val modelList:Array[RecMatrixFactJobModel] = populateMethods()
     
@@ -117,6 +120,28 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
     	writeSummaryFile()
     	
     }
+    
+    def populateDataProcessParams():HashMap[String, String] = {
+        var dataProcessParams = HashMap[String, String]()
+	    var nodeList = jobNode \ JobTag.RecJobDataProcessMethodList
+	    
+	    if (nodeList.size == 0){
+	        Logger.warn("No preprocessing transformation found!")
+	        return dataProcessParams
+	    } 
+        	      
+        nodeList = nodeList(0) \ JobTag.RecJobDataProcessMethodUnit       
+        
+        for (node <- nodeList){
+        	// extract transformation method name and parameter
+        	val methodName = (node \ JobTag.RecJobDataProcessMethodName).text     
+        	val methodParams = (node \ JobTag.RecJobDataProcessMethodParam).text 
+        	dataProcessParams += (methodName -> methodParams)
+        }
+        
+        dataProcessParams
+    }    
+    
     /**
      * Generates a summary file under the job workspace folder.  
      */

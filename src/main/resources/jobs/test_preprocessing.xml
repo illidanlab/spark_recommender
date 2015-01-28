@@ -1,7 +1,7 @@
 <jobList xmlns:recsys="Samsung Recsys">
 	<jobEntry>
-		<jobType>rec_matrixfactorize</jobType>
-		<jobName>matrixFact_PMF</jobName>
+		<jobType>recommendation</jobType>
+		<jobName>exp_test_20140522_20140525_fmr</jobName>
 		<jobDesc>Test experiment from 20140522 to 20140525</jobDesc>
 		<sparkContext>
 			<master>local[4]</master>
@@ -9,20 +9,23 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
-            <workspace>/Users/yin.zhou/Documents/workspace/learning_scala</workspace>
+      <workspace>/Users/yin.zhou/Documents/workspace/learning_scala</workspace>
 		</resourceLocation>
+		<experimentalFeature>
+			<exportPlainTextData>false</exportPlainTextData>
+		</experimentalFeature>
 		<trainDates>
 			<date>20140522-20140524</date>
     	</trainDates>
     	<testDates>
         	<date>20140525</date>
-    	</testDates>
+    	</testDates>        
         <transformations>
         	<transformation>
-        		<name>total</name>>
+        		<name>max</name>>
         		<param>none</param>>
 			</transformation>        	
-        </transformations>   
+        </transformations>        
 		<features>		
 			<feature>
 				<type>itemFeature</type>
@@ -30,17 +33,41 @@
 				<param>
 					<lang>en</lang>
 				</param>
-			</feature>
+				<!-- <processes>
+                    <process>
+                        <name>l2normalize</name>
+                    </process>
+                </processes> -->
+			</feature> 
 			<feature>
 				<type>itemFeature</type>
 				<name>showTime</name>
 				<param>
 					<timeWindow>12</timeWindow>
 				</param>
+				<!-- <processes>
+                    <process>
+                        <name>l2normalize</name>
+                    </process>
+                </processes> -->
 			</feature>
 			<feature>
 				<type>itemFeature</type>
 				<name>channel</name>
+				<!-- <processes>
+					<process>
+						<name>randomSelection</name>
+						<param>
+							<size>100</size>
+						</param>
+					</process>
+					<process>
+						<name>l2normalize</name>
+					</process>
+					<process>
+						<name>dummy</name>
+					</process>
+				</processes> -->
 			</feature>
 			<feature>
 		        <type>itemFeature</type>
@@ -48,6 +75,14 @@
 		        <param>
 		            <N>100</N>
 		        </param>
+		        <!-- <processes>
+		            <process>
+                        <name>l2normalize</name>
+                    </process>
+                    <process>
+                        <name>dummy</name>
+                    </process>
+                </processes> -->
 		    </feature>
 			<feature>
 				<type>userFeature</type>
@@ -72,24 +107,36 @@
 		</dataSplit>
 		<models>
 			<model>
-				<name>pmf_model</name>
+				<type>score_reg</type>
+				<name>fm_l2_reg</name>
 				<param>
 					<regParam>1.5</regParam>
-					<userProfileReg>0.1</userProfileReg>
-					<itemProfileReg>0.1</itemProfileReg>
-					<numIter>1</numIter>
+					<minUFCoverage>0.1</minUFCoverage>
+					<minIFCoverage>0.1</minIFCoverage>
+					<numIterations>1</numIterations>
 					<stepSize>0.0001</stepSize>
-					<rank>2</rank>
+					<latentFactor>10</latentFactor>
+				</param>
+			</model>
+			<model>
+				<type>score_reg</type>
+				<name>fm_l2_reg</name>
+				<param>
+					<regParam>1.5</regParam>
+					<minUFCoverage>0.1</minUFCoverage>
+					<minIFCoverage>0.1</minIFCoverage>
+					<numIterations>1</numIterations>
+					<stepSize>0.0001</stepSize>
+					<latentFactor>5</latentFactor>
 				</param>
 			</model>
 		</models>
 		<tests>
-		<!--<test>
+		  <test>
 		      <type>futureNotColdstart</type>
 		      <name>NonColdstart</name>
 		      <param>
 		          <UserSampleSize>3</UserSampleSize>
-		          <N>10</N>
 		      </param>
 		      <metrics>
 				  <metric>
@@ -107,45 +154,14 @@
 		              </param>
 		          </metric>
 		          <metric>
-                      <type>hr</type>
-                      <name>HitRate</name>
-                      <param>
-                          <key>val</key>
-                      </param>
-                  </metric>
+		              <type>hr</type>
+		              <name>HitRate</name>
+		              <param>
+		                  <key>val</key>
+		              </param>
+		          </metric>
 			  </metrics>
-		  </test> -->
-		  <test>
-              <type>futureNotColdstart</type>
-              <name>NonColdstart</name>
-              <param>
-                  <UserSampleSize>5</UserSampleSize>
-                  <N>100</N>
-              </param>
-              <metrics>
-                  <metric>
-                      <type>mse</type>
-                      <name>MeanSquareError</name>
-                      <param>
-                          <key>val</key>
-                      </param>
-                  </metric>
-                  <metric>
-                      <type>rmse</type>
-                      <name>RootMeanSquareError</name>
-                      <param>
-                          <key>val</key>
-                      </param>
-                  </metric>
-                  <metric>
-                      <type>hr</type>
-                      <name>HitRate</name>
-                      <param>
-                          <key>val</key>
-                      </param>
-                  </metric>
-              </metrics>
-          </test>
+		  </test>
 		  <test>
              <type>futureColdItems</type>
 	         <name>ColdStartItems</name>
@@ -163,5 +179,13 @@
 	         </metrics>
 	      </test>
 		</tests>
+		<ensembles>
+			<ensemble>
+				<type>max</type>
+				<param>
+					<num>2</num>
+				</param>
+			</ensemble>
+		</ensembles>
 	</jobEntry>
 </jobList>

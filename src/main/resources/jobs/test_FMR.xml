@@ -9,7 +9,7 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
-      <workspace>/tmp/vddil/recsys-spark</workspace>
+      <workspace>/Users/yin.zhou/Documents/workspace/learning_scala</workspace>
 		</resourceLocation>
 		<experimentalFeature>
 			<exportPlainTextData>false</exportPlainTextData>
@@ -19,7 +19,13 @@
     	</trainDates>
     	<testDates>
         	<date>20140525</date>
-    	</testDates>
+    	</testDates>        
+        <transformations>
+        	<transformation>
+        		<name>max</name>>
+        		<param>none</param>>
+			</transformation>        	
+        </transformations>        
 		<features>		
 			<feature>
 				<type>itemFeature</type>
