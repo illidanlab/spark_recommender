@@ -374,46 +374,5 @@ class MatrixFactModel(
 	}
 }
 
-/** used to generate cold start item or  */
-trait ColdStartProfileGenerator {
-    def getProfile(feature:Option[Vector] = None):Vector
-}
 
-/** This is the average profile generator, which simply provides the 
- *  average in the training data. This is used as the default cold-start 
- *  profile generator. 
- *  */
-case class AverageProfileGenerator (profileRDD: RDD[Vector]) 
-	extends ColdStartProfileGenerator{
-    //we compute the average by default. 
-    var averageVector: Option[Vector] = Some(computeAverage(profileRDD))
-    
-    def getProfile(feature:Option[Vector] = None):Vector = {
-        if(!averageVector.isDefined){
-            //set average variable. 
-            averageVector = Some(computeAverage(profileRDD))
-        }
-        averageVector.get
-    }
-    
-    /**
-     * Compute the average of the profile vector. 
-     */
-    def computeAverage(profileRDD: RDD[Vector]): Vector= {
-        val avgPair:(Vector, Int) = profileRDD.map{
-            x=>(x, 1)
-        }.reduce{ (a, b)=>
-            (a._1 + b._1, a._2 + b._2)
-        }
-        val sumVal:Int    = avgPair._2
-        
-        //averaging
-        if (sumVal > 0){
-            avgPair._1 / sumVal.toDouble
-        }else{
-            avgPair._1
-        }
-        
-    }
-}
 

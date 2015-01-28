@@ -11,6 +11,7 @@ import scala.collection.mutable.{Map=>MMap}
 import com.samsung.vddil.recsys.feature.item.ItemFeatureShowTime
 import com.samsung.vddil.recsys.feature.item.ItemFeatureChannel
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 /*
  * This is the main entrance of the item (program) feature processing.
  * 
@@ -31,7 +32,7 @@ object ItemFeatureHandler extends FeatureHandler{
 	        featureName:String, 
 	        featureParams:HashMap[String, String],
 	        postProcessing:List[FeaturePostProcess], 
-	        jobInfo:RecJob):Boolean = {
+	        jobInfo:JobWithFeature):Boolean = {
 		Logger.logger.info("Processing item feature [%s:%s]".format(featureName, featureParams))
 		 
 		var resource:FeatureResource = FeatureResource.fail

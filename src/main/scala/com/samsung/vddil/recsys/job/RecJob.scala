@@ -73,74 +73,24 @@ object RecJob{
  * @param jobNode a XML node of type scala.xml.Node, which will be used to parse all the job information.
  * 
  */
-case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
+case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends JobWithFeature {
 	//initialization 
     val jobType = JobType.Recommendation
     
     Logger.info("Parsing job ["+ jobName + "]")
     Logger.info("        job desc:"+ jobDesc)
     
-    /** an instance of SparkContext created according to user specification */
-    val sc:SparkContext = Pipeline.instance.get.sc
-    
-    /** the file system associated with sc, which can be used to operate HDFS/local FS */
-    val fs:FileSystem   = Pipeline.instance.get.fs
-    
-    /** 
-     *  If true then the pipeline overwrites existing resources, else skip. 
-     *  The flag is wrapped in [[RecJob.outputResource]] 
-     */
-    val overwriteResource = false //TODO: parse overwrite from job file.
-    
-    /**
-     *  Store resource location for input/output. The input/output can be either in HDFS 
-     *  or in local file system. 
-     *  
-	 * 	* INPUT RESOURCE
-	 *     1. ROVI data folder = resourceLoc(RecJob.ResourceLoc_RoviHQ):String     
-	 *     
-	 *     2. ACR data folder  = resourceLoc(RecJob.ResourceLoc_WatchTime):String
-	 *       
-	 *  * OUTPUT RESOURCE
-	 *     1. location storing features for this job    = resourceLoc(RecJob.ResourceLoc_JobFeature):String  
-	 *     
-	 *     2. location storing store data for this job  = resourceLoc(RecJob.ResourceLoc_JobData):String    
-	 *     
-	 *     3. location storing store model for this job = resourceLoc(RecJob.ResourceLoc_JobModel):String   
-     */
-    val resourceLoc:HashMap[String, String] = populateResourceLoc() 
-    
-    /** a list of addon resource locations, parsing all key value pairs from the job file */
-    val resourceLocAddon:HashMap[String, String] = populateAddonResourceLoc()
-    
-    /** a list of features */
-    val featureList:Array[RecJobFeature] = populateFeatures()
     
     /** a list of models */
     val modelList:Array[RecJobModel] = populateMethods()
-    
-    val dateParser = new SimpleDateFormat("yyyyMMdd") // a parser/formatter for date. 
-    
-    /** a list of dates used to generate training data/features */
-    val trainDates:Array[String] = populateTrainDates()
-    
+        
     val dataProcessParam:HashMap[String, String] = populateDataProcessParams()
-    
-    /** a list of dates used to generate testing data/features  */
-    val testDates:Array[String] = populateTestDates()
     
     /** a list of test procedures to be performed for each model */
     val testList:Array[RecJobTest] = populateTests()
     
     /** a list of experimental features. */ 
     val experimentalFeatures:HashMap[String, String] = populateExpFeatures()
-    
-    val partitionNum_unit:Int  = Pipeline.getPartitionNum(1)
-    Logger.info("Parition Number|Unit  => " + partitionNum_unit)
-    val partitionNum_train:Int = Pipeline.getPartitionNum(trainDates.length)
-    Logger.info("Parition Number|Train => " + partitionNum_train)
-    val partitionNum_test:Int  = Pipeline.getPartitionNum(testDates.length)
-    Logger.info("Parition Number|Test  => " + partitionNum_test)
     
     /**
      * Data splitting information 
@@ -290,30 +240,6 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         dataProcessParams
     }
     
-    /**
-     * Returns false if the resource is available in HDFS.
-     * And therefore the Spark save MUST BE skipped. 
-     * 
-     * If overwriteResource is on, then this function will remove the file 
-     * from HDFS, and it is thus safe to use Spark to save files. 
-     * 
-     * @param resourceLoc the location of the resource, e.g., 
-     * 		 a HDFS file `hdfs:\\path\to\yourfile` or a local n
-     *       file `\path\to\yourfile`
-     */
-    def outputResource(resourceLoc:String) = 
-        Pipeline.outputResource(resourceLoc, overwriteResource)
-    
-    /**
-     * Returns true if all resources are available in HDFS. 
-     * And therefore the entire process logic can be skipped.
-     * 
-     * If overwriteResource is on, then this function returns false.
-     * 
-     * @param resLocArr a list of resource locations 
-     */
-    def skipProcessing(resLocArr:Array[String]) = 
-        (!overwriteResource) && Pipeline.exists(resLocArr)
     
     /**
      * Does nothing for the moment. 
@@ -418,100 +344,6 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
        dataSplit
     }
     
-    /**
-     * Populates special resource locations.
-     * 
-     * @return a map whose keys are given by 
-     *    [[RecJob.ResourceLoc_RoviHQ]],
-     *    [[RecJob.ResourceLoc_WatchTime]],
-     *    [[RecJob.ResourceLoc_Workspace]],
-     *    [[RecJob.ResourceLoc_JobData]],
-     *    [[RecJob.ResourceLoc_JobFeature]],
-     *    [[RecJob.ResourceLoc_JobModel]],
-     *    and values are double.  
-     */
-    def populateResourceLoc():HashMap[String, String] = {
-       var resourceLoc:HashMap[String, String] = new HashMap()
-       
-       var nodeList = jobNode \ JobTag.RecJobResourceLocation
-       if (nodeList.size == 0){
-          Logger.error("Resource locations are not given. ")
-          return resourceLoc
-       }
-       
-       
-       if ((nodeList(0) \ JobTag.RecJobResourceLocationRoviHQ).size > 0) 
-    	   resourceLoc(RecJob.ResourceLoc_RoviHQ)     = (nodeList(0) \ JobTag.RecJobResourceLocationRoviHQ).text
-       
-       if ((nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).size > 0) 
-    	   resourceLoc(RecJob.ResourceLoc_WatchTime)  = (nodeList(0) \ JobTag.RecJobResourceLocationWatchTime).text
-       
-       if ((nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).size > 0){ 
-	       resourceLoc(RecJob.ResourceLoc_Workspace)  = (nodeList(0) \ JobTag.RecJobResourceLocationWorkspace).text
-	       //derivative
-	       resourceLoc(RecJob.ResourceLoc_JobDir)     = resourceLoc(RecJob.ResourceLoc_Workspace) + "/"  + jobName
-	       resourceLoc(RecJob.ResourceLoc_JobData)    = resourceLoc(RecJob.ResourceLoc_JobDir) + "/data"
-	       resourceLoc(RecJob.ResourceLoc_JobFeature) = resourceLoc(RecJob.ResourceLoc_JobDir) + "/feature"
-	       resourceLoc(RecJob.ResourceLoc_JobModel)   = resourceLoc(RecJob.ResourceLoc_JobDir) + "/model"
-	       resourceLoc(RecJob.ResourceLoc_JobTest)    = resourceLoc(RecJob.ResourceLoc_JobDir) + "/test"
-	       
-       }
-       
-       Logger.info("Resource WATCHTIME:   " + resourceLoc(RecJob.ResourceLoc_WatchTime))
-       Logger.info("Resource ROVI:        " + resourceLoc(RecJob.ResourceLoc_RoviHQ))
-       Logger.info("Resource Job Data:    " + resourceLoc(RecJob.ResourceLoc_JobData))
-       Logger.info("Resource Job Feature: " + resourceLoc(RecJob.ResourceLoc_JobFeature))
-       Logger.info("Resource Job Model:   " + resourceLoc(RecJob.ResourceLoc_JobModel))
-       resourceLoc
-    } 
-    
-    /**
-     * Populates all resource locations
-     * 
-     * The keys are directly from the XML tags. For example in the job XML we have 
-     * 
-     * <resourceLocation>
-			<roviHq>data/ROVI/</roviHq>
-			<watchTime>data/ACR/</watchTime>
-			<geoLocation>data/GeoData</geoLocation>
-	 * 
-	 * Gives HashMap("roviHq"->"data/ROVI/", "watchTime"->"data/ACR/", "geoLocation"->"data/GeoData")
-	 * 
-	 * now the geoLocation can be accessed by resourceLocAddon("geoLocation")
-     */
-    def populateAddonResourceLoc():HashMap[String, String] = {
-        var addonResourceLoc:HashMap[String, String] = HashMap()
-        
-        var nodeList = jobNode \ JobTag.RecJobResourceLocation
-        if (nodeList.size == 0){
-           Logger.error("Resource locations are not given. ")
-           return resourceLoc
-        }
-        
-        for (resourceEntryNode <- nodeList){
-          //in case multiple resource location  exist. 
-          
-          // the #PCDATA is currently ignored. 
-          val resourceLocList = resourceEntryNode.child.
-        		  map(resourceEntry => (resourceEntry.label, resourceEntry.text )).filter(_._1 != "#PCDATA")
-          
-          for (resourceLocPair <- resourceLocList ){
-            addonResourceLoc += (resourceLocPair._1 -> resourceLocPair._2)
-          }
-        }
-        
-        //print
-        Logger.info("Addon Resource Locations list:")
-        addonResourceLoc.map(pair => {
-	            val resourceLocKey = pair._1
-	            val resourceLocVal = pair._2
-	            Logger.info("Key: "+ resourceLocKey + " Value:" + resourceLocVal)
-        	}
-        )
-        
-        addonResourceLoc
-    }
-    
     /** Populate experimental features */
     def populateExpFeatures():HashMap[String, String] = {
         var expFeatures:HashMap[String, String] = HashMap()
@@ -575,157 +407,6 @@ case class RecJob (jobName:String, jobDesc:String, jobNode:Node) extends Job {
         } 
         
         Some(RecJobPrediction(dateList, contentDateList, paramList))
-    }
-    
-    /**
-     * Populates training dates.
-     * 
-     * The dates are used to construct resource locations. The dates will be unique and sorted.
-     * 
-     * @return a list of date strings  
-     */
-    def populateTrainDates():Array[String] = {
-      
-      var dateList:Array[String] = Array[String]()
-      
-      //the element by element. 
-      var nodeList = jobNode \ JobTag.RecJobTrainDateList
-      if (nodeList.size == 0){
-        Logger.warn("No training dates given!")
-        return dateList.toArray
-      }
-      
-      dateList = (nodeList(0) \ JobTag.RecJobTrainDateUnit).map(_.text).
-      			flatMap(expandDateList(_, dateParser)).  //expand the lists
-      			toSet.toArray.sorted                     //remove duplication and sort.
-      			
-      Logger.info("Training dates: " + dateList.toArray.deep.toString 
-          + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
-          
-      return dateList
-    }
-
-    /**
-     * Populates testing/evaluation dates.
-     * 
-     * The dates are used to construct resource locations. The dates will be unique and sorted.
-     * 
-     * @return a list of date strings  
-     */
-    def populateTestDates():Array[String] = {
-      
-      var dateList:Array[String] = Array[String]()
-     
-      var nodeList = jobNode \ JobTag.RecJobTestDateList
-      if (nodeList.size == 0){
-        Logger.warn("No training dates given!")
-        return dateList.toArray
-      }
-      
-      dateList = (nodeList(0) \ JobTag.RecJobTestDateUnit).map(_.text).
-      			flatMap(expandDateList(_, dateParser)).  //expand the lists
-      			toSet.toArray.sorted                     //remove duplication and sort.
-      
-      Logger.info("Testing dates: " + dateList.toArray.deep.toString 
-          + " hash("+ HashString.generateHash(dateList.toArray.deep.toString) +")")
-          
-      return dateList
-    }
-    
-    
-    /**
-     * Populates features from XML.
-     * 
-     * Each feature parsed from XML is stored in a class [[RecJobFeature]]. 
-     * 
-     * @return a list of features required to construct 
-     *         recommendation model.  
-     */
-    def populateFeatures():Array[RecJobFeature] = {
-      
-      var featList:Array[RecJobFeature] = Array()  
-      
-      var nodeList = jobNode \ JobTag.RecJobFeatureList 
-      if (nodeList.size == 0){
-        Logger.warn("No features found!")
-        return featList
-      } 
-      
-      nodeList = nodeList(0) \ JobTag.RecJobFeatureUnit 
-      
-      //populate each feature
-      for (node <- nodeList){
-        // extract feature type
-        val featureType = (node \ JobTag.RecJobFeatureUnitType).text
-        
-        // extract feature name 
-        val featureName = (node \ JobTag.RecJobFeatureUnitName).text
-        
-        // extract feature post-processing info
-        val featureProcessList = (node \ JobTag.RecJobFeaturePostProcess).flatMap{
-            node=>populateFeatureProcesses(node:Node)
-        }.toList
-        
-        // extract feature parameters 
-        val featureParam = node \ JobTag.RecJobFeatureUnitParam
-        
-        var paramList:HashMap[String, String] = HashMap()
-        
-        for (featureParamNode <- featureParam){
-          //in case multiple parameter fields exist. 
-          
-          // the #PCDATA is currently ignored. 
-          val paraPairList = featureParamNode.child.map(feat => (feat.label, feat.text )).filter(_._1 != "#PCDATA")
-          
-          for (paraPair <- paraPairList){
-            paramList += (paraPair._1 -> paraPair._2)
-          }
-        } 
-        
-        //create feature structs by type
-        featureType match{
-          case JobTag.RecJobFeatureType_Item => featList = featList :+ RecJobItemFeature(featureName, paramList, featureProcessList)
-          case JobTag.RecJobFeatureType_User => featList = featList :+ RecJobUserFeature(featureName, paramList, featureProcessList)
-          case JobTag.RecJobFeatureType_Fact => featList = featList :+ RecJobFactFeature(featureName, paramList, featureProcessList)
-          case _ => Logger.warn("Feature type %s not found and discarded.".format(featureType))
-        }
-        
-        Logger.info("Feature found "+ featureType+ ":"+ featureName + ":" + paramList)
-      }
-      
-      featList
-    }
-    
-    def populateFeatureProcesses(processNode:Node):Array[FeaturePostProcess] = {
-        var processList:Array[FeaturePostProcess] = Array()
-        
-        var nodeList = processNode \ JobTag.RecJobFeaturePostProcessUnit
-        
-        for (node <- nodeList){
-            val featureName = (node\JobTag.RecJobFeaturePostProcessName).text
-                            
-            val featureParam = node \ JobTag.RecJobFeaturePostProcessParam
-    
-	        var paramList:HashMap[String, String] = HashMap()
-	        
-	        for (featureParamNode <- featureParam){
-	          //in case multiple parameter fields exist. 
-	          
-	          // the #PCDATA is currently ignored. 
-	          val paraPairList = featureParamNode.child.map(feat => (feat.label, feat.text )).filter(_._1 != "#PCDATA")
-	          
-	          for (paraPair <- paraPairList){
-	            paramList += (paraPair._1 -> paraPair._2)
-	          }
-	        }
-            
-            val processUnit = FeaturePostProcess(featureName, paramList)
-            processUnit.foreach{unit =>
-                processList = processList :+ unit
-            }
-        }
-        
-        processList
     }
     
     /**

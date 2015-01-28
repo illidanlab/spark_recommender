@@ -11,6 +11,7 @@ import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.job.RecMatrixFactJob
 import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.feature.FeatureStruct
 
 object MatrixFactModelPMF{
     val Param_UserProfileReg = "userProfileReg"
@@ -26,7 +27,10 @@ object MatrixFactModelPMF{
     val modelName = "MatFactPMF"
 }
 
-case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
+case class MatrixFactModelPMF (
+        modelParams: HashMap[String, String],
+        userFeatureOrder: List[FeatureStruct],
+        itemFeatureOrder: List[FeatureStruct]) {
 	
     val paramUserProfileReg = 
         modelParams.getOrElseUpdate(MatrixFactModelPMF.Param_UserProfileReg, 
@@ -47,7 +51,10 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
         MatrixFactModelPMF.modelName + "_" + featureParamIden + "_" + dataIdentifier
     }
     
-    def train(ratingData:CombinedDataSet, jobInfo:RecMatrixFactJob):Option[MatrixFactModel] = {
+    def train(ratingData:CombinedDataSet,
+              userProfileGenFunc: RDD[(Int, Vector)] => ColdStartProfileGenerator,
+              itemProfileGenFunc: RDD[(Int, Vector)] => ColdStartProfileGenerator,
+              jobInfo:RecMatrixFactJob):Option[MatrixFactModel] = {
         
     	// 1 Prepare Input
         
@@ -115,7 +122,9 @@ case class MatrixFactModelPMF (modelParams: HashMap[String, String]) {
 			resourceLoc:String,
 			modelParams,
 			userProfile:RDD[(String, Vector)],
-			itemProfile:RDD[(String, Vector)]
+			itemProfile:RDD[(String, Vector)],
+			userProfileGenFunc(userProfiles),
+			itemProfileGenFunc(itemProfiles)
         ))
     }   
 }

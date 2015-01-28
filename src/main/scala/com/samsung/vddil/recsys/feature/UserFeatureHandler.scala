@@ -5,6 +5,7 @@ import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.utils.Logger
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /*
  * This is the main entrance of the user feature processing.
@@ -24,7 +25,7 @@ object UserFeatureHandler extends FeatureHandler{
 	        featureName:String, 
 	        featureParams:HashMap[String, String], 
 	        postProcessing:List[FeaturePostProcess], 
-	        jobInfo:RecJob):Boolean={
+	        jobInfo:JobWithFeature):Boolean={
 		Logger.info("Processing user feature [%s:%s]".format(featureName, featureParams))
 	
 		var resource:FeatureResource = FeatureResource.fail

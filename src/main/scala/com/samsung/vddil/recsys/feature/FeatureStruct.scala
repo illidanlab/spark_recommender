@@ -8,6 +8,8 @@ import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.job.JobWithResource
+import com.samsung.vddil.recsys.job.JobWithResource
 
 /**
  * This data structure stores the information of feature
@@ -65,7 +67,7 @@ trait FeatureStruct extends ResourceStruct{
 }
 
 object FeatureStruct{
-    def saveText_featureMapRDD(rdd: RDD[(Int, String)], fileName:String, jobInfo:RecJob) = {
+    def saveText_featureMapRDD(rdd: RDD[(Int, String)], fileName:String, jobInfo:JobWithResource) = {
         if (jobInfo.outputResource(fileName)){
         	rdd.map{pair =>
             	pair._1.toString + "," + pair._2
@@ -73,7 +75,7 @@ object FeatureStruct{
         }
     }
     
-    def saveText_featureMapRDD(rdd: => RDD[(Int, (Int, String))], fileName:String, jobInfo:RecJob) = {
+    def saveText_featureMapRDD(rdd: => RDD[(Int, (Int, String))], fileName:String, jobInfo:JobWithResource) = {
         if (jobInfo.outputResource(fileName)){
         	rdd.map{pair =>
 	            pair._1.toString + "," + pair._2._1.toString + "," + pair._2._2

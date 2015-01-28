@@ -7,6 +7,7 @@ import com.samsung.vddil.recsys.feature.fact.FactFeaturePMF
 import com.samsung.vddil.recsys.utils.HashString
 import com.samsung.vddil.recsys.utils.Logger
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /*
  * This is the main entrance of the factorization feature processing.
@@ -21,7 +22,7 @@ object FactFeatureHandler extends FeatureHandler{
 	        featureName:String, 
 	        featureParams:HashMap[String, String], 
 	        postProcessing:List[FeaturePostProcess], 
-	        jobInfo:RecJob):Boolean = {
+	        jobInfo:JobWithFeature):Boolean = {
 		Logger.logger.info("Processing factorization feature [%s:%s]".format(featureName, featureParams))
 		 
 		var resource:FeatureResource = FeatureResource.fail

@@ -3,6 +3,7 @@ package com.samsung.vddil.recsys.feature
 import com.samsung.vddil.recsys.job.RecJob
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /**
  * The feature handler implementations are used to process a specified type of features.  
@@ -19,5 +20,5 @@ trait FeatureHandler {
 	        featureName:String, 
 	        featureParams:HashMap[String, String], 
 	        postProcessing:List[FeaturePostProcess], 
-	        jobInfo:RecJob):Boolean
+	        jobInfo:JobWithFeature):Boolean
 }

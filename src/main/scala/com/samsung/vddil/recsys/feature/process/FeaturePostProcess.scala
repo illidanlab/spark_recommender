@@ -4,14 +4,13 @@
 package com.samsung.vddil.recsys.feature.process
 
 import scala.collection.mutable.HashMap
-
 import org.apache.spark.rdd.RDD
-
 import com.samsung.vddil.recsys.feature.FeatureStruct
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.feature.UserFeatureStruct
 import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /**
  * @author jiayu.zhou
@@ -109,7 +108,7 @@ trait FeaturePostProcessor{
     def processFeatureMap[T](trainingDataMap:RDD[(Int, String)]):RDD[(Int, String)]
     
 
-    def process(input: FeatureStruct, jobInfo:RecJob) : (String, String) = {
+    def process(input: FeatureStruct, jobInfo:JobWithFeature) : (String, String) = {
         
         
         val transformedFeatureMap     = processFeatureMap(input.getFeatureMapRDD)
@@ -130,7 +129,7 @@ trait FeaturePostProcessor{
     }
     
     /** process a UserFeatureStruct */
-    def processStruct(input: UserFeatureStruct, jobInfo:RecJob) : UserFeatureStruct ={
+    def processStruct(input: UserFeatureStruct, jobInfo:JobWithFeature) : UserFeatureStruct ={
         
         val (featureMapFile, featureVectorFile) = process(input: FeatureStruct, jobInfo)
         
@@ -147,7 +146,7 @@ trait FeaturePostProcessor{
     }
     
     /** process a ItemFeatureStruct, returns a new one with processed feature. */
-    def processStruct(input: ItemFeatureStruct, jobInfo:RecJob) : ItemFeatureStruct = {
+    def processStruct(input: ItemFeatureStruct, jobInfo:JobWithFeature) : ItemFeatureStruct = {
         //get features and transform it. 
         val (featureMapFile, featureVectorFile) = process(input: FeatureStruct, jobInfo)
         

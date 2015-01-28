@@ -26,13 +26,16 @@ object DataTransformation {
         	(x._2,x._3)
 	    }.reduceByKey{
 	        (a,b) => max(a,b)
-	    }.collectAsMap
-	    val bMaxWatchTimeProgramMap = sc.broadcast(maxWatchTimeProgramMap)
-	    	    
-	    val normalizedData = input.map{
+	    }.map{
 	        x => 
-	        val maxWT = bMaxWatchTimeProgramMap.value(x._2)
-	        (x._1, x._2, x._3/maxWT)
+	        (x._1,("",x._2))
+	    }
+	    
+	    val normalizedData = input.map(x => (x._1, (x._2,x._3)))
+	    						  .join(maxWatchTimeProgramMap)
+	    						  .map{
+	        						 x => 
+	        						 (x._1,x._2._1._1,x._2._1._2/x._2._2._2)
 	    }
         
         normalizedData
@@ -44,17 +47,18 @@ object DataTransformation {
             (x._1,x._3)
         }
         .reduceByKey(_+_)
-        .collectAsMap
+        .map{
+            x => 
+            (x._1,("",x._2))
+        }
         
-        Logger.info("totalWatchTimeUserMap has " + totalWatchTimeUserMap.size + " users")
-                
-        val bTotalWatchTimeUserMap = sc.broadcast(totalWatchTimeUserMap)
-	    val normalizedData = input.map{
-	        x => 
-	        val totalWT = bTotalWatchTimeUserMap.value(x._1)
-	        (x._1, x._2, x._3/totalWT)
+	    val normalizedData = input.map(x => (x._1, (x._2,x._3)))
+	    						  .join(totalWatchTimeUserMap)
+	    						  .map{
+	        						 x => 
+	        						 (x._1,x._2._1._1,x._2._1._2/x._2._2._2)
 	    }
         
-        normalizedData        
+        normalizedData     
     }
 }

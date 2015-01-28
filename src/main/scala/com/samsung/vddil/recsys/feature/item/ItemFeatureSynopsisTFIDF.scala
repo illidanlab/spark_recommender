@@ -18,6 +18,7 @@ import scala.io.Source
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
 import com.samsung.vddil.recsys.feature.FeatureStruct
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /*
  * Item Feature: extract TFIDF numerical features from synopsis
@@ -201,7 +202,7 @@ ItemFeatureExtractor {
     itemTermCounts
   }
 
-  def getFeatureSources(dates:List[String], jobInfo:RecJob):List[String] = {
+  def getFeatureSources(dates:List[String], jobInfo:JobWithFeature):List[String] = {
     dates.map{date =>
       jobInfo.resourceLoc(RecJob.ResourceLoc_RoviHQ) + date + "/program_desc*"
     }.toList
@@ -247,7 +248,7 @@ ItemFeatureExtractor {
 
 	def processFeature(
 	        featureParams:HashMap[String, String], 
-	        jobInfo:RecJob):FeatureResource = {
+	        jobInfo:JobWithFeature):FeatureResource = {
     
 	  	val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
 	    
