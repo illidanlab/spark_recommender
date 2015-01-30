@@ -9,7 +9,7 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
-            <workspace>/Users/yin.zhou/Documents/workspace/learning_scala</workspace>
+            <workspace>/tmp/vddil/</workspace>
 		</resourceLocation>
 		<trainDates>
 			<date>20140522-20140524</date>
@@ -19,8 +19,8 @@
     	</testDates>
         <transformations>
         	<transformation>
-        		<name>total</name>>
-        		<param>none</param>>
+        		<name>total</name>
+        		<param>none</param>
 			</transformation>        	
         </transformations>   
 		<features>		
@@ -81,7 +81,7 @@
 					<stepSize>0.0001</stepSize>
 					<rank>2</rank>
 					<ItemProfileGenerator>Lasso</ItemProfileGenerator>
-					<UserProfileGenerator>Lasso</UserProfileGenerator>>
+					<UserProfileGenerator>Lasso</UserProfileGenerator>
 				</param>
 			</model>
 		</models>
