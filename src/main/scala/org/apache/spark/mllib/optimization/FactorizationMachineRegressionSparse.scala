@@ -7,6 +7,7 @@ import scala.collection.immutable.HashMap
 import breeze.linalg.Axis
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.regression.LabeledPoint
+import com.samsung.vddil.recsys.linalg.ProxFunctions
 
 object FactorizationMachineRegressionSparseModel{
     /**
@@ -38,57 +39,28 @@ object FactorizationMachineRegressionSparseModel{
             // of segmenting.  
             val w0Weights = brzWeights(brzWeights.size - 1) //save the intercept weight
             brzWeights :*= (1.0 - thisIterStepSize * regParam)//shrinkage
+            
+            //gradient update. 
+            brzAxpy(-thisIterStepSize, gradient.toBreeze, brzWeights)
             brzWeights(brzWeights.size - 1) = w0Weights //recover the intercept weight
             
-            brzAxpy(-thisIterStepSize, gradient.toBreeze, brzWeights)
-            
-            //norm without w0 
-            //NOTE: scala breeze 0.7 does not support brzNorm on slice 
-            val norm = brzWeights(0 to brzWeights.size - 2).norm(2.0)
-            
             //proximal update
-    		val (wVector, vMatrix, w0) = FactorizationMachineRegressionModel.devectorize(brzWeights.toDenseVector, latentDim)
+    		val (wVector, vMatrix, w0) = 
+    		    FactorizationMachineRegressionModel.devectorize(brzWeights.toDenseVector, latentDim)
     		
-    		val proxMat = proximalL21(BDM.horzcat(wVector.toDenseMatrix.t, vMatrix), l21Param/thisIterStepSize)
+    		val proxMat = ProxFunctions.proximalL21(BDM.horzcat(wVector.toDenseMatrix.t, vMatrix), l21Param/thisIterStepSize)
     		val wVectorProx = proxMat(::, 0)
     		val vMatrixProx = proxMat(::, 1 to proxMat.cols - 1)
     		val brzWeightsProx = FactorizationMachineRegressionModel.vectorize(wVectorProx, vMatrixProx, w0)
             
-    		(Vectors.fromBreeze(brzWeightsProx), 0.5 * regParam * norm * norm + l21Param * funcValL21(proxMat))
+    		//F-norm without w0 
+            //NOTE: scala breeze 0.7 does not support brzNorm on slice 
+            val norm = brzWeightsProx(0 to brzWeights.size - 2).norm(2.0)
+    		
+    		(Vectors.fromBreeze(brzWeightsProx), 0.5 * regParam * norm * norm + l21Param * ProxFunctions.funcValL21(proxMat))
         }
     }
     
-    /**
-     * Solves the proximal operator associated to the l2,1-norm regularization.
-     * 
-     * returns argmin 0.5 * ||X - D||_F^2 + tau * ||X||_{1,2} 
-     * 
-     * See 
-     *  Yuan, Ming, and Yi Lin. "Model selection and estimation in regression with 
-     *  grouped variables." Journal of the Royal Statistical Society: Series B (Statistical 
-     *  Methodology) 68.1 (2006): 49-67.
-     *  
-     */
-    def proximalL21(D: BDM[Double], tau: Double): BDM[Double] ={
-        ( brzSum(D:*D, Axis._1).  //the sum of the suqares of each row Matlab: (sum(D.^2, 2))
-                mapValues{ x=>               // element-wise operations   
-                    if (x == 0) x            // protect from divide zero exception. 
-                    else math.max(0, 1 - tau/scala.math.sqrt(x)) //soft-threshold based on group value. 
-                }  
-           * BDM(List.fill(D.cols)(1.0))  //replicate the columns Matlab: (repmat)
-        ) :* D //element-wise multiplication. 
-    }
-    
-    /**
-     * Computes the function value of l2,1 norm.
-     * 
-     * returns:   ||X||_{1,2} = sum_i||X^i||_2
-     */
-    def funcValL21(D: BDM[Double]): Double = {
-        brzSum(brzSum(D:*D, Axis._1).mapValues{x=>
-            scala.math.sqrt(x)
-        })
-    }
 }
 
 
