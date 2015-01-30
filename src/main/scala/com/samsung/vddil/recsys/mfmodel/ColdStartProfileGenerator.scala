@@ -8,6 +8,9 @@ import org.apache.spark.mllib.regression.RegressionModel
 import org.apache.spark.mllib.regression.LinearRegressionWithSGD
 import scala.Array
 import com.samsung.vddil.recsys.linalg.Vectors
+import org.apache.spark.mllib.regression.LassoModel
+import org.apache.spark.mllib.regression.LassoWithSGD
+import com.samsung.vddil.recsys.utils.Logger
 
 /** used to generate cold start item or  */
 trait ColdStartProfileGenerator {
@@ -73,7 +76,8 @@ case class RidgeRegressionProfileGenerator(
         //profileRDD: RDD[(Int, Vector)], contentFeatureRDD:RDD[(Int, Vector)]
         (0 to latentDim-1).map{ dim =>
             val trainData = profileRDD.map{x => 
-                (x._1, x._2.toArray(dim))
+                val latentFactorArray = x._2.toArray
+                (x._1, latentFactorArray(dim))
             }.join(contentFeatureRDD).map{ x=>
                 val latentFactorVal:Double = x._2._1
                 val featureVect:Vector     = x._2._2
@@ -92,7 +96,7 @@ case class RidgeRegressionProfileGenerator(
      */
     def getProfile(feature:Option[Vector] = None):Vector = {
         if(feature.isDefined){
-            
+            //Logger.info("Ridge profiler invoked")
             val tt = models.map{x => x.predict(feature.get.toMLLib) }.toArray
             Vectors.dense(tt)
             
@@ -102,3 +106,56 @@ case class RidgeRegressionProfileGenerator(
     }
     
 }
+
+case class LassoRegressionProfileGenerator(
+        profileRDD: RDD[(Int, Vector)], 
+        contentFeatureRDD:RDD[(Int, Vector)]) extends ColdStartProfileGenerator {
+
+    //latent size, determine how many regression models we need.  
+    val latentDim = profileRDD.first._2.size
+    val models:List[LassoModel] = trainGenerator()
+    
+    val avgProfiler = AverageProfileGenerator (profileRDD.map{_._2})
+    
+    /**
+     * Train regression model. 
+     */
+    def trainGenerator(): List[LassoModel] = {
+        //profileRDD: RDD[(Int, Vector)], contentFeatureRDD:RDD[(Int, Vector)]
+        Logger.info("Lasso training")
+        (0 to latentDim-1).map{ dim =>
+            val trainData = profileRDD.map{x => 
+                val latentFactorArray = x._2.toArray
+                (x._1, latentFactorArray(dim))
+            }.join(contentFeatureRDD).map{ x=>
+                val latentFactorVal:Double = x._2._1
+                val featureVect:Vector     = x._2._2
+                LabeledPoint(latentFactorVal, featureVect.toMLLib)
+            }
+            
+            val numIterations = 10
+            val model = LassoWithSGD.train(trainData, numIterations)
+            
+            model
+        }.toList
+    }    
+    
+    /**
+     * Compute cold profile. 
+     */
+    def getProfile(feature:Option[Vector] = None):Vector = {
+        if(feature.isDefined){
+            //Logger.info("Lasso profiler invoked")
+            val tt = models.map{x => x.predict(feature.get.toMLLib) }.toArray
+            Vectors.dense(tt)
+            
+        }else{
+            //Logger.info("In Lasso, but computing average")
+        	avgProfiler.getProfile(None)            
+        }
+    }    
+}
+
+
+
+

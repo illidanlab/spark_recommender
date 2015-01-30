@@ -16,6 +16,7 @@ object MatrixFactModelHandler {
 	val ParamUserProfileGenerator = "UserProfileGenerator"
 	val ParamItemProfileGenerator = "ItemProfileGenerator"
 	val ParamVal_ProfileGeneratorRidge = "Ridge"
+	val ParamVal_ProfileGeneratorLasso = "Lasso"	    
 	val ParamVal_DefaultUserGenerator = ParamVal_ProfileGeneratorRidge
 	val ParamVal_DefaultItemGenerator = ParamVal_ProfileGeneratorRidge
 	    
@@ -73,7 +74,11 @@ object MatrixFactModelHandler {
 	        if (paramUserProfileGeneratorType.compareTo(ParamVal_ProfileGeneratorRidge) == 0){
 	        	(profileRDD: RDD[(Int, Vector)]) =>
         			RidgeRegressionProfileGenerator(profileRDD, userFeaturesRDD)
-	        }else{
+	        } else if (paramUserProfileGeneratorType.compareTo(ParamVal_ProfileGeneratorLasso) == 0){
+	        	(profileRDD: RDD[(Int, Vector)]) =>
+        			LassoRegressionProfileGenerator(profileRDD, userFeaturesRDD)	            
+	        }
+	        else{
 	            (profileRDD: RDD[(Int, Vector)]) =>
 	            	AverageProfileGenerator(profileRDD.map{x => x._2})
 	        }
@@ -82,7 +87,11 @@ object MatrixFactModelHandler {
             if (paramItemProfileGeneratorType.compareTo(ParamVal_ProfileGeneratorRidge) == 0){
             	(profileRDD: RDD[(Int, Vector)]) =>
         			RidgeRegressionProfileGenerator(profileRDD, itemFeaturesRDD)
-            }else{
+            } else if (paramItemProfileGeneratorType.compareTo(ParamVal_ProfileGeneratorLasso) == 0) {
+            	(profileRDD: RDD[(Int, Vector)]) =>
+        			LassoRegressionProfileGenerator(profileRDD, itemFeaturesRDD)  
+        	}
+            else{
                 (profileRDD: RDD[(Int, Vector)]) =>
 	            	AverageProfileGenerator(profileRDD.map{x => x._2})
             }

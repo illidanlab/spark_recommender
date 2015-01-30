@@ -250,7 +250,7 @@ case class TestUnitColdItemMatrixFact private[testing](
     val IdenPrefix = "Test_ColdItem"
     
     def performTest():TestUnit.TestResults = {
-        Logger.info("Performing NoCold test on model: " + model.resourceStr)
+        Logger.info("Performing Cold test on model: " + model.resourceStr)
         
         //1. the results to be returned. 
         val result:TestUnit.TestResults = new TestUnit.TestResults()
