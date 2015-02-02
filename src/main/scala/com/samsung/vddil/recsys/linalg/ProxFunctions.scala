@@ -45,7 +45,11 @@ object ProxFunctions {
      * mixed regularization.
      * 
      * Decomposition theory on sparse:
-     *    Dprox = proxL1(proxL21(D))
+     *    Dprox = proxL21(proxL1(D))
+     *    
+     * See Theorem 1 in: 
+     * Jiayu Zhou, Jun Liu, Vaibhav A. Narayan, and Jieping Ye. Modeling Disease 
+     * Progression via Fused Sparse Group Lasso. KDD 2012
      * 
      * @return argmin_X 0.5 * ||X - D||_F^2 
      *                           + tauL1 * ||X||_{1} + tauL21 * ||X||_{1,2}   
