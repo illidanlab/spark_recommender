@@ -125,7 +125,8 @@ object FeatureLearningFactorizationMachineRegressionModel{
     	    
     	    // compute gradient 
     	    val pMatrixGradient:BDM[Double] = brzDataDense.toDenseMatrix * 
-    	    									((wVector.toDenseMatrix.t * (2.0 * diff)) + (hVector.t * (vMatrix.t * diff)))
+    	    									((wVector.toDenseMatrix.t * diff) + 
+    	    									  (hVector.t * (vMatrix.t * (diff * 2.0))))
     	    val wVectorGradient:BDV[Double] = gVector * diff
     	    val vMatrixGradient:BDM[Double] = (gVector.toDenseMatrix * (2.0 * diff)) * hVector.toDenseMatrix.t 
     	    val w0Gradient:Double           = diff
@@ -159,7 +160,8 @@ object FeatureLearningFactorizationMachineRegressionModel{
     	    
     	    // compute gradient 
     	    val pMatrixGradient:BDM[Double] = brzDataDense.toDenseMatrix * 
-    	    									((wVector.toDenseMatrix.t * 2.0) + (hVector.t * vMatrix.t))
+    	    									((wVector.toDenseMatrix.t) 
+    	    									    + (hVector.t * (vMatrix.t * 2.0)))
     	    val wVectorGradient:BDV[Double] = gVector
     	    val vMatrixGradient:BDM[Double] = gVector.toDenseMatrix * (hVector.toDenseMatrix.t * 2.0) 
     	    val w0Gradient:Double           = 1
