@@ -72,6 +72,10 @@ object ProxFunctions {
     /**
      * Solves the proximal operator associated to the l1-norm regularization.
      * 
+     * proximalL1(x)_i = (1 - alpha/|x_i|) * x_i  
+     * 
+     * from FISTA paper (1.5).
+     * 
      * returns argmin 0.5 * ||X - D||_F^2 + tau * ||X||_{1} 
      * 
      */    
