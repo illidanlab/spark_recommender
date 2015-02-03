@@ -48,7 +48,7 @@ class FeatureLearningFactorizationMachineRegressionModel (
         val brzLatDataVector = vMatrix.t * brzLearnedFeatureVector
         
         //compute prediction
-        (wVector dot brzLatDataVector) + (brzLatDataVector dot brzLatDataVector) + w0
+        (wVector dot brzLearnedFeatureVector) + (brzLatDataVector dot brzLatDataVector) + w0
     }
 }
 
@@ -58,6 +58,34 @@ class FeatureLearningFactorizationMachineRegressionModel (
 object FeatureLearningFactorizationMachineRegressionModel{
     val ParamLatentDimension  = "ParamLatentDimension"
     val ParamLearnFeatureSize = "ParamLearnFeatureSize"
+
+    /**
+     * Creates a unit model vector, serves as the default staring point.
+     * 
+     *  V cannot be zero.  
+     */        
+    def initUnitModel(featureDim: Int, latentDim:Int, learnedFeatureSize:Int):Vector = {
+        
+        val modelSize = learnedFeatureSize * (1 + latentDim + featureDim) + 1
+        
+        val fillValue:Double = 1.0/modelSize
+        val t = new Array[Double](modelSize)
+        (1 to t.length).foreach{idx =>
+            t(idx - 1) = fillValue
+        }
+        Vectors.dense(t)
+    }
+    
+    /**
+     * Creates a random model vector (all zero), serves as the default staring point. 
+     */
+    def initRandModel(featureDim:Int, latentDim:Int, learnedFeatureSize:Int, 
+            			scale:Double, rnd:Random = new Random(52)):Vector = {
+        
+        val modelSize = learnedFeatureSize * (1 + latentDim + featureDim) + 1
+        
+        Vectors.dense(Array.fill[Double](modelSize)(scale * rnd.nextGaussian()))
+    }     
     
     /**
      * 
@@ -95,7 +123,7 @@ object FeatureLearningFactorizationMachineRegressionModel{
             	BDV.vertcat[Double](
             		pMatrix.toDenseVector, 	wVector
             	),
-            	wVector.toDenseVector
+            	vMatrix.toDenseVector
             ),
             BDV(Array[Double](w0))
         )
@@ -202,21 +230,27 @@ object FeatureLearningFactorizationMachineRegressionModel{
 	            
 	            //proximal update
 	            val (pMatrix, wVector, vMatrix, w0) = 
-    				FeatureLearningFactorizationMachineRegressionModel.devectorize(
+    			    FeatureLearningFactorizationMachineRegressionModel.devectorize(
     					brzWeights.toDenseVector, latentDim, learnedFeatureSize)
-	            
-    			//projected gradient 
-                //val pMatrixProx = ProxFunctions.proximalL21(pMatrix, l21Param/thisIterStepSize)
-                val pMatrixProx = ProxFunctions.proximalL21L1(pMatrix, l1Param/thisIterStepSize, l21Param/thisIterStepSize)
-                val brzWeightsProx = 
-                    FeatureLearningFactorizationMachineRegressionModel.vectorize(pMatrixProx, wVector, vMatrix, w0)
+    					
+	            val (brzWeightsProx, proxVal) = if(thisIterStepSize != 0){
+    			    //projected gradient 
+                    //val pMatrixProx = ProxFunctions.proximalL21(pMatrix, l21Param/thisIterStepSize)
+    				val pMatrixProx = ProxFunctions.proximalL21L1(pMatrix, l1Param/thisIterStepSize, l21Param/thisIterStepSize)
+                 
+                    (FeatureLearningFactorizationMachineRegressionModel.vectorize(pMatrixProx, wVector, vMatrix, w0),
+                     ProxFunctions.funcValL21L1(pMatrixProx, l1Param, l21Param) )
+	            }else{
+	                (brzWeights.toDenseVector,
+	                 ProxFunctions.funcValL21L1(pMatrix, l1Param, l21Param) )
+	            }
+                
                 
                 //F-norm without w0 
                 //NOTE: scala breeze 0.7 does not support brzNorm on slice 
                 val norm = brzWeightsProx(0 to brzWeights.size - 2).norm(2.0)
                 
-                val regVal = 0.5 * regParam * norm * norm 
-                			+ ProxFunctions.funcValL21L1(pMatrixProx, l1Param, l21Param)
+                val regVal = 0.5 * regParam * norm * norm + proxVal 
                 
                 (Vectors.fromBreeze(brzWeightsProx), regVal)
             }
@@ -283,7 +317,8 @@ object FactorizationMachineRegressionFeatureLearningWithSGD{
         new FactorizationMachineRegressionFeatureLearningWithSGD(
                 latentDim, l21RegParam, l1RegParam, learnedFeatureSize, stepSize, numIterations, regParam, miniBatchFraction).run(
                 input, initialWeights, HashMap[String, Any](
-                FactorizationMachineRegressionModel.ParamLatentDimension -> latentDim))
+                FeatureLearningFactorizationMachineRegressionModel.ParamLatentDimension -> latentDim, 
+                FeatureLearningFactorizationMachineRegressionModel.ParamLearnFeatureSize -> learnedFeatureSize))
     }
     
     def train(
@@ -298,7 +333,9 @@ object FactorizationMachineRegressionFeatureLearningWithSGD{
             miniBatchFraction: Double): FeatureLearningFactorizationMachineRegressionModel = {
         
         val featureDim:Int = input.first.features.size
-        val initialWeights: Vector = FactorizationMachineRegressionModel.initUnitModel(featureDim, latentDim)
+        val initialWeights: Vector = 
+            FeatureLearningFactorizationMachineRegressionModel.
+            initUnitModel(featureDim, latentDim, learnedFeatureSize);
         
         FactorizationMachineRegressionFeatureLearningWithSGD.train(
                 input, latentDim, l21RegParam, l1RegParam, learnedFeatureSize, numIterations, stepSize, regParam, miniBatchFraction, initialWeights)
