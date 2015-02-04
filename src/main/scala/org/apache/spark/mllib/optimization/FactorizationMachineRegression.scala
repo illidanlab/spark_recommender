@@ -301,7 +301,10 @@ object FactorizationMachineRegressionL2WithSGD{
             miniBatchFraction: Double): FactorizationMachineRegressionModel = {
         
         val featureDim:Int = input.first.features.size
+        
         val initialWeights: Vector = FactorizationMachineRegressionModel.initUnitModel(featureDim, latentDim)
+        
+        //val initialWeights: Vector = FactorizationMachineRegressionModel.initRandModel(featureDim, latentDim, 0.01)
         
         FactorizationMachineRegressionL2WithSGD.train(
                 input, latentDim, numIterations, stepSize, regParam, miniBatchFraction, initialWeights)

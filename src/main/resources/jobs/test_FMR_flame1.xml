@@ -19,13 +19,7 @@
     	</trainDates>
     	<testDates>
         	<date>20140525</date>
-    	</testDates>        
-        <transformations>
-        	<transformation>
-        		<name>max</name>>
-        		<param>none</param>>
-			</transformation>        	
-        </transformations>        
+    	</testDates>
 		<features>		
 			<feature>
 				<type>itemFeature</type>
@@ -33,11 +27,6 @@
 				<param>
 					<lang>en</lang>
 				</param>
-				<!-- <processes>
-                    <process>
-                        <name>l2normalize</name>
-                    </process>
-                </processes> -->
 			</feature>
 			<feature>
 				<type>itemFeature</type>
@@ -45,29 +34,6 @@
 				<param>
 					<timeWindow>12</timeWindow>
 				</param>
-				<!-- <processes>
-                    <process>
-                        <name>l2normalize</name>
-                    </process>
-                </processes> -->
-			</feature>
-			<feature>
-				<type>itemFeature</type>
-				<name>channel</name>
-				<!-- <processes>
-					<process>
-						<name>randomSelection</name>
-						<param>
-							<size>100</size>
-						</param>
-					</process>
-					<process>
-						<name>l2normalize</name>
-					</process>
-					<process>
-						<name>dummy</name>
-					</process>
-				</processes> -->
 			</feature>
 			<feature>
 		        <type>itemFeature</type>
@@ -75,14 +41,6 @@
 		        <param>
 		            <N>100</N>
 		        </param>
-		        <!-- <processes>
-		            <process>
-                        <name>l2normalize</name>
-                    </process>
-                    <process>
-                        <name>dummy</name>
-                    </process>
-                </processes> -->
 		    </feature>
 			<feature>
 				<type>userFeature</type>
@@ -91,10 +49,6 @@
 			<feature>
 				<type>userFeature</type>
 				<name>showTime</name>
-			</feature>
-			<feature>
-				<type>userFeature</type>
-				<name>channel</name>
 			</feature>
 			<feature>
 		        <type>userFeature</type>
@@ -108,7 +62,7 @@
 		<models>
 			<model>
 				<type>score_reg</type>
-				<name>fm_l2_reg</name>
+				<name>fm_l21_reg</name>
 				<param>
 					<regParam>1.5</regParam>
 					<minUFCoverage>0.1</minUFCoverage>
@@ -116,20 +70,35 @@
 					<numIterations>1</numIterations>
 					<stepSize>0.0001</stepSize>
 					<latentFactor>5</latentFactor>
+					<l21Param>150</l21Param>
 				</param>
 			</model>
 			<model>
-				<type>score_reg</type>
-				<name>fm_l2_reg</name>
-				<param>
-					<regParam>1.5</regParam>
-					<minUFCoverage>0.1</minUFCoverage>
-					<minIFCoverage>0.1</minIFCoverage>
-					<numIterations>10</numIterations>
-					<stepSize>0.0001</stepSize>
-					<latentFactor>5</latentFactor>
-				</param>
-			</model>
+                <type>score_reg</type>
+                <name>fm_l21_reg</name>
+                <param>
+                    <regParam>1.5</regParam>
+                    <minUFCoverage>0.1</minUFCoverage>
+                    <minIFCoverage>0.1</minIFCoverage>
+                    <numIterations>2</numIterations>
+                    <stepSize>0.0001</stepSize>
+                    <latentFactor>5</latentFactor>
+                    <l21Param>150</l21Param>
+                </param>
+            </model>
+            <model>
+                <type>score_reg</type>
+                <name>fm_l21_reg</name>
+                <param>
+                    <regParam>1.5</regParam>
+                    <minUFCoverage>0.1</minUFCoverage>
+                    <minIFCoverage>0.1</minIFCoverage>
+                    <numIterations>10</numIterations>
+                    <stepSize>0.0001</stepSize>
+                    <latentFactor>5</latentFactor>
+                    <l21Param>150</l21Param>
+                </param>
+            </model>			
 		</models>
 		<tests>
 		  <test>
