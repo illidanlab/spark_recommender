@@ -48,7 +48,7 @@ object FactorizationMachineRegressionSparseModel{
     		val (wVector, vMatrix, w0) = 
     		    FactorizationMachineRegressionModel.devectorize(brzWeights.toDenseVector, latentDim)
     		
-    		val proxMat = ProxFunctions.proximalL21(BDM.horzcat(wVector.toDenseMatrix.t, vMatrix), l21Param/thisIterStepSize)
+    		val proxMat = ProxFunctions.proximalL21(BDM.horzcat(wVector.toDenseMatrix.t, vMatrix), l21Param * thisIterStepSize)
     		val wVectorProx = proxMat(::, 0)
     		val vMatrixProx = proxMat(::, 1 to proxMat.cols - 1)
     		val brzWeightsProx = FactorizationMachineRegressionModel.vectorize(wVectorProx, vMatrixProx, w0)
@@ -124,7 +124,8 @@ object FactorizationMachineRegressionSparseWithSGD{
             miniBatchFraction: Double): FactorizationMachineRegressionModel = {
         
         val featureDim:Int = input.first.features.size
-        val initialWeights: Vector = FactorizationMachineRegressionModel.initUnitModel(featureDim, latentDim)
+        //val initialWeights: Vector = FactorizationMachineRegressionModel.initUnitModel(featureDim, latentDim)
+        val initialWeights: Vector = FactorizationMachineRegressionModel.initRandModel(featureDim, latentDim, 0.01)
         
         FactorizationMachineRegressionSparseWithSGD.train(
                 input, latentDim, numIterations, stepSize, regParam, l21Param, miniBatchFraction, initialWeights)
