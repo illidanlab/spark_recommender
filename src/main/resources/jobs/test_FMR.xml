@@ -9,7 +9,7 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
-      <workspace>/Users/yin.zhou/Documents/workspace/learning_scala</workspace>
+      <workspace>/tmp/vddil/recsys-spark</workspace>
 		</resourceLocation>
 		<experimentalFeature>
 			<exportPlainTextData>false</exportPlainTextData>
