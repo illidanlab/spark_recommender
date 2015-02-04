@@ -70,8 +70,41 @@
 					<numIterations>1</numIterations>
 					<stepSize>0.0001</stepSize>
 					<latentFactor>5</latentFactor>
+					<l21Param>100</l21Param>
+					<l1Param>10</l1Param>
+					<learnFeatureNum>100</learnFeatureNum>
 				</param>
 			</model>
+            <model>
+                <type>score_reg</type>
+                <name>fm_fl_reg</name>
+                <param>
+                    <regParam>1.5</regParam>
+                    <minUFCoverage>0.1</minUFCoverage>
+                    <minIFCoverage>0.1</minIFCoverage>
+                    <numIterations>5</numIterations>
+                    <stepSize>0.0001</stepSize>
+                    <latentFactor>2</latentFactor>
+                    <l21Param>100</l21Param>
+                    <l1Param>10</l1Param>
+                    <learnFeatureNum>100</learnFeatureNum>
+                </param>
+            </model>    			
+            <model>
+                <type>score_reg</type>
+                <name>fm_fl_reg</name>
+                <param>
+                    <regParam>1.5</regParam>
+                    <minUFCoverage>0.1</minUFCoverage>
+                    <minIFCoverage>0.1</minIFCoverage>
+                    <numIterations>5</numIterations>
+                    <stepSize>0.0001</stepSize>
+                    <latentFactor>5</latentFactor>
+                    <l21Param>100</l21Param>
+                    <l1Param>10</l1Param>
+                    <learnFeatureNum>100</learnFeatureNum>
+                </param>
+            </model>			
 		</models>
 		<tests>
 		  <test>

@@ -186,12 +186,15 @@ object FeatureLearningFactorizationMachineRegressionModel{
     	    val diff:Double = gVector.dot(wVector) + hVector.dot(hVector) + w0 - label   
     	    val loss = diff * diff * 0.5
     	    
-    	    // compute gradient 
-    	    val pMatrixGradient:BDM[Double] = brzDataDense.toDenseMatrix * 
-    	    									((wVector.toDenseMatrix.t) 
-    	    									    + (hVector.t * (vMatrix.t * 2.0)))
+    	    // compute gradient
+    	    // NOTE: the toDenseMatrix gives a row matrix (i.e., the transpose of the vector).
+    	    val ht = hVector.toDenseMatrix 
+    	    
+    	    
+    	    val pMatrixGradient:BDM[Double] = brzDataDense.toDenseMatrix.t * 
+    	    									(wVector.toDenseMatrix + (ht * (vMatrix.t * 2.0)))
     	    val wVectorGradient:BDV[Double] = gVector
-    	    val vMatrixGradient:BDM[Double] = gVector.toDenseMatrix * (hVector.toDenseMatrix.t * 2.0) 
+    	    val vMatrixGradient:BDM[Double] = gVector.toDenseMatrix.t * (ht * 2.0) 
     	    val w0Gradient:Double           = 1
     	    val gradient: BV[Double]       = vectorize(pMatrixGradient, wVectorGradient, vMatrixGradient, w0Gradient)
     	    
@@ -233,17 +236,13 @@ object FeatureLearningFactorizationMachineRegressionModel{
     			    FeatureLearningFactorizationMachineRegressionModel.devectorize(
     					brzWeights.toDenseVector, latentDim, learnedFeatureSize)
     					
-	            val (brzWeightsProx, proxVal) = if(thisIterStepSize != 0){
-    			    //projected gradient 
-                    //val pMatrixProx = ProxFunctions.proximalL21(pMatrix, l21Param/thisIterStepSize)
-    				val pMatrixProx = ProxFunctions.proximalL21L1(pMatrix, l1Param/thisIterStepSize, l21Param/thisIterStepSize)
+    			//projected gradient 
+                //val pMatrixProx = ProxFunctions.proximalL21(pMatrix, l21Param/thisIterStepSize)
+    			val pMatrixProx = ProxFunctions.proximalL21L1(pMatrix, l1Param * thisIterStepSize, l21Param * thisIterStepSize)
                  
-                    (FeatureLearningFactorizationMachineRegressionModel.vectorize(pMatrixProx, wVector, vMatrix, w0),
-                     ProxFunctions.funcValL21L1(pMatrixProx, l1Param, l21Param) )
-	            }else{
-	                (brzWeights.toDenseVector,
-	                 ProxFunctions.funcValL21L1(pMatrix, l1Param, l21Param) )
-	            }
+                val brzWeightsProx = FeatureLearningFactorizationMachineRegressionModel.vectorize(pMatrixProx, wVector, vMatrix, w0)
+                val proxVal = ProxFunctions.funcValL21L1(pMatrixProx, l1Param, l21Param) 
+	            
                 
                 
                 //F-norm without w0 
@@ -335,7 +334,7 @@ object FactorizationMachineRegressionFeatureLearningWithSGD{
         val featureDim:Int = input.first.features.size
         val initialWeights: Vector = 
             FeatureLearningFactorizationMachineRegressionModel.
-            initUnitModel(featureDim, latentDim, learnedFeatureSize);
+            initRandModel(featureDim, latentDim, learnedFeatureSize, 0.01);
         
         FactorizationMachineRegressionFeatureLearningWithSGD.train(
                 input, latentDim, l21RegParam, l1RegParam, learnedFeatureSize, numIterations, stepSize, regParam, miniBatchFraction, initialWeights)
