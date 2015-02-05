@@ -25,6 +25,7 @@ import com.samsung.vddil.recsys.feature.RecJobFeature
 import org.apache.hadoop.fs.Path
 import java.io.BufferedWriter
 import java.io.OutputStreamWriter
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModelMetaInfo
 
 
 object RecMatrixFactJob{
@@ -100,8 +101,14 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
 	    	         Logger.info("*buildling model" + modelUnit.toString())
 	    	         val modelOption = modelUnit.run(this)
 	    	         if (modelOption.isDefined) {
+	    	             val keyStr = modelOption.get._1
+	    	             val model  = modelOption.get._2
+	    	             val modelInfo = modelOption.get._3
+	    	             val modelEntry = (keyStr, (model, modelInfo))
+	    	             
 	    	             this.jobStatus.resourceLocation_models = 
-	    	                 this.jobStatus.resourceLocation_models + modelOption.get
+	    	                 this.jobStatus.resourceLocation_models + modelEntry 
+	    	             
 	    	         }
 	    	     }
 	    	}
@@ -114,7 +121,7 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
         jobStatus.resourceLocation_models.map{
     	    case(modelStr, model) => 
     	        Logger.info("Evaluating model: "+ modelStr)
-    	        testList.map{_.run(this, model)}
+    	        testList.map{_.run(this, model._1, model._2)}
     	}
         
     	writeSummaryFile()
@@ -323,7 +330,7 @@ case class RecMatrixFactJob(jobName:String, jobDesc:String, jobNode:Node) extend
 case class RecMatrixFactJobModel(
         val modelName:String, 
         val modelParams: HashMap[String, String]){
-    def run(jobInfo:RecMatrixFactJob): Option[(String, MatrixFactModel)] = {
+    def run(jobInfo:RecMatrixFactJob): Option[(String, MatrixFactModel, MatrixFactModelMetaInfo)] = {
         
         //obtain rating data
         val ratingData:CombinedDataSet 
@@ -335,7 +342,7 @@ case class RecMatrixFactJobModel(
         //return results. 
         if(modelOption.isDefined){
             val model = modelOption.get
-            Some((model.resourceStr, model))
+            Some((model._1.resourceStr, model._1, model._2))
         }else{
             None
         }

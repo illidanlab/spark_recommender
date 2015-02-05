@@ -25,7 +25,7 @@ object MatrixFactModelHandler {
 		modelParams:HashMap[String, String],
 		ratingData:CombinedDataSet,
 		jobInfo:RecMatrixFactJob
-	): Option[MatrixFactModel] = {
+	): Option[(MatrixFactModel, MatrixFactModelMetaInfo)] = {
 	    
 	      
 	    val paramUserProfileGeneratorType:String = 

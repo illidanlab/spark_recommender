@@ -18,6 +18,7 @@ import com.samsung.vddil.recsys.prediction._
 import com.samsung.vddil.recsys.job.RecMatrixFactJob
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 import scala.reflect.ClassTag
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModelMetaInfo
 
 object TestResourceRegItemColdHit{
   
@@ -35,6 +36,7 @@ object TestResourceRegItemColdHit{
   def generateResource(jobInfo:RecMatrixFactJob, 
           testParams:HashMap[String, String], 
           model: MatrixFactModel,
+          modelInfo: MatrixFactModelMetaInfo,
           testResourceDir:String): RDD[(Int, (List[String], Int))] = {
       
         val trainCombData = jobInfo.jobStatus.resourceLocation_CombinedData_train.get
@@ -78,24 +80,21 @@ object TestResourceRegItemColdHit{
 		//get features for cold items 
 		 
 		//get feature orderings
-		//val userFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-		//                                    .userFeatureOrder
-		//val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
-		//                                    .itemFeatureOrder.map{feature => feature.asInstanceOf[ItemFeatureStruct]}
+		val userFeatureOrder = modelInfo.userFeatureOrder 
+	    val itemFeatureOrder = modelInfo.itemFeatureOrder.map{feature => feature.asInstanceOf[ItemFeatureStruct]}
 		  
 		//get cold item features
-		//Logger.info("Preparing item features..")
-		//if (jobInfo.outputResource(itemFeatObjFile)) {
-		//    val coldItemFeatures:RDD[(String, Vector)] = getColdItemFeatures(coldItems,
-		//        jobInfo, itemFeatureOrder, testDates.toList)
-		//    coldItemFeatures.saveAsObjectFile(itemFeatObjFile)
-		//}
-		//val coldItemFeatures:RDD[(String, Vector)] = sc.objectFile[(String, Vector)](itemFeatObjFile)
+		Logger.info("Preparing item features..")
+		if (jobInfo.outputResource(itemFeatObjFile)) {
+		    val coldItemFeatures:RDD[(String, Vector)] = getColdItemFeatures(coldItems,
+		        jobInfo, itemFeatureOrder, testDates.toList)
+		    coldItemFeatures.saveAsObjectFile(itemFeatObjFile)
+		}
+		val coldItemFeatures:RDD[(String, Vector)] = sc.objectFile[(String, Vector)](itemFeatObjFile)
 		
 		//cold items with all features
-		//val finalColdItems:Set[String] = coldItemFeatures.map(_._1).collect.toSet
-		
-		val finalColdItems:Set[String] = coldItems  
+		val finalColdItems:Set[String] = coldItemFeatures.map(_._1).collect.toSet
+		//val finalColdItems:Set[String] = coldItems  
 		Logger.info("Number of cold items: " + finalColdItems.size) //TODO: this could be zero.
 		
 		//broadcast cold items
@@ -128,6 +127,10 @@ object TestResourceRegItemColdHit{
 	    
 	    
 	    val userMapRDD:RDD[(String, Int)] = trainCombData.getUserMap()
+	    val coldItemUsers:RDD[Int] = sampledColdUsers.map(x =>
+        	(x,1)).join(userMapRDD).map{_._2._2}
+	    val coldItemUsersCount = coldItemUsers.count
+    	Logger.info(s"Cold-item user count: $coldItemUsersCount")
 	    
 	    val coldItemTestData = testData.filter{x => 
 	        val itemId = x._2
@@ -156,17 +159,22 @@ object TestResourceRegItemColdHit{
 	    }        
         
 	    
-//	    //get user features
-//	    Logger.info("Preparing user features...")
-//	    if (jobInfo.outputResource(userFeatObjFile)){
-//	      val userFeatures:RDD[(Int, Vector)] = getOrderedFeatures(coldItemUsers, userFeatureOrder, sc)
-//	      userFeatures.saveAsObjectFile(userFeatObjFile)
-//	    }
-//	    val userFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)
-//	    Logger.info("No. of users of cold items: " + userFeatures.count)
+	    //get user features
+	    Logger.info("Preparing user features...")
+	    if (jobInfo.outputResource(userFeatObjFile)){
+	      val userFeatures:RDD[(Int, Vector)] = getOrderedFeatures(coldItemUsers, userFeatureOrder, sc)
+	      userFeatures.saveAsObjectFile(userFeatObjFile)
+	    }
+	    val userFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int, Vector)](userFeatObjFile)
+	    Logger.info("No. of users of cold items: " + userFeatures.count)
 	    
-        val userFeaturesRDDOption: Option[RDD[(String, Vector)]] = None
-        val itemFeaturesRDDOption: Option[RDD[(String, Vector)]] = None
+	    
+	    
+	    //from int features to string features
+        val userFeaturesRDDOption: Option[RDD[(String, Vector)]] = None 
+        //NOTE: in this setting we don't have cold user, and thus user features are not useful.  
+        
+        val itemFeaturesRDDOption: Option[RDD[(String, Vector)]] = Some(coldItemFeatures)
 	    
 	    val userItemPredStr:RDD[(String, (String, Double))] = computePrediction(
             model:MatrixFactModel,

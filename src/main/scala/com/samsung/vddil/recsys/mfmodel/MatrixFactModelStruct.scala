@@ -7,6 +7,7 @@ import com.samsung.vddil.recsys.Pipeline
 import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.hadoop.fs.Path
 import scala.collection.mutable.HashMap
+import com.samsung.vddil.recsys.feature.FeatureStruct
 
 
 /**
@@ -50,16 +51,17 @@ class MatrixFactModel(
 		resourceLoc:String,
 		modelParams:HashMap[String, String],
 		userProfile:RDD[(String, Vector)],
-		itemProfile:RDD[(String, Vector)]) = 
+		itemProfile:RDD[(String, Vector)]
+		) = 
 		    this(modelName:String,
-        	resourceStr:String,
-        	resourceLoc:String,
-        	modelParams:HashMap[String, String],
-        	userProfile:RDD[(String, Vector)],
-        	itemProfile:RDD[(String, Vector)],
-        	AverageProfileGenerator (userProfile.map{_._2}), //coldStartItemProfiler
-        	AverageProfileGenerator (itemProfile.map{_._2}) //coldStartUserProfiler
-        )
+	        	resourceStr:String,
+	        	resourceLoc:String,
+	        	modelParams:HashMap[String, String],
+	        	userProfile:RDD[(String, Vector)],
+	        	itemProfile:RDD[(String, Vector)],
+	        	AverageProfileGenerator (userProfile.map{_._2}), //coldStartItemProfiler
+	        	AverageProfileGenerator (itemProfile.map{_._2}) //coldStartUserProfiler
+		    )
     
     /** the name of the model, typically used as the identity prefix */
 	def resourcePrefix = modelName
@@ -374,5 +376,15 @@ class MatrixFactModel(
 	}
 }
 
+case class MatrixFactModelMetaInfo(
+		val modelName:String,
+		val resourceStr:String, //an identity string
+		val resourceLoc:String, //the physical location (prefix) .
+		var modelParams:HashMap[String, String],
+		val userFeatureOrder: List[FeatureStruct],
+		val itemFeatureOrder: List[FeatureStruct]
+        ){
+    
+}
 
 

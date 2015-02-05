@@ -9,6 +9,7 @@ import org.apache.spark.rdd.RDD
 import com.samsung.vddil.recsys.evaluation._
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 import com.samsung.vddil.recsys.job.RecMatrixFactJob
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModelMetaInfo
 
 /** Defines the type of test. */
 sealed trait RecJobTest {
@@ -48,13 +49,13 @@ sealed trait RecJobTest {
     /**
      * Runs model on test data and stores results in jobStatus
      */
-	def run(jobInfo: RecMatrixFactJob, model:MatrixFactModel) = {
+	def run(jobInfo: RecMatrixFactJob, model:MatrixFactModel, meta:MatrixFactModelMetaInfo) = {
         val (testUnit, testReuslts) =
 	        this match {
 	        	case RecJobTestNoCold(testName, testParams, metricList) => 
-	            	TestUnitMatrixFact.testNoCold(jobInfo, testParams, metricList, model)
+	            	TestUnitMatrixFact.testNoCold(jobInfo, testParams, metricList, model, meta)
 	        	case RecJobTestColdItem(testName, testParams, metricList) => 
-	        	    TestUnitMatrixFact.testColdItem(jobInfo, testParams, metricList, model)
+	        	    TestUnitMatrixFact.testColdItem(jobInfo, testParams, metricList, model, meta)
 	        	case _ => 
 	        	    Logger.error("Test type not supported")
 	        	    (null, new TestUnit.TestResults())

@@ -367,7 +367,7 @@ package object job{
         writehead("Models", 1)
         
         writehead("Regression Models", 2)
-        for ((modelId, model) <- job.jobStatus.resourceLocation_models){
+        for ((modelId, (model, modelInfo)) <- job.jobStatus.resourceLocation_models){
             writeline("  Model Name:     " + model.modelName)
             //writeline("  Model Dim:      " + model.modelDimension)
             writeline("  Model Identity: " + modelId)

@@ -18,6 +18,9 @@ import java.io.OutputStreamWriter
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 import com.samsung.vddil.recsys.job.RecMatrixFactJob
 import com.samsung.vddil.recsys.job.RecJob
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModelMetaInfo
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModelMetaInfo
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModelMetaInfo
 
 /**
  * The test unit, each test should implement this trait and create a factory method 
@@ -98,7 +101,8 @@ object TestUnitMatrixFact{
             jobInfo:RecMatrixFactJob, 
             testParams:HashMap[String, String],  
             metricList: Array[RecJobMetric], 
-            model:MatrixFactModel):(TestUnitMatrixFact, TestResults) = {
+            model:MatrixFactModel,
+            modelInfo:MatrixFactModelMetaInfo):(TestUnitMatrixFact, TestResults) = {
         val test = new TestUnitNoColdMatrixFact(testParams, metricList,jobInfo, model)
         (test, test.performTest())
     }
@@ -110,8 +114,9 @@ object TestUnitMatrixFact{
             jobInfo:RecMatrixFactJob, 
             testParams:HashMap[String, String],  
             metricList: Array[RecJobMetric], 
-            model:MatrixFactModel):(TestUnitMatrixFact, TestResults) = {
-        val test = new TestUnitColdItemMatrixFact(testParams, metricList,jobInfo, model) 
+            model:MatrixFactModel,
+            modelInfo:MatrixFactModelMetaInfo):(TestUnitMatrixFact, TestResults) = {
+        val test = new TestUnitColdItemMatrixFact(testParams, metricList,jobInfo, model, modelInfo) 
         (test, test.performTest())
     }
     
@@ -244,7 +249,8 @@ case class TestUnitColdItemMatrixFact private[testing](
         	testParams:HashMap[String, String],  
         	metricList: Array[RecJobMetric],
         	jobInfo: RecMatrixFactJob,
-        	model:MatrixFactModel
+        	model:MatrixFactModel,
+        	modelInfo:MatrixFactModelMetaInfo
         ) extends TestUnitMatrixFact{
     
     val IdenPrefix = "Test_ColdItem"
@@ -274,7 +280,7 @@ case class TestUnitColdItemMatrixFact private[testing](
 	                	if (!coldItemTestResource.isDefined) {
 				    		coldItemTestResource =
 				    				Some(TestResourceRegItemColdHit.generateResource(jobInfo,
-				    						testParams, model, testResourceDir))
+				    						testParams, model, modelInfo, testResourceDir))
 				    	}                	
 	                	
 	                	val metricResult = metricRecall.run(coldItemTestResource.get)
