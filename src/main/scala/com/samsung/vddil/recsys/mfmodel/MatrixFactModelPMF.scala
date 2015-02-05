@@ -54,7 +54,7 @@ case class MatrixFactModelPMF (
     def train(ratingData:CombinedDataSet,
               userProfileGenFunc: RDD[(Int, Vector)] => ColdStartProfileGenerator,
               itemProfileGenFunc: RDD[(Int, Vector)] => ColdStartProfileGenerator,
-              jobInfo:RecMatrixFactJob):Option[MatrixFactModel] = {
+              jobInfo:RecMatrixFactJob):Option[(MatrixFactModel, MatrixFactModelMetaInfo)] = {
         
     	// 1 Prepare Input
         
@@ -116,15 +116,24 @@ case class MatrixFactModelPMF (
 		}
 		
 		// 4 Save an return model. 
-		Some(new MatrixFactModel(
-		    MatrixFactModelPMF.modelName,
-		    resourceIden: String,
-			resourceLoc:String,
-			modelParams,
-			userProfile:RDD[(String, Vector)],
-			itemProfile:RDD[(String, Vector)],
-			userProfileGenFunc(userProfiles),
-			itemProfileGenFunc(itemProfiles)
-        ))
+		Some((new MatrixFactModel(
+			  MatrixFactModelPMF.modelName,
+			    resourceIden: String,
+				resourceLoc:String,
+				modelParams,
+				userProfile:RDD[(String, Vector)],
+				itemProfile:RDD[(String, Vector)],
+				userProfileGenFunc(userProfiles),
+				itemProfileGenFunc(itemProfiles)
+				),
+	          new MatrixFactModelMetaInfo(
+	          MatrixFactModelPMF.modelName,
+			    resourceIden: String,
+				resourceLoc:String,
+				modelParams,
+				userFeatureOrder,
+				itemFeatureOrder        
+	          )
+		))
     }   
 }

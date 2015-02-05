@@ -18,6 +18,7 @@ import org.apache.spark.RangePartitioner
 import com.samsung.vddil.recsys.feature.ItemFeatureStruct
 import com.samsung.vddil.recsys.data.CombinedDataSet
 import com.samsung.vddil.recsys.model.ModelStruct
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /**
  * The testing package includes a set of test units. Each test unit 
@@ -152,7 +153,7 @@ package object testing {
    * @param featureOrder
    * @param featureSources
    */
-  def getColdItemFeatures(items:Set[String], jobInfo:RecJob,
+  def getColdItemFeatures(items:Set[String], jobInfo:JobWithFeature,
     featureOrder:List[ItemFeatureStruct], dates:List[String]
     ):RDD[(String, Vector)] = {
     

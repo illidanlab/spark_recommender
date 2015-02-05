@@ -8,6 +8,7 @@ import scala.collection.mutable.{HashMap => MHashMap}
 import com.samsung.vddil.recsys.testing.TestUnit
 import com.samsung.vddil.recsys.testing.TestUnitMatrixFact
 import com.samsung.vddil.recsys.utils.Logger
+import com.samsung.vddil.recsys.mfmodel.MatrixFactModelMetaInfo
 
 /** 
  * Stores the location of different types of resources (prepared data, features, models). 
@@ -20,7 +21,7 @@ case class RecMatrixFactStatus(jobInfo:RecMatrixFactJob)
 	/*
 	 * Data processing resources   
 	 */ 
-    var resourceLocation_models: IHashMap[String, MatrixFactModel] = IHashMap() 
+    var resourceLocation_models: IHashMap[String, (MatrixFactModel, MatrixFactModelMetaInfo)] = IHashMap() 
     
     val completedTests:
     	MHashMap[MatrixFactModel, 
