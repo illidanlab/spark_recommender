@@ -21,6 +21,7 @@ import com.samsung.vddil.recsys.model.ModelStruct
 import com.samsung.vddil.recsys.feature.ItemFactorizationFeatureStruct
 import com.samsung.vddil.recsys.feature.fact.FactFeatureNMFExtractor
 import com.samsung.vddil.recsys.mfmodel.{AverageProfileGenerator, RidgeRegressionProfileGenerator, LassoRegressionProfileGenerator}
+import com.samsung.vddil.recsys.job.JobWithFeature
 
 /**
  * The testing package includes a set of test units. Each test unit 
@@ -155,7 +156,7 @@ package object testing {
    * @param featureOrder
    * @param featureSources
    */
-  def getColdItemFeatures(items:Set[String], jobInfo:RecJob,
+  def getColdItemFeatures(items:Set[String], jobInfo:JobWithFeature,
     featureOrder:List[ItemFeatureStruct], dates:List[String]
     ):RDD[(String, Vector)] = {
     
@@ -185,8 +186,7 @@ package object testing {
           featVecs._1 ++ featVecs._2
         }
       }
-    Logger.info("##0Cold items extracted: " + items.size)
-    Logger.info("##1Cold items extracted: " + combItemFeatures.count)
+
     combItemFeatures
   }
   
@@ -253,7 +253,6 @@ package object testing {
         case RegressionMethodAverage => AverageProfileGenerator(trainItemFactFeaturesRDD) 
         case _                       => RidgeRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures)
     }
-    Logger.info("##method " + method)
     
     val factFeatures:RDD[(String, Vector)] = coldItemContentFeatures.map{
         item =>
@@ -266,8 +265,7 @@ package object testing {
     // concatenate the content features with factorization features
     val allFeatures = coldItemContentFeatures.join(factFeatures)
     										 .map(x => (x._1,x._2._1++x._2._2))    
-    Logger.info("##all feature dim is " + allFeatures.first._2.size)	
-    //Logger.info("##all feature number is " + allFeatures.count)	
+
     allFeatures
   }
   
