@@ -18,6 +18,7 @@ import com.samsung.vddil.recsys.prediction._
 import com.samsung.vddil.recsys.job.RecMatrixFactJob
 import com.samsung.vddil.recsys.mfmodel.MatrixFactModel
 import scala.reflect.ClassTag
+import com.samsung.vddil.recsys.feature.ItemFactorizationFeatureStruct
 
 object TestResourceRegItemColdHit{
   
@@ -238,11 +239,12 @@ object TestResourceRegItemColdHit{
     val sc = jobInfo.sc
     
     //cache intermediate files, helpful in case of crash  
-    val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/itemFeat"   
-    val userFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/userFeat" 
-    val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
-    val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
-    val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
+    val itemFeatObjFile         		= testResourceDir + "/" + IdenPrefix + "/itemFeatWithFactFeature"   
+    val itemWithoutFactFeatureObjFile   = testResourceDir + "/" + IdenPrefix + "/itemFeatWithoutFactFeature"   
+    val userFeatObjFile         		= testResourceDir + "/" + IdenPrefix + "/userFeat" 
+    val sampledUserFeatObjFile  		= testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
+    val sampledItemUserFeatFile 		= testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
+    val sampledPredBlockFiles   		= testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
    
     //get test dates
     val testDates = jobInfo.testDates
@@ -264,20 +266,51 @@ object TestResourceRegItemColdHit{
                                         .userFeatureOrder
     val itemFeatureOrder = jobInfo.jobStatus.resourceLocation_AggregateData_Continuous(model.learnDataResourceStr)
                                         .itemFeatureOrder.map{feature => feature.asInstanceOf[ItemFeatureStruct]}
-      
-    //get cold item features
-    Logger.info("Preparing item features..")
-    if (jobInfo.outputResource(itemFeatObjFile)) {
-      val coldItemFeatures:RDD[(String, Vector)] = getColdItemFeatures(coldItems,
-        jobInfo, itemFeatureOrder, testDates.toList)
-      coldItemFeatures.saveAsObjectFile(itemFeatObjFile)
+    
+    ///initialize profile generators.
+    //get item features that are not factorization features 
+    val itemFeatureWithoutFactorization = itemFeatureOrder.filter{x =>
+        !x.isInstanceOf[ItemFactorizationFeatureStruct]
     }
-    val coldItemFeatures:RDD[(String, Vector)] = sc.objectFile[(String, Vector)](itemFeatObjFile)
+    Logger.info("## struct list size is " + itemFeatureWithoutFactorization.size)
+    
+    //get factorization feature struct
+    val itemFeaturewithFactorization = itemFeatureOrder.find{x =>
+    	x.isInstanceOf[ItemFactorizationFeatureStruct]
+    }
+    
+    
+    // get cold item features
+    // we current encounter empty collection probelm after calling function getColdItemFeatures function
+    Logger.info("Preparing item features..")
+    var itemAllFeatureObjFile = itemWithoutFactFeatureObjFile
+    val coldItemFeaturesWithoutFactFeature:RDD[(String, Vector)] = getColdItemFeatures(coldItems,
+        jobInfo, itemFeatureWithoutFactorization, testDates.toList)
+        
+    //save cold item features without factorization features. 
+    if (jobInfo.outputResource(itemWithoutFactFeatureObjFile)) {
+      coldItemFeaturesWithoutFactFeature.saveAsObjectFile(itemWithoutFactFeatureObjFile)
+    }            
+    Logger.info("##1No. of Cold items : " + coldItemFeaturesWithoutFactFeature.count) 
+    Logger.info("##1Dim. of Cold items : " + coldItemFeaturesWithoutFactFeature.first._2.size) 
+    if (itemFeaturewithFactorization.isDefined) {
+	    val allColdItemsFeatures:RDD[(String, Vector)] = includeColdItemFactorizationFeatures(coldItemFeaturesWithoutFactFeature, itemFeatureWithoutFactorization, coldItems,
+	        jobInfo, itemFeaturewithFactorization.get.asInstanceOf[ItemFactorizationFeatureStruct])
+	                
+	    if (jobInfo.outputResource(itemFeatObjFile)) {
+	      allColdItemsFeatures.saveAsObjectFile(itemFeatObjFile)
+	    }
+	    itemAllFeatureObjFile = itemFeatObjFile
+    } 
+
+    
+
+    val coldItemFeatures:RDD[(String, Vector)] = sc.objectFile[(String, Vector)](itemAllFeatureObjFile)
 
     //cold items with all features
     val finalColdItems:Set[String] = coldItemFeatures.map(_._1).collect.toSet
   
-    Logger.info("Number of cold items: " + finalColdItems.size) //TODO: this could be zero. 
+    //Logger.info("##2Number of cold items: " + finalColdItems.size) //TODO: this could be zero. 
 
     //broadcast cold items
     val bColdItems = sc.broadcast(finalColdItems)

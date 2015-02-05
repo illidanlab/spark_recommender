@@ -106,7 +106,7 @@ case class UserFeatureStruct(
  *  @param extractor the feature extractor used to extract features from raw 
  *         data. This can be used for extracting features for cold start items. 
  */
-case class ItemFeatureStruct(
+class ItemFeatureStruct(
 				val featureIden:String,
 				val resourceStr:String,
 				val featureFileName:String, 
@@ -120,3 +120,23 @@ case class ItemFeatureStruct(
 				val originalItemFeatureStruct:Option[ItemFeatureStruct]
 			) extends FeatureStruct{
 }
+
+
+class ItemFactorizationFeatureStruct(
+				override val featureIden:String,
+				override val resourceStr:String,
+				override val featureFileName:String, 
+				override val featureMapFileName:String,
+				override val featureParams:HashMap[String, String],
+				override val featureSize:Int,
+				override val featureSizeOriginal:Int,
+				override val featurePostProcessor:List[FeaturePostProcessor],
+				override val extractor:ItemFeatureExtractor,
+				/** ItemFeatureStruct before current processing */
+				override val originalItemFeatureStruct:Option[ItemFeatureStruct]
+)extends ItemFeatureStruct(featureIden, resourceStr, featureFileName, featureMapFileName, 
+        featureParams, featureSize, featureSizeOriginal, featurePostProcessor, null, originalItemFeatureStruct){
+    
+    
+}
+

@@ -9,7 +9,7 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
-      <workspace>/Users/yin.zhou/Documents/workspace/learning_scala</workspace>
+      		<workspace>/tmp/vddil/</workspace>
 		</resourceLocation>
 		<experimentalFeature>
 			<exportPlainTextData>false</exportPlainTextData>
@@ -22,11 +22,21 @@
     	</testDates>        
         <transformations>
         	<transformation>
-        		<name>max</name>>
-        		<param>none</param>>
+        		<name>max</name>
+        		<param>none</param>
 			</transformation>        	
         </transformations>        
-		<features>		
+		<features>	
+			<feature>
+				<type>factFeature</type>
+				<name>nmf</name>
+				<param>
+					<rank>15</rank>
+					<lambda>0.1</lambda>
+					<numIter>10</numIter>
+					<regressionMethod>lasso</regressionMethod>					
+				</param>
+			</feature>			
 			<feature>
 				<type>itemFeature</type>
 				<name>genre</name>
@@ -114,18 +124,6 @@
 					<minUFCoverage>0.1</minUFCoverage>
 					<minIFCoverage>0.1</minIFCoverage>
 					<numIterations>1</numIterations>
-					<stepSize>0.0001</stepSize>
-					<latentFactor>5</latentFactor>
-				</param>
-			</model>
-			<model>
-				<type>score_reg</type>
-				<name>fm_l2_reg</name>
-				<param>
-					<regParam>1.5</regParam>
-					<minUFCoverage>0.1</minUFCoverage>
-					<minIFCoverage>0.1</minIFCoverage>
-					<numIterations>10</numIterations>
 					<stepSize>0.0001</stepSize>
 					<latentFactor>5</latentFactor>
 				</param>

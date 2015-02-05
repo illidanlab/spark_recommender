@@ -31,6 +31,7 @@ case class AverageProfileGenerator (profileRDD: RDD[Vector])
             //set average variable. 
             averageVector = Some(computeAverage(profileRDD))
         }
+        Logger.info("##AVG")
         averageVector.get
     }
     
@@ -74,6 +75,7 @@ case class RidgeRegressionProfileGenerator(
      */
     def trainGenerator(): List[RegressionModel] = {
         //profileRDD: RDD[(Int, Vector)], contentFeatureRDD:RDD[(Int, Vector)]
+        Logger.info("##Ridge profiler invoked")
         (0 to latentDim-1).map{ dim =>
             val trainData = profileRDD.map{x => 
                 val latentFactorArray = x._2.toArray
@@ -98,9 +100,10 @@ case class RidgeRegressionProfileGenerator(
         if(feature.isDefined){
             //Logger.info("Ridge profiler invoked")
             val tt = models.map{x => x.predict(feature.get.toMLLib) }.toArray
-            Vectors.dense(tt)
-            
+            Logger.info("##Ridge")
+            Vectors.dense(tt)            
         }else{
+            Logger.info("##In Ridge but using AVG")
         	avgProfiler.getProfile(None)            
         }
     }
@@ -147,8 +150,8 @@ case class LassoRegressionProfileGenerator(
         if(feature.isDefined){
             //Logger.info("Lasso profiler invoked")
             val tt = models.map{x => x.predict(feature.get.toMLLib) }.toArray
-            Vectors.dense(tt)
-            
+            Logger.info("##Lasso")
+            Vectors.dense(tt)            
         }else{
             //Logger.info("In Lasso, but computing average")
         	avgProfiler.getProfile(None)            
