@@ -9,28 +9,29 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
-      		<workspace>/Users/yin.zhou/Documents/workspace/learning_scala</workspace>
+      		<workspace>/tmp/vddil/</workspace>
 		</resourceLocation>
 		<trainDates>
-			<date>20140522</date>
-			<date>20140523</date>
+			<date>20140522-20140524</date>
     	</trainDates>
-	    <testDates>
-	        <date>20140524</date>
-	        <date>20140525</date>
-	    </testDates>
+    	<testDates>
+        	<date>20140525</date>
+    	</testDates>        
+        <transformations>
+        	<transformation>
+        		<name>max</name>
+        		<param>none</param>
+			</transformation>        	
+        </transformations> 
 		<features>		
 			<feature>
 				<type>factFeature</type>
 				<name>nmf</name>
 				<param>
-					<rank>5</rank>
-				</param>
-				<param>
+					<rank>15</rank>
 					<lambda>0.1</lambda>
-				</param>
-				<param>
 					<numIter>10</numIter>
+					<regressionMethod>average</regressionMethod>					
 				</param>
 			</feature>
 	      <feature>
@@ -40,17 +41,33 @@
 		          <lang>en</lang>
 		        </param>
 	      </feature>
+			<feature>
+				<type>itemFeature</type>
+				<name>showTime</name>
+				<param>
+					<timeWindow>12</timeWindow>
+				</param>
+				<!-- <processes>
+                    <process>
+                        <name>l2normalize</name>
+                    </process>
+                </processes> -->
+			</feature>	      
 	      <feature>
 		        <type>itemFeature</type>
 		        <name>syn_tfidf</name>
 		        <param>
 		          <N>100</N>
 		        </param>
-	      </feature>
+	      </feature>     
 	      <feature>
 		        <type>userFeature</type>
 		        <name>genre</name>
 	      </feature>
+			<feature>
+				<type>userFeature</type>
+				<name>showTime</name>
+			</feature>
 	      <feature>
 		        <type>userFeature</type>
 		        <name>syn_tfidf</name>

@@ -18,6 +18,10 @@ import com.samsung.vddil.recsys.linalg.{Vector,Vectors}
 import com.samsung.vddil.recsys.feature.process.{FeaturePostProcess, FeaturePostProcessor}
 import com.samsung.vddil.recsys.feature.item.ItemFeatureExtractor
 import com.samsung.vddil.recsys.job.JobWithFeature
+import com.samsung.vddil.recsys.mfmodel.ColdStartProfileGenerator
+import org.apache.spark.mllib.regression.RidgeRegressionModel
+import com.samsung.vddil.recsys.mfmodel.RidgeRegressionProfileGenerator
+import com.samsung.vddil.recsys.feature.ItemFactorizationFeatureStruct
 
 
 /*
@@ -133,7 +137,7 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 	    val userFeatureSize = itemFeatureSize
 		val featurePostProcessor:List[FeaturePostProcessor] = List()
 		val itemFeatureStruct:ItemFeatureStruct = 
-		    new ItemFeatureStruct(
+		    new ItemFactorizationFeatureStruct(
 		            IdenPrefix, resourceIden, itemFeatureFileName, 
 		            featureMapFileName, featureParams, itemFeatureSize, 
 		            itemFeatureSize, featurePostProcessor, 
@@ -162,12 +166,9 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 
 
 class FactFeatureNMFExtractor(
-        val itemFeatureFileName:String, itemMapLoc:String, debugMode:Boolean) 
+        val itemFeatureFileName:String, val itemMapLoc:String, val debugMode:Boolean) 
         extends ItemFeatureExtractor{
-    
-    // initialize the mean vector to be an Option class
-    var centroid:Option[Vector] = None
-    
+
     protected def extractFeature(
           items:Set[String], featureSources:List[String],
           featureParams:HashMap[String, String], featureMapFileName:String,
@@ -181,58 +182,17 @@ class FactFeatureNMFExtractor(
         val trainItemID2Features = trainInt2ItemIDMap
         						   .join(trainItemInt2Features)
         						   .values
-        						   .collect
-        						   .toMap
-       val bTrainItemID2Features = sc.broadcast(trainItemID2Features)
+        						   
+        val itemList = items.toList.map(x => (x, x))			
+        val itemListRDD = sc.parallelize(itemList)
+        val itemFeaturesRDD:RDD[(String, Vector)] = itemListRDD.join(trainItemID2Features).values						   
         
-       if (!centroid.isDefined) {
-	        // get test items
-	        val path2TrainData = itemFeatureFileName
-	        val trainData = sc.objectFile[(Int,Vector)](path2TrainData)
-	        val sumTrainData = trainData.map{
-	            x =>
-	            (x._2,1)  
-	        }.reduce{
-	            (a,b) =>
-	            (a._1 + b._1,a._2 + b._2)    
-	        }
-	        var avgTrainData = sumTrainData._1.toArray
-	        if (sumTrainData._2 > 0) {
-	            var i = 0
-	            while (i < avgTrainData.size) {
-	                	avgTrainData(i) = avgTrainData(i) / sumTrainData._2
-	                	i = i + 1
-	                }
-	        }
-			centroid = Some(Vectors.dense(avgTrainData))
+        if (debugMode) {
+            itemFeaturesRDD.saveAsTextFile(itemFeatureFileName + "colditemtext")
         }
         
-		val bCentroid = sc.broadcast(centroid.get)
-		
-		// distribute test items
-		val itemListRDD = sc.parallelize(items.toList)
-		
-		val itemFeatureRDD:RDD[(String,Vector)] = itemListRDD.map{
-		    item =>
-		    if (bTrainItemID2Features.value.isDefinedAt(item)) {
-		        (item,bTrainItemID2Features.value(item)) // non-cold item
-		    }
-		    else {
-		        (item,bCentroid.value) // cold item
-		    }
-		}	
-		
-		var counter = 0
-		if (debugMode && counter == 0) {
-			itemFeatureRDD.saveAsTextFile(itemFeatureFileName + "testitemtext" + counter)
-			counter = counter + 1
-		}
-		
-		if (debugMode && centroid.isDefined && counter == 1) {
-			itemFeatureRDD.saveAsTextFile(itemFeatureFileName + "testitemtext_cdefined" + counter)
-		}		
-		
-		itemFeatureRDD
+        
+		itemFeaturesRDD
     }
     
     def getFeatureSources(dates:List[String], jobInfo:JobWithFeature):List[String] = {

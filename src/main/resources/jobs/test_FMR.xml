@@ -22,11 +22,21 @@
     	</testDates>        
         <transformations>
         	<transformation>
-        		<name>max</name>>
-        		<param>none</param>>
+        		<name>max</name>
+        		<param>none</param>
 			</transformation>        	
         </transformations>        
-		<features>		
+		<features>	
+			<feature>
+				<type>factFeature</type>
+				<name>nmf</name>
+				<param>
+					<rank>15</rank>
+					<lambda>0.1</lambda>
+					<numIter>10</numIter>
+					<regressionMethod>lasso</regressionMethod>					
+				</param>
+			</feature>			
 			<feature>
 				<type>itemFeature</type>
 				<name>genre</name>
