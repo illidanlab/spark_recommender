@@ -31,7 +31,7 @@ case class AverageProfileGenerator (profileRDD: RDD[Vector])
             //set average variable. 
             averageVector = Some(computeAverage(profileRDD))
         }
-        Logger.info("##AVG")
+        //Logger.info("##AVG")
         averageVector.get
     }
     
@@ -75,7 +75,7 @@ case class RidgeRegressionProfileGenerator(
      */
     def trainGenerator(): List[RegressionModel] = {
         //profileRDD: RDD[(Int, Vector)], contentFeatureRDD:RDD[(Int, Vector)]
-        Logger.info("##Ridge profiler invoked")
+        Logger.info("Training ridge regression based profile generator")
         (0 to latentDim-1).map{ dim =>
             val trainData = profileRDD.map{x => 
                 val latentFactorArray = x._2.toArray
@@ -100,10 +100,10 @@ case class RidgeRegressionProfileGenerator(
         if(feature.isDefined){
             //Logger.info("Ridge profiler invoked")
             val tt = models.map{x => x.predict(feature.get.toMLLib) }.toArray
-            Logger.info("##Ridge")
+            //Logger.info("##Ridge")
             Vectors.dense(tt)            
         }else{
-            Logger.info("##In Ridge but using AVG")
+            //Logger.info("##In Ridge but using AVG")
         	avgProfiler.getProfile(None)            
         }
     }
@@ -125,7 +125,7 @@ case class LassoRegressionProfileGenerator(
      */
     def trainGenerator(): List[LassoModel] = {
         //profileRDD: RDD[(Int, Vector)], contentFeatureRDD:RDD[(Int, Vector)]
-        Logger.info("Lasso training")
+        Logger.info("Training Lasso regression based profile generator")
         (0 to latentDim-1).map{ dim =>
             val trainData = profileRDD.map{x => 
                 val latentFactorArray = x._2.toArray
@@ -150,7 +150,7 @@ case class LassoRegressionProfileGenerator(
         if(feature.isDefined){
             //Logger.info("Lasso profiler invoked")
             val tt = models.map{x => x.predict(feature.get.toMLLib) }.toArray
-            Logger.info("##Lasso")
+            //Logger.info("##Lasso")
             Vectors.dense(tt)            
         }else{
             //Logger.info("In Lasso, but computing average")
