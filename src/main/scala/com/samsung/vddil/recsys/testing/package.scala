@@ -23,6 +23,8 @@ import com.samsung.vddil.recsys.feature.ItemFactorizationFeatureStruct
 import com.samsung.vddil.recsys.feature.fact.FactFeatureNMFExtractor
 import com.samsung.vddil.recsys.mfmodel.{AverageProfileGenerator, RidgeRegressionProfileGenerator, LassoRegressionProfileGenerator}
 import com.samsung.vddil.recsys.job.JobWithFeature
+import com.samsung.vddil.recsys.feature.ItemFactorizationFeatureStruct
+import com.samsung.vddil.recsys.feature.ItemFactorizationFeatureStruct
 
 /**
  * The testing package includes a set of test units. Each test unit 
@@ -149,7 +151,7 @@ package object testing {
                                             ).distinct.collect.toSet
     testItems
   }
-
+  
   /**
    * return features for passed items  
    * @param items set of items for which we need to generate feature
@@ -157,25 +159,54 @@ package object testing {
    * @param featureOrder
    * @param featureSources
    */
-  def getColdItemFeatures(items:Set[String], jobInfo:JobWithFeature,
-    featureOrder:List[ItemFeatureStruct], dates:List[String]
+  def getColdItemFeatures(
+          items:Set[String], 
+          jobInfo:JobWithFeature,
+          featureOrder:List[ItemFeatureStruct], 
+          dates:List[String]
     ):RDD[(String, Vector)] = {
-    
-    //get feature resource location map
-    val featureResourceMap = jobInfo.jobStatus.resourceLocation_ItemFeature  
     
     //get spark context
     val sc = jobInfo.sc
 
+    //check if there are factorization based features. 
+    //if there is then we have to prepare (factorization) profile generators. 
+    //get factorization feature struct
+    
+    // if there are cold features, we need to prepare the coldItemContentFeatures 
+    val featureOrderWithoutFactFeature:List[ItemFeatureStruct] = 
+        featureOrder.filter{feature => !feature.isInstanceOf[ItemFactorizationFeatureStruct]}
+    
+    val coldItemContentFeaturesOption:Option[RDD[(String,Vector)]] = 
+        if(featureOrderWithoutFactFeature.size != featureOrder.size 
+                && featureOrderWithoutFactFeature.size>0){
+            //in this case we have identified the feature 
+        	Some(getColdItemFeatures(items, jobInfo, featureOrderWithoutFactFeature, dates))
+        }else{
+        	None
+        }
+    
     val itemFeatures:List[RDD[(String, Vector)]] = featureOrder.map{feature =>
-      
-      val itemFeatureExtractor:ItemFeatureExtractor = feature.extractor
-      val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)
-      
-      val result: RDD[(String, com.samsung.vddil.recsys.linalg.Vector)] = 
-          itemFeatureExtractor.extract(items, featureSources, feature, sc)
-                
-      result
+        // for cold ones 
+        val result: RDD[(String, Vector)] = 
+            if(feature.isInstanceOf[ItemFactorizationFeatureStruct]){
+                //If this is a factorization feature, then we 
+                //initialize profile generators and compute cold factorization features. 
+                feature.asInstanceOf[ItemFactorizationFeatureStruct].
+            		computeColdItemFactorizationFeatures(
+            	        coldItemContentFeaturesOption, 
+            	        featureOrderWithoutFactFeature, 
+            	        items.toList, sc)
+            }else{
+                //If this is not a factorization features we simply extract it using 
+                // feature extractor. 
+        	    val itemFeatureExtractor:ItemFeatureExtractor = feature.extractor
+	            val featureSources = itemFeatureExtractor.getFeatureSources(dates, jobInfo)
+	      
+	            itemFeatureExtractor.extract(items, featureSources, feature, sc)
+            }
+        
+        result
     }
 
     //combine feature in order
@@ -191,84 +222,103 @@ package object testing {
     combItemFeatures
   }
   
-  def getTrainItemContentFeatures(jobInfo:RecJob,featureOrder:List[ItemFeatureStruct]):RDD[(Int, Vector)] = {
-      val sc = jobInfo.sc
-      val trainItemContentFeatures:List[RDD[(Int, Vector)]] = featureOrder.map{featureStruct =>
+  /**
+   * Given a set of features and an order (in the list), this method loads the feature 
+   * vectors obtained in training and then joins according the order. 
+   */
+  def combineItemContentFeatures(
+          featureOrder:List[ItemFeatureStruct], 
+          sc:SparkContext):RDD[(Int, Vector)] = {
+      
+      // load each featureStruct RDD to be joined. 
+      val itemContentFeatures:List[RDD[(Int, Vector)]] = featureOrder.map{featureStruct =>
       	
-      	val featureFileName = featureStruct.featureFileName
-      	val contentFeatures = sc.objectFile[(Int,Vector)](featureFileName)
-      	contentFeatures
+//      	val featureFileName = featureStruct.featureFileName
+//      	val contentFeatures = sc.objectFile[(Int,Vector)](featureFileName)
+//      	contentFeatures
+      	featureStruct.getFeatureRDD
       }
       
       // combine content feature in order
-      val headTrainItemContentFeatures:RDD[(Int, Vector)] = trainItemContentFeatures.head 
-      val combItemContentFeatures:RDD[(Int, Vector)] = trainItemContentFeatures
+      val headItemContentFeatures:RDD[(Int, Vector)] = itemContentFeatures.head 
+      val combItemContentFeatures:RDD[(Int, Vector)] = itemContentFeatures
 												       .tail
-												       .foldLeft(headTrainItemContentFeatures){ (itemFeat1, itemFeat2) =>
+												       .foldLeft(headItemContentFeatures){ (itemFeat1, itemFeat2) =>
 												       val joinedItemFeat:RDD[(Int, (Vector, Vector))] = itemFeat1.join(itemFeat2)
 												       joinedItemFeat.mapValues{featVecs =>
 											           featVecs._1 ++ featVecs._2
         }
       }
-     combItemContentFeatures      
+      
+      combItemContentFeatures      
   }
   
-  
-  def includeColdItemFactorizationFeatures(coldItemContentFeatures:RDD[(String,Vector)], featureOrderWithoutFactFeature:List[ItemFeatureStruct], items:Set[String], jobInfo:RecJob,
-    factFeatureStruct:ItemFactorizationFeatureStruct):RDD[(String,Vector)] = {
-    // define some constants for regression method names  
-    val RegressionMethod4ColdStart = "regressionMethod"	
-    val RegressionMethodRidge 	   = "ridge"
-    val RegressionMethodLasso 	   = "lasso"
-    val RegressionMethodAverage    = "average"
-    val DefaulRegressionMethod4ColdStart = RegressionMethodRidge
-    val testParams = factFeatureStruct.featureParams
-    
-    // can spark context
-    val sc = jobInfo.sc
-    
-    //get factorization feature information for training items
-    val factFeatureExtractor = factFeatureStruct.extractor.asInstanceOf[FactFeatureNMFExtractor]
-    val trainItemFactFeatureFileName = factFeatureExtractor.itemFeatureFileName
-    val trainItemMapLoc = factFeatureExtractor.itemMapLoc
-    
-    // load factorization features for training items
-    val trainItemID2IntMap:RDD[(String, Int)] = sc.objectFile[(String, Int)](trainItemMapLoc)
-    val trainInt2ItemIDMap:RDD[(Int, String)] = trainItemID2IntMap.map(x => (x._2,x._1))   
-    
-    val trainItemInt2FactFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int,Vector)](trainItemFactFeatureFileName)  
-    val trainItemID2FactFeaturesRDD = trainInt2ItemIDMap.join(trainItemInt2FactFeatures).map{x => (x._1, x._2._2)}  
-    val trainItemFactFeaturesRDD = trainItemInt2FactFeatures.map{x => x._2} // get rid of ID and keep only the feature vector
-    
-    // get content feature for training items
-    val trainItemContentFeatures:RDD[(Int, Vector)] = getTrainItemContentFeatures(jobInfo,featureOrderWithoutFactFeature)
-    
-    //Logger.info("##2Cold items extracted: " + coldItemContentFeatures.count)
-    //Logger.info("##2content feature dim is " + trainItemContentFeatures.first._2.size)
-    
-    // create regression profile generator instance   
-    val method = testParams.getOrElseUpdate(RegressionMethod4ColdStart, RegressionMethodRidge)
-    var profileGenerator = method match{
-        case RegressionMethodRidge   => RidgeRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures)
-        case RegressionMethodLasso   => LassoRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures) 
-        case RegressionMethodAverage => AverageProfileGenerator(trainItemFactFeaturesRDD) 
-        case _                       => RidgeRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures)
-    }
-    
-    val factFeatures:RDD[(String, Vector)] = coldItemContentFeatures.map{
-        item =>
-        val itemID = item._1
-        val itemContentFeature:Vector = item._2
-        val itemFactFeature:Vector = profileGenerator.getProfile(Option(itemContentFeature))
-        (itemID, itemFactFeature)
-    }
-    
-    // concatenate the content features with factorization features
-    val allFeatures = coldItemContentFeatures.join(factFeatures)
-    										 .map(x => (x._1,x._2._1++x._2._2))    
-
-    allFeatures
-  }
+//  /**
+//   * Compute the factorization features for cold start items. 
+//   * 
+//   * @param coldItemContentFeatures the content features extracted for cold-start items (profiles to be computed)
+//   * @param featureOrderWithoutFactFeature the order of features that are not factorization features. 
+//   * @param factFeatureStruct the factorization-based feature to be regressed. 
+//   * @param sc 
+//   */
+//  def computeColdItemFactorizationFeatures(
+//          coldItemContentFeatures:RDD[(String,Vector)], 
+//          featureOrderWithoutFactFeature:List[ItemFeatureStruct], 
+//          factFeatureStruct:ItemFactorizationFeatureStruct,
+//          sc:SparkContext):RDD[(String,Vector)] = {
+//      
+//    // define some constants for regression method names  
+//    val RegressionMethod4ColdStart = "regressionMethod"	
+//    val RegressionMethodRidge 	   = "ridge"
+//    val RegressionMethodLasso 	   = "lasso"
+//    val RegressionMethodAverage    = "average"
+//    val DefaulRegressionMethod4ColdStart = RegressionMethodRidge
+//    val testParams = factFeatureStruct.featureParams
+//    
+//    //get factorization feature information for training items
+//    val factFeatureExtractor = factFeatureStruct.extractor.asInstanceOf[FactFeatureNMFExtractor]
+//    val trainItemFactFeatureFileName = factFeatureExtractor.itemFeatureFileName
+//    val trainItemMapLoc = factFeatureExtractor.itemMapLoc
+//    
+//    // load factorization features for training items
+//    val trainItemID2IntMap:RDD[(String, Int)] = sc.objectFile[(String, Int)](trainItemMapLoc)
+//    val trainInt2ItemIDMap:RDD[(Int, String)] = trainItemID2IntMap.map(x => (x._2,x._1))   
+//    
+//    val trainItemInt2FactFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int,Vector)](trainItemFactFeatureFileName)  
+//    val trainItemID2FactFeaturesRDD = trainInt2ItemIDMap.join(trainItemInt2FactFeatures).map{x => (x._1, x._2._2)}  
+//    val trainItemFactFeaturesRDD = trainItemInt2FactFeatures.map{x => x._2} // get rid of ID and keep only the feature vector
+//    
+//    // get content feature for training items (in order to train profile generators)
+//    val trainItemContentFeatures:RDD[(Int, Vector)] = 
+//        combineItemContentFeatures(featureOrderWithoutFactFeature, sc)
+//    
+//    //Logger.info("##2Cold items extracted: " + coldItemContentFeatures.count)
+//    //Logger.info("##2content feature dim is " + trainItemContentFeatures.first._2.size)
+//    
+//    // create regression profile generator instance   
+//    val method = testParams.getOrElseUpdate(RegressionMethod4ColdStart, RegressionMethodRidge)
+//    var profileGenerator = method match{
+//        case RegressionMethodRidge   => RidgeRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures)
+//        case RegressionMethodLasso   => LassoRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures) 
+//        case RegressionMethodAverage => AverageProfileGenerator(trainItemFactFeaturesRDD) 
+//        case _                       => RidgeRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures)
+//    }
+//    
+//    //use trained profile generator to predict cold-start factorization features 
+//    val factFeatures:RDD[(String, Vector)] = coldItemContentFeatures.map{
+//        item =>
+//        val itemID = item._1
+//        val itemContentFeature:Vector = item._2
+//        val itemFactFeature:Vector = profileGenerator.getProfile(Option(itemContentFeature))
+//        (itemID, itemFactFeature)
+//    }
+//    
+//    // concatenate the content features with factorization features
+//    val allFeatures = coldItemContentFeatures.join(factFeatures)
+//    										 .map(x => (x._1,x._2._1++x._2._2))    
+//
+//    allFeatures
+//  }
   
   
    /**
