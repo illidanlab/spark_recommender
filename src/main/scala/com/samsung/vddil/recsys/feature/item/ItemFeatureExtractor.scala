@@ -4,6 +4,7 @@ import com.samsung.vddil.recsys.job.RecJob
 import com.samsung.vddil.recsys.linalg.Vector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
 import scala.collection.mutable.HashMap
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcess
 import com.samsung.vddil.recsys.feature.process.FeaturePostProcessor
@@ -97,4 +98,45 @@ trait ItemFeatureExtractor {
 
   //feature parameters in train 
   //var trFeatureParams:HashMap[String, String]
+}
+
+
+trait FactorizationItemFeatureExtractor {
+    
+    def itemFeatureFileName:String
+    
+    def itemMapLoc:String
+    
+    def debugMode = false
+    
+    protected def extractFeature(
+          items:Set[String], featureSources:List[String],
+          featureParams:HashMap[String, String], featureMapFileName:String,
+          sc:SparkContext): RDD[(String, Vector)] = {
+        
+        //construct hash table from itemID to item feature, for all the training items. 
+        val trainItemID2IntMap:RDD[(String, Int)] = sc.objectFile[(String, Int)](itemMapLoc)
+        val trainInt2ItemIDMap:RDD[(Int, String)] = trainItemID2IntMap.map(x => (x._2,x._1))
+        
+        val trainItemInt2Features:RDD[(Int,Vector)] = sc.objectFile[(Int,Vector)](itemFeatureFileName)
+        val trainItemID2Features = trainInt2ItemIDMap
+        						   .join(trainItemInt2Features)
+        						   .values
+        						   
+        val itemList = items.toList.map(x => (x, x))			
+        val itemListRDD = sc.parallelize(itemList)
+        val itemFeaturesRDD:RDD[(String, Vector)] = itemListRDD.join(trainItemID2Features).values						   
+        
+        if (debugMode) {
+            itemFeaturesRDD.saveAsTextFile(itemFeatureFileName + "colditemtext")
+        }
+        
+		itemFeaturesRDD
+    }
+    
+    def getFeatureSources(dates:List[String], jobInfo:JobWithFeature):List[String] = {
+    	dates.map{date =>
+      		jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + date + "/*"
+    	}.toList
+    }
 }

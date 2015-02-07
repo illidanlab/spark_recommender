@@ -22,6 +22,7 @@ import com.samsung.vddil.recsys.mfmodel.ColdStartProfileGenerator
 import org.apache.spark.mllib.regression.RidgeRegressionModel
 import com.samsung.vddil.recsys.mfmodel.RidgeRegressionProfileGenerator
 import com.samsung.vddil.recsys.feature.ItemFactorizationFeatureStruct
+import com.samsung.vddil.recsys.feature.item.FactorizationItemFeatureExtractor
 
 
 /*
@@ -166,39 +167,9 @@ object FactFeatureNMF  extends FeatureProcessingUnit {
 
 
 class FactFeatureNMFExtractor(
-        val itemFeatureFileName:String, val itemMapLoc:String, val debugMode:Boolean) 
-        extends ItemFeatureExtractor{
+        val itemFeatureFileName:String, 
+        val itemMapLoc:String, 
+        override val debugMode:Boolean) 
+        extends FactorizationItemFeatureExtractor{
 
-    protected def extractFeature(
-          items:Set[String], featureSources:List[String],
-          featureParams:HashMap[String, String], featureMapFileName:String,
-          sc:SparkContext): RDD[(String, Vector)] = {
-        
-        //construct hash table from itemID to item feature, for all the training items. 
-        val trainItemID2IntMap:RDD[(String, Int)] = sc.objectFile[(String, Int)](itemMapLoc)
-        val trainInt2ItemIDMap:RDD[(Int, String)] = trainItemID2IntMap.map(x => (x._2,x._1))
-        
-        val trainItemInt2Features:RDD[(Int,Vector)] = sc.objectFile[(Int,Vector)](itemFeatureFileName)
-        val trainItemID2Features = trainInt2ItemIDMap
-        						   .join(trainItemInt2Features)
-        						   .values
-        						   
-        val itemList = items.toList.map(x => (x, x))			
-        val itemListRDD = sc.parallelize(itemList)
-        val itemFeaturesRDD:RDD[(String, Vector)] = itemListRDD.join(trainItemID2Features).values						   
-        
-        if (debugMode) {
-            itemFeaturesRDD.saveAsTextFile(itemFeatureFileName + "colditemtext")
-        }
-        
-        
-		itemFeaturesRDD
-    }
-    
-    def getFeatureSources(dates:List[String], jobInfo:JobWithFeature):List[String] = {
-    	dates.map{date =>
-      		jobInfo.resourceLoc(RecJob.ResourceLoc_WatchTime) + date + "/*"
-    	}.toList
-    }
-       
 }
