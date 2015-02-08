@@ -59,11 +59,13 @@ object TestResourceRegItemColdHit{
 		val sc = jobInfo.sc
 		
 		//cache intermediate files, helpful in case of crash  
-		val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/itemFeat"   
+		val itemFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/itemFeat"
+		val itemFeatObjFileCache    = testResourceDir + "/" + IdenPrefix + "/itemFeatCacheNoFactFeature"
 		val userFeatObjFile         = testResourceDir + "/" + IdenPrefix + "/userFeat" 
 		val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
 		val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
 		val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
+		
 		   
 		    //get test dates
 		val testDates = jobInfo.testDates
@@ -87,8 +89,9 @@ object TestResourceRegItemColdHit{
 		//get cold item features
 		Logger.info("Preparing item features..")
 		if (jobInfo.outputResource(itemFeatObjFile)) {
-		    val coldItemFeatures:RDD[(String, Vector)] = getColdItemFeatures(coldItems,
-		        jobInfo, itemFeatureOrder, testDates.toList)
+		    val coldItemFeatures:RDD[(String, Vector)] = getColdItemFeatures(
+		        coldItems, jobInfo, itemFeatureOrder, 
+		        testDates.toList, Some(itemFeatObjFileCache))
 		    coldItemFeatures.saveAsObjectFile(itemFeatObjFile)
 		}
 		val coldItemFeatures:RDD[(String, Vector)] = sc.objectFile[(String, Vector)](itemFeatObjFile)
@@ -247,7 +250,8 @@ object TestResourceRegItemColdHit{
     val sc = jobInfo.sc
     
     //cache intermediate files, helpful in case of crash  
-    val itemFeatObjFile         		= testResourceDir + "/" + IdenPrefix + "/itemFeat"     
+    val itemFeatObjFile         		= testResourceDir + "/" + IdenPrefix + "/itemFeat"  
+    val itemFeatObjFileCache            = testResourceDir + "/" + IdenPrefix + "/itemFeatCacheNoFactFeature"
     val userFeatObjFile         		= testResourceDir + "/" + IdenPrefix + "/userFeat" 
     val sampledUserFeatObjFile  		= testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
     val sampledItemUserFeatFile 		= testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
@@ -278,8 +282,8 @@ object TestResourceRegItemColdHit{
     Logger.info("Preparing item features..")
 
     
-    val coldItemFeaturesWithoutFactFeature:RDD[(String, Vector)] = getColdItemFeatures(coldItems,
-        jobInfo, itemFeatureOrder, testDates.toList)
+    val coldItemFeaturesWithoutFactFeature:RDD[(String, Vector)] = getColdItemFeatures(
+            coldItems, jobInfo, itemFeatureOrder, testDates.toList, Some(itemFeatObjFileCache))
         
 	if (jobInfo.outputResource(itemFeatObjFile)) {
 	    coldItemFeaturesWithoutFactFeature.saveAsObjectFile(itemFeatObjFile)

@@ -163,7 +163,8 @@ package object testing {
           items:Set[String], 
           jobInfo:JobWithFeature,
           featureOrder:List[ItemFeatureStruct], 
-          dates:List[String]
+          dates:List[String],
+          CacheStrFactFeature:Option[String]
     ):RDD[(String, Vector)] = {
     
     //get spark context
@@ -181,7 +182,12 @@ package object testing {
         if(featureOrderWithoutFactFeature.size != featureOrder.size 
                 && featureOrderWithoutFactFeature.size>0){
             //in this case we have identified the feature 
-        	Some(getColdItemFeatures(items, jobInfo, featureOrderWithoutFactFeature, dates))
+            val coldItemFeatureWithoutFactFeature = getColdItemFeatures(items, jobInfo, featureOrderWithoutFactFeature, dates, None) 
+            val cacheResLoc = CacheStrFactFeature.get
+            if(jobInfo.outputResource(cacheResLoc)){
+                coldItemFeatureWithoutFactFeature.saveAsObjectFile(cacheResLoc)
+            }    
+        	Some(sc.objectFile[(String, Vector)](cacheResLoc))
         }else{
         	None
         }

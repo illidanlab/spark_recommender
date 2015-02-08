@@ -96,6 +96,7 @@ case class RecJobPrediction (
         val sc = jobInfo.sc
         
 	    val itemFeatObjFile      = predResourceDir + "/" + IdenPrefix + "/itemFeat"   
+	    val itemFeatObjFileCache = predResourceDir + "/" + IdenPrefix + "/itemFeatCacheNoFactFeature"
 	    val userFeatObjFile      = predResourceDir + "/" + IdenPrefix + "/userFeat" 
 	    val itemUserFeatFile     = predResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
 	    val predBlockFiles       = predResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
@@ -124,8 +125,8 @@ case class RecJobPrediction (
                                  .itemFeatureOrder.map{feature => feature.asInstanceOf[ItemFeatureStruct]}
       
 		if (jobInfo.outputResource(itemFeatObjFile)) {
-		  val coldItemFeatures:RDD[(String, Vector)] = getColdItemFeatures(itemList,
-		    jobInfo, itemFeatureOrder, contentDates)
+		  val coldItemFeatures:RDD[(String, Vector)] = getColdItemFeatures(
+		           itemList,jobInfo, itemFeatureOrder, contentDates, Some(itemFeatObjFileCache))
 		  coldItemFeatures.saveAsObjectFile(itemFeatObjFile)
 		}
 		val coldItemFeatures:RDD[(String, Vector)] = sc.objectFile[(String, Vector)](itemFeatObjFile)
