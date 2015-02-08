@@ -215,7 +215,7 @@ class MatrixFactModel(
 	        val itemId:String      = x._2._1
 	        val itemProfile:Vector = x._2._2
 	        (userId, itemId, userProfile.dot(itemProfile))
-	    }
+	    }.coalesce(userIdList.sparkContext.defaultParallelism, false)
 	}
 	
 	/**

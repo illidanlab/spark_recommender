@@ -95,10 +95,8 @@ package object prediction {
 	    }
 	    
 	    model.predict(
-	            userIdList, itemIdList, 
-	            userFeatureRDD, itemFeatureRDD).map{ x=> 
-	        (x._1, (x._2, x._3))
-	    }
+	            userIdList, itemIdList, userFeatureRDD, itemFeatureRDD).
+	            map{ x=> (x._1, (x._2, x._3))}
 	}
 	
 	
