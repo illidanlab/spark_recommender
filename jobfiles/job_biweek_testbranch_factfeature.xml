@@ -63,7 +63,7 @@
         <type>factFeature</type>
         <name>nmf</name>
         <param>
-          <rank>15</rank>
+          <rank>5</rank>
           <lambda>0.1</lambda>
           <numIter>10</numIter>
           <regressionMethod>lasso</regressionMethod>          
