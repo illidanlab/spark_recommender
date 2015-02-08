@@ -179,11 +179,11 @@ object TestResourceRegNotColdHit{
         val userIdMap = trainCombData.getUserMap() //translate testUsers
         val itemIdMap = trainCombData.getItemMap() //translate trainItems
         
-	    val userStrIdList: RDD[String] = translateIdInt2Str(userIdMap, testUsers)
+	    val userStrIdList: RDD[String] = translateIdInt2Str(userIdMap, sampledTestUsers)
 	    val itemStrIdList: RDD[String] = translateIdInt2Str(itemIdMap, trainItems)
 	    
 	    val userItemPredStr:RDD[(String, (String, Double))] 
-	    			= computePrediction(model, userStrIdList, itemStrIdList, userFeaturesRDD, userFeaturesRDD,
+	    			= computePrediction(model, userStrIdList, itemStrIdList, userFeaturesRDD, itemFeaturesRDD,
 	    			        (resLoc: String) => jobInfo.outputResource(resLoc), sc)
 	    
 	    //join and translate back for evaluation. 
