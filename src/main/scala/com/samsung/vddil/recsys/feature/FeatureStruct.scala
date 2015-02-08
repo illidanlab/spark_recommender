@@ -17,6 +17,7 @@ import com.samsung.vddil.recsys.testing._
 import com.samsung.vddil.recsys.mfmodel.RidgeRegressionProfileGenerator
 import com.samsung.vddil.recsys.mfmodel.LassoRegressionProfileGenerator
 import com.samsung.vddil.recsys.mfmodel.AverageProfileGenerator
+import com.samsung.vddil.recsys.mfmodel.ColdStartProfileGenerator
 
 /**
  * This data structure stores the information of feature
@@ -128,6 +129,16 @@ class ItemFeatureStruct(
 			) extends FeatureStruct{
 }
 
+
+object ItemFactorizationFeatureStruct{
+	// define some constants for regression method names  
+	val RegressionMethod4ColdStart = "regressionMethod"	
+	val RegressionMethodRidge 	   = "ridge"
+	val RegressionMethodLasso 	   = "lasso"
+	val RegressionMethodAverage    = "average"
+	val DefaulRegressionMethod4ColdStart = RegressionMethodRidge    
+}
+
 /**
  * The data structure of factorization based item feature
  * 
@@ -149,13 +160,73 @@ class ItemFactorizationFeatureStruct(
         featureIden, resourceStr, featureFileName, featureMapFileName, 
         featureParams, featureSize, featureSizeOriginal, 
         featurePostProcessor, null, originalItemFeatureStruct){
+
+  var itemProfileGenerator: Option[ColdStartProfileGenerator] = None 
+
+  /**
+   * Trains profile generators in order to compute the factorization features for cold start items. 
+   * 
+   * @param coldItemContentFeatures the content features extracted for cold-start items (profiles to be computed)
+   * @param featureOrderWithoutFactFeature the order of features that are not factorization features. 
+   * @param sc 
+   */
+  def trainItemProfileGenerator (
+          coldItemContentFeatures:Option[RDD[(String,Vector)]], 
+          featureOrderWithoutFactFeature:List[ItemFeatureStruct],
+          sc:SparkContext): ColdStartProfileGenerator = {
+      
+
+	    val testParams = this.featureParams
+	    
+	    //get factorization feature information for training items
+	    val factFeatureExtractor = this.factFeatureExtractor
+	    val trainItemFactFeatureFileName = factFeatureExtractor.itemFeatureFileName
+	    val trainItemMapLoc = factFeatureExtractor.itemMapLoc
+	    
+	    // load factorization features for training items
+	    val trainItemID2IntMap:RDD[(String, Int)] = sc.objectFile[(String, Int)](trainItemMapLoc)
+	    val trainInt2ItemIDMap:RDD[(Int, String)] = trainItemID2IntMap.map(x => (x._2,x._1))   
+	    
+	    val trainItemInt2FactFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int,Vector)](trainItemFactFeatureFileName)  
+	    val trainItemID2FactFeaturesRDD = trainInt2ItemIDMap.join(trainItemInt2FactFeatures).map{x => (x._1, x._2._2)}  
+	    val trainItemFactFeaturesRDD = trainItemInt2FactFeatures.map{x => x._2} // get rid of ID and keep only the feature vector
+	    
+	    var profileGenerator = if(coldItemContentFeatures.isDefined){
+		    // get content feature for training items (in order to train profile generators)
+		    val trainItemContentFeatures:RDD[(Int, Vector)] = 
+		        combineItemContentFeatures(featureOrderWithoutFactFeature, sc)
+		    
+				    //Logger.info("##2Cold items extracted: " + coldItemContentFeatures.count)
+				    //Logger.info("##2content feature dim is " + trainItemContentFeatures.first._2.size)
+				    
+				    // create regression profile generator instance    
+		    val method = testParams.getOrElseUpdate(
+		            ItemFactorizationFeatureStruct.RegressionMethod4ColdStart, 
+		            ItemFactorizationFeatureStruct.RegressionMethodRidge)
+		    val generator = method match{
+		        case ItemFactorizationFeatureStruct.RegressionMethodRidge   => 
+		            RidgeRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures)
+		        case ItemFactorizationFeatureStruct.RegressionMethodLasso   => 
+		            LassoRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures) 
+		        case ItemFactorizationFeatureStruct.RegressionMethodAverage => 
+		            AverageProfileGenerator(trainItemFactFeaturesRDD) 
+		        case _                       => 
+		            AverageProfileGenerator(trainItemFactFeaturesRDD)
+		    }
+		    generator
+	    }else{
+	         AverageProfileGenerator(trainItemFactFeaturesRDD)
+	    }
+	    
+	    profileGenerator
+  }
     
   /**
    * Compute the factorization features for cold start items. 
    * 
    * @param coldItemContentFeatures the content features extracted for cold-start items (profiles to be computed)
    * @param featureOrderWithoutFactFeature the order of features that are not factorization features. 
-   * @param factFeatureStruct the factorization-based feature to be regressed. 
+   * @param coldItems the set of cold items to be computed.  
    * @param sc 
    */
   def computeColdItemFactorizationFeatures(
@@ -164,66 +235,29 @@ class ItemFactorizationFeatureStruct(
           coldItems:List[String],
           sc:SparkContext):RDD[(String,Vector)] = {
     
-     
-    // define some constants for regression method names  
-    val RegressionMethod4ColdStart = "regressionMethod"	
-    val RegressionMethodRidge 	   = "ridge"
-    val RegressionMethodLasso 	   = "lasso"
-    val RegressionMethodAverage    = "average"
-    val DefaulRegressionMethod4ColdStart = RegressionMethodRidge
-    val testParams = this.featureParams
-    
-    //get factorization feature information for training items
-    val factFeatureExtractor = this.factFeatureExtractor
-    val trainItemFactFeatureFileName = factFeatureExtractor.itemFeatureFileName
-    val trainItemMapLoc = factFeatureExtractor.itemMapLoc
-    
-    // load factorization features for training items
-    val trainItemID2IntMap:RDD[(String, Int)] = sc.objectFile[(String, Int)](trainItemMapLoc)
-    val trainInt2ItemIDMap:RDD[(Int, String)] = trainItemID2IntMap.map(x => (x._2,x._1))   
-    
-    val trainItemInt2FactFeatures:RDD[(Int, Vector)] = sc.objectFile[(Int,Vector)](trainItemFactFeatureFileName)  
-    val trainItemID2FactFeaturesRDD = trainInt2ItemIDMap.join(trainItemInt2FactFeatures).map{x => (x._1, x._2._2)}  
-    val trainItemFactFeaturesRDD = trainItemInt2FactFeatures.map{x => x._2} // get rid of ID and keep only the feature vector
-    
-    var profileGenerator = if(coldItemContentFeatures.isDefined){
-	    // get content feature for training items (in order to train profile generators)
-	    val trainItemContentFeatures:RDD[(Int, Vector)] = 
-	        combineItemContentFeatures(featureOrderWithoutFactFeature, sc)
-	    
-			    //Logger.info("##2Cold items extracted: " + coldItemContentFeatures.count)
-			    //Logger.info("##2content feature dim is " + trainItemContentFeatures.first._2.size)
-			    
-			    // create regression profile generator instance    
-	    val method = testParams.getOrElseUpdate(RegressionMethod4ColdStart, RegressionMethodRidge)
-	    val generator = method match{
-	        case RegressionMethodRidge   => RidgeRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures)
-	        case RegressionMethodLasso   => LassoRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures) 
-	        case RegressionMethodAverage => AverageProfileGenerator(trainItemFactFeaturesRDD) 
-	        case _                       => RidgeRegressionProfileGenerator(trainItemID2FactFeaturesRDD, trainItemContentFeatures)
-	    }
-	    generator
-    }else{
-         AverageProfileGenerator(trainItemFactFeaturesRDD)
-    }
-    
-    //use trained profile generator to predict cold-start factorization features
-    val factFeatures:RDD[(String, Vector)] = if(coldItemContentFeatures.isDefined){
-	    coldItemContentFeatures.get.map{
-	        item =>
-	        val itemID = item._1
-	        val itemContentFeature:Vector = item._2
-	        val itemFactFeature:Vector = profileGenerator.getProfile(Option(itemContentFeature))
-	        (itemID, itemFactFeature)
-	    }
-    }else{
-        //if we don't have features to train then we use average for all items. 
-        sc.parallelize(coldItems).map{itemStr => 
-            (itemStr, profileGenerator.getProfile(None))
+        if(!this.itemProfileGenerator.isDefined){
+            //if profile generator is not ready we train it (and store it)
+            this.itemProfileGenerator = 
+                Some(trainItemProfileGenerator (coldItemContentFeatures, featureOrderWithoutFactFeature,sc))
         }
-    }
-
-    factFeatures
-  }
+        val profileGenerator = this.itemProfileGenerator.get
+      
+        //use trained profile generator to predict cold-start factorization features
+	    val factFeatures:RDD[(String, Vector)] = if(coldItemContentFeatures.isDefined){
+		    coldItemContentFeatures.get.map{
+		        item =>
+		        val itemID = item._1
+		        val itemContentFeature:Vector = item._2
+		        val itemFactFeature:Vector = profileGenerator.getProfile(Option(itemContentFeature))
+		        (itemID, itemFactFeature)
+		    }
+	    }else{
+	        //if we don't have features to train then we use average for all items. 
+	        sc.parallelize(coldItems).map{itemStr => 
+	            (itemStr, profileGenerator.getProfile(None))
+	        }
+	    }
+	    factFeatures
+	}
 }
 
