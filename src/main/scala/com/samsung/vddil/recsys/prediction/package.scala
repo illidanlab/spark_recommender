@@ -77,6 +77,7 @@ package object prediction {
             	itemIdList:RDD[String],
             	userFeaturesRDDOption: Option[RDD[(String, Vector)]],
             	itemFeaturesRDDOption: Option[RDD[(String, Vector)]],
+            	predictionCache:String,
             	outputResource: String => Boolean,
             	sc: SparkContext
     		):RDD[(String, (String, Double))] = {
@@ -94,9 +95,16 @@ package object prediction {
 	        sc.parallelize(List[(String, Vector)]())
 	    }
 	    
-	    model.predict(
-	            userIdList, itemIdList, userFeatureRDD, itemFeatureRDD).
-	            map{ x=> (x._1, (x._2, x._3))}
+	    var prediction = model.predict(
+	            userIdList, itemIdList, userFeatureRDD, itemFeatureRDD)
+	    
+	    //add cache to prediction. 
+	    if(outputResource(predictionCache)){
+	        prediction.saveAsObjectFile(predictionCache)
+	    }
+	    prediction = sc.objectFile(predictionCache)
+	    
+	    prediction.map{ x=> (x._1, (x._2, x._3))}
 	}
 	
 	

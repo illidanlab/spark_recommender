@@ -78,7 +78,8 @@ object TestResourceRegNotColdHit{
 	   val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/sampledUserItemFeat"
 	   val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/sampledPred/BlockFiles"
 	   val filterRatingDataFile    = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/filterTestRatingData"
-		
+	   val predictionCache         = testResourceDir + "/" + IdenPrefix + "_" + testParamStr + "/predictionCache"
+	   
 		//get spark context
 		val sc = jobInfo.sc
 		val partitionNum = jobInfo.partitionNum_test
@@ -115,6 +116,8 @@ object TestResourceRegNotColdHit{
 	        
 	    val sampledTestUsers = testUsers.sample(withReplacement, userSamplePc, seed)
 	    Logger.info("The total sampled user number: " + sampledTestUsers.count)
+	    
+	    Logger.info("Actual sample ratio: " + sampledTestUsers.count.toDouble/totalTestUserNum.toDouble)
 	    
 	    //get test data only corresponding to sampled users
 	    val sampledTestData = filtTestData.join(testUsers.map((_,1)))
@@ -182,10 +185,13 @@ object TestResourceRegNotColdHit{
 	    val userStrIdList: RDD[String] = translateIdInt2Str(userIdMap, sampledTestUsers)
 	    val itemStrIdList: RDD[String] = translateIdInt2Str(itemIdMap, trainItems)
 	    
-	    val userItemPredStr:RDD[(String, (String, Double))] 
-	    			= computePrediction(model, userStrIdList, itemStrIdList, userFeaturesRDD, itemFeaturesRDD,
-	    			        (resLoc: String) => jobInfo.outputResource(resLoc), sc)
+	    Logger.info("User list length: "+ userStrIdList.count)
+	    Logger.info("Item list length: "+ itemStrIdList.count)
 	    
+	    var userItemPredStr:RDD[(String, (String, Double))] 
+	    			= computePrediction(model, userStrIdList, itemStrIdList, userFeaturesRDD, itemFeaturesRDD,
+	    			        predictionCache, (resLoc: String) => jobInfo.outputResource(resLoc), sc)
+	    			        
 	    //join and translate back for evaluation. 
         //translate Int to String back and forth may be not efficient, 
 	    //but it makes the model pure :-)
