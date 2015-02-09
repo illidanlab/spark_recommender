@@ -65,6 +65,7 @@ object TestResourceRegItemColdHit{
 		val sampledUserFeatObjFile  = testResourceDir + "/" + IdenPrefix + "/sampledUserFeat" 
 		val sampledItemUserFeatFile = testResourceDir + "/" + IdenPrefix + "/sampledUserItemFeat"
 		val sampledPredBlockFiles   = testResourceDir + "/" + IdenPrefix + "/sampledPred/BlockFiles"
+		val predictionCache         = testResourceDir + "/" + IdenPrefix + "/predictionCache"
 		
 		   
 		    //get test dates
@@ -182,8 +183,9 @@ object TestResourceRegItemColdHit{
 	    
 	    val userItemPredStr:RDD[(String, (String, Double))] = computePrediction(
             model:MatrixFactModel,
-            allColdUsers, sc.parallelize(finalColdItems.toList),
+            sampledColdUsers, sc.parallelize(finalColdItems.toList),
             userFeaturesRDDOption, itemFeaturesRDDOption,
+            predictionCache,
             (resLoc: String) => jobInfo.outputResource(resLoc), sc)      
 	    
         val userItemPred:RDD[(Int, (String, Double))] = 
