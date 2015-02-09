@@ -161,9 +161,22 @@ class MatrixFactModel(
 	 * Predicts all (user, item) ratings, given the 
 	 * Cartesian product between a given user ID list 
 	 * and a given item ID list. 
+	 * 
+	 * @param userIdList
+	 * @param itemIdList 
+	 * @param userFeatureList 
+	 * @param itemFeatureList
+	 * @param cachePrefixInfo = (cachePrefix, outputResourceOption) the option for cache file prefix. 
+	 *        Once given, the following two directories will be created for caching.  
+	 * 				cachePrefix + "_userProfile" 
+	 *              cachePrefix + "_itemProfile"
 	 */
-	def predict(userIdList:RDD[String], itemIdList:RDD[String], 
-	        userFeatureList:RDD[(String, Vector)], itemFeatureList:RDD[(String, Vector)]): 
+	def predict(
+	        userIdList:RDD[String], 
+	        itemIdList:RDD[String], 
+	        userFeatureList:RDD[(String, Vector)], 
+	        itemFeatureList:RDD[(String, Vector)],
+	        cachePrefixInfo:Option[(String, String=>Boolean)]): 
 	        RDD[(String, String, Double)] = {
 	    
 	    //get full (user, feature) pair
@@ -175,7 +188,7 @@ class MatrixFactModel(
 	        }
 	    
 	    //from full(user, feature) pair, generate full (user, profile)
-	    val userProfiles = fullUserFeature.leftOuterJoin(getUserProfile()).map{x=>
+	    var userProfiles = fullUserFeature.leftOuterJoin(getUserProfile()).map{x=>
 	        val userId = x._1
 	        val userFeatureOption = x._2._1
 	        val userProfileOption = x._2._2
@@ -187,6 +200,16 @@ class MatrixFactModel(
 	        (userId, userProfile)
 	    }
 	    
+	    //cache user profile. 
+	    if(cachePrefixInfo.isDefined){
+	        val outputResource = cachePrefixInfo.get._2
+	        val userProfileCacheStr = cachePrefixInfo.get._1 + "_userProfile"
+	        if(outputResource(userProfileCacheStr)){
+	            userProfiles.saveAsObjectFile(userProfileCacheStr)
+	        }
+	        userProfiles = userIdList.sparkContext.objectFile(userProfileCacheStr)
+	    }
+	    
 	    //get full (item, feature) pair. 
 	    val fullItemFeature = itemIdList.map{x => (x, 1)}.
 	    	leftOuterJoin(itemFeatureList).map{x =>
@@ -196,7 +219,7 @@ class MatrixFactModel(
 	        }
 	    
 	    //from full (item, feature) pair, generate full (item, profile)
-	    val itemProfiles = fullItemFeature.leftOuterJoin(getItemProfile()).map{x=>
+	    var itemProfiles = fullItemFeature.leftOuterJoin(getItemProfile()).map{x=>
         	val itemId = x._1
         	val itemFeatureOption = x._2._1
         	val itemProfileOption = x._2._2
@@ -206,6 +229,16 @@ class MatrixFactModel(
         		    this.coldStartItemProfiler.getProfile(itemFeatureOption)
         		}
         	(itemId, itemProfile)
+	    }
+	    
+	    //cache item profile 
+	    if(cachePrefixInfo.isDefined){
+	        val outputResource = cachePrefixInfo.get._2
+	        val itemProfileCacheStr = cachePrefixInfo.get._1 + "_itemProfile"
+	        if(outputResource(itemProfileCacheStr)){
+	            itemProfiles.saveAsObjectFile(itemProfileCacheStr)
+	        }
+	        itemProfiles = userIdList.sparkContext.objectFile(itemProfileCacheStr)
 	    }
 	    
 	    //generate predictions

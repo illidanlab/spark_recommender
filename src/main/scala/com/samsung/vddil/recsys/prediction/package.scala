@@ -96,7 +96,8 @@ package object prediction {
 	    }
 	    
 	    var prediction = model.predict(
-	            userIdList, itemIdList, userFeatureRDD, itemFeatureRDD)
+	            userIdList, itemIdList, userFeatureRDD, itemFeatureRDD, 
+	            Some((predictionCache, outputResource)))
 	    
 	    //add cache to prediction. 
 	    if(outputResource(predictionCache)){
