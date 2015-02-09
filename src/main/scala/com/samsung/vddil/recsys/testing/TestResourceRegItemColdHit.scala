@@ -183,7 +183,7 @@ object TestResourceRegItemColdHit{
 	    
 	    val userItemPredStr:RDD[(String, (String, Double))] = computePrediction(
             model:MatrixFactModel,
-            allColdUsers, sc.parallelize(finalColdItems.toList),
+            sampledColdUsers, sc.parallelize(finalColdItems.toList),
             userFeaturesRDDOption, itemFeaturesRDDOption,
             predictionCache,
             (resLoc: String) => jobInfo.outputResource(resLoc), sc)      
