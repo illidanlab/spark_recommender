@@ -9,7 +9,7 @@
 		<resourceLocation>
 			<roviHq>data/ROVI/</roviHq>
 			<watchTime>data/ACR/</watchTime>
-            <workspace>/tmp/vddil/</workspace>
+            <workspace>/tmp/vddil/recsys-spark</workspace>
 		</resourceLocation>
 		<trainDates>
 			<date>20140522-20140524</date>
@@ -86,59 +86,14 @@
 			</model>
 		</models>
 		<tests>
-		<!--<test>
-		      <type>futureNotColdstart</type>
-		      <name>NonColdstart</name>
-		      <param>
-		          <UserSampleSize>3</UserSampleSize>
-		          <N>10</N>
-		      </param>
-		      <metrics>
-				  <metric>
-				      <type>mse</type>
-				      <name>MeanSquareError</name>
-				      <param>
-				          <key>val</key>
-				      </param>
-				  </metric>
-				  <metric>
-		              <type>rmse</type>
-		              <name>RootMeanSquareError</name>
-		              <param>
-		                  <key>val</key>
-		              </param>
-		          </metric>
-		          <metric>
-                      <type>hr</type>
-                      <name>HitRate</name>
-                      <param>
-                          <key>val</key>
-                      </param>
-                  </metric>
-			  </metrics>
-		  </test> -->
 		  <test>
               <type>futureNotColdstart</type>
               <name>NonColdstart</name>
               <param>
-                  <UserSampleSize>5</UserSampleSize>
+                  <UserSampleSize>3</UserSampleSize>
                   <N>100</N>
               </param>
               <metrics>
-                  <metric>
-                      <type>mse</type>
-                      <name>MeanSquareError</name>
-                      <param>
-                          <key>val</key>
-                      </param>
-                  </metric>
-                  <metric>
-                      <type>rmse</type>
-                      <name>RootMeanSquareError</name>
-                      <param>
-                          <key>val</key>
-                      </param>
-                  </metric>
                   <metric>
                       <type>hr</type>
                       <name>HitRate</name>
@@ -152,7 +107,7 @@
              <type>futureColdItems</type>
 	         <name>ColdStartItems</name>
 	         <param>
-	             <UserSampleSize>15000</UserSampleSize>
+	             <UserSampleSize>3</UserSampleSize>
 	         </param>
 	         <metrics>
 	           <metric>
