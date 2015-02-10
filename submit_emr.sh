@@ -12,7 +12,7 @@ set -e
 # Show details
 set -x
 
-cluster_name="recommender-system-pipeline"
+cluster_name="$USER""-recommender-system-pipeline"
 cluster_node_num=$2
 task_node_type="r3.2xlarge"
 job_file=$1
@@ -83,6 +83,7 @@ bid_option="BidPrice=$bid_price"
 cluster_result=$(aws --region us-east-1 emr create-cluster --name $cluster_name --ami-version $version_ami \
 		--ec2-attributes SubnetId=subnet-5965ad2e,KeyName=DMC_DEV --use-default-roles  \
 		--log-uri s3://vddil.recsys/logs \
+		--tags "Owner=$USER" \
 		--instance-groups InstanceGroupType=MASTER,InstanceType=c3.4xlarge,InstanceCount=1 \
 		InstanceGroupType=CORE,InstanceType=$task_node_type,InstanceCount=$cluster_node_num,$bid_option \
 		--bootstrap-actions \
