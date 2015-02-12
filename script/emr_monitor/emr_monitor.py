@@ -106,10 +106,14 @@ def search_hadoop_application(master_dns, status):
 				application_id = searchObj[0].split(">")[1].split("<")[0]
 
 				# process application case by case. 
+				# the case can be extended to handle other types of jobs. 
 				if 'SPARK' in app_item:
 					parse_spark_info(master_dns, application_id)
-				if 'MAPREDUCE' in app_item:
+				elif 'MAPREDUCE' in app_item:
 					parse_mapreduce_info(master_dns, application_id)
+				else:
+					parse_otherjob_info(master_dns, application_id)
+
 			except:
 				print time_str(), 'Error in reading application information: ', application_id
 	else:
@@ -136,6 +140,10 @@ def parse_spark_info(master_dns, application_id):
 # status for active mapreduce jobs
 def parse_mapreduce_info(master_dns, application_id):
 	print '>> MapReduce Job [',application_id,']'
+
+# status for other active jobs. 
+def parse_otherjob_info(master_dns, application_id):
+	print '>> Other Hadoop Job [',application_id,']'	
 
 # read the content of a given webpage into a string. 
 def get_url_content(address):
