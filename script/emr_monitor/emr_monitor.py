@@ -25,7 +25,7 @@ def show_usage():
 def get_master_dns(cluster_id):
 	#from cluster_id to master_id
 	#if the cluster id is not found or master dns not available, return empty string. 
-	tt = os.popen("aws emr describe-cluster --cluster-id " + cluster_id + " | grep MasterPublicDnsName").read()
+	tt = os.popen("aws emr describe-cluster --output json --cluster-id " + cluster_id + " | grep MasterPublicDnsName").read()
 	if not 'MasterPublicDnsName' in tt:
 		print 'Cluster Master DNS does not exist.'
 		return ''
@@ -35,7 +35,7 @@ def get_master_dns(cluster_id):
 	return master_dns
 
 def get_status_str(cluster_id):
-	ss = os.popen("aws emr describe-cluster --cluster-id " + cluster_id + " | grep State").read()
+	ss = os.popen("aws emr describe-cluster --output json --cluster-id " + cluster_id + " | grep State").read()
 	status = ss.split("\"")[3]
 	#print 'Cluster Status: ', status
 	return status
