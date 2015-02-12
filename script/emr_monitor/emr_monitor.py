@@ -34,36 +34,61 @@ def get_master_dns(cluster_id):
 
 	return master_dns
 
-# check if the cluster is running 
-def is_cluster_running(cluster_id):
+def get_status_str(cluster_id):
 	ss = os.popen("aws emr describe-cluster --cluster-id " + cluster_id + " | grep State").read()
 	status = ss.split("\"")[3]
 	#print 'Cluster Status: ', status
+	return status
 
-	return 'RUNNING' in status
+# check if the cluster is running 
+def is_cluster_running(cluster_id):
+	status = get_status_str(cluster_id)
+	return is_status_running(status)
+
+# check if the cluster is waiting 
+def is_cluster_waiting(cluster_id):
+	status = get_status_str(cluster_id)
+	return is_status_waiting(status)
 
 # check if the cluster is terminated.
 def is_cluster_terminated(cluster_id):
-	ss = os.popen("aws emr describe-cluster --cluster-id " + cluster_id + " | grep State").read()
-	status = ss.split("\"")[3]
-
-	return 'TERMINATED' in status	
+	status = get_status_str(cluster_id)
+	return is_status_terminated(status)
 
 # check if the cluster is in on of the starting phases (STARTING or BOOTSTRAPPING)
 def is_cluster_starting(cluster_id):
-	#check states. 
-	#if the cluster is terminated, return empty string. 
-	ss = os.popen("aws emr describe-cluster --cluster-id " + cluster_id + " | grep State").read()
-	status = ss.split("\"")[3]
+	status = get_status_str(cluster_id)
+	return is_status_starting(status)
 
+
+# check if the status string is starting
+def is_status_starting(status):
 	return  (('STARTING' in status) | ('BOOTSTRAPPING' in status))
 
+# check if the status string is running
+def is_status_running(status):
+	return 'RUNNING' in status	
+
+# check if the status string is running
+def is_status_running_or_waiting(status):
+	return (('RUNNING' in status) | ('WAITING' in status))
+
+# check if the status string is waiting
+def is_status_waiting(status):
+	return 'WAITING' in status
+
+# check if the status string is terminated
+def is_status_terminated(status):
+	return (('COMPLETED' in status) | ('SHUTTING_DOWN' in status) | ('TERMINATED' in status) | ('FAILED' in status))
+
+
+# get formatted string for time 
 def time_str():
 	return strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
 # given a master DNS, the routine checks the yarn resource manager and then go through each 
 # hadoop/spark job. 
-def search_hadoop_application(master_dns):
+def search_hadoop_application(master_dns, status):
 	resource_manager_loc = "http://" + master_dns + ":9026/cluster"
 	#print resource_manager_loc
 	resource_manager_content = get_url_content(resource_manager_loc)
@@ -72,7 +97,7 @@ def search_hadoop_application(master_dns):
 	# identify running applications. 
 	app_list = [ elem for elem in resource_manager_content.split('\n') if (('application_' in elem) & ('RUNNING' in elem)) ]
 	if app_list:
-		print time_str(), 'Identified ', len(app_list), ' active jobs.'
+		print time_str(), 'Identified ', len(app_list), ' running jobs.'
 		#if there are apps in the app_list, we start to process each app. 
 		for app_item in app_list:
 			try:
@@ -88,7 +113,10 @@ def search_hadoop_application(master_dns):
 			except:
 				print time_str(), 'Error in reading application information: ', application_id
 	else:
-		print time_str(), ' No active jobs. Please shut down the cluster.'
+		if is_status_waiting(status): 
+			print time_str(), " Cluster is waiting. Please shut down the cluster or start new jobs."
+		else:
+			print time_str(), ' Cluster is doing something but no running Hadoop jobs. '
 
 # status for active spark job, 
 def parse_spark_info(master_dns, application_id):
@@ -135,19 +163,25 @@ if __name__ == "__main__":
 		master_dns = get_master_dns(cluster_id)
 
 		if not master_dns:
-			print time_str, " Error: Master DNS not available. "
+			print time_str(), " Error: Master DNS not available. "
 		else:
 			try:
 				# if master DNS is available.
 				while(True):
-					if is_cluster_running(cluster_id):
+					status = get_status_str(cluster_id)
+					if is_status_running_or_waiting(status):
 						# if the cluster is currently running, we try to check yarn 
 						# applications on master DNS 
-						search_hadoop_application(master_dns)
+						#
+						# Note: even when the cluster is waiting we will still have 
+						#       to check resource manager, because users may manually 
+						#       submit hadoop jobs through the console.
+						search_hadoop_application(master_dns, status)
+
 						# and sleep for a while. 
 						sleep(sleeping_rate())
 					else:
-						print time_str, " Cluster is down. "
+						print time_str(), " Cluster is down. "
 						break
 			except:
 				print time_str(), " Error: ", sys.exc_info()[0]
